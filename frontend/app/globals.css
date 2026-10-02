@@ -1,0 +1,218 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+ * Oppora design tokens — single source of truth.
+ * Mirrored in CLAUDE.md. Ask before changing any value here.
+ * ------------------------------------------------------------------ */
+:root {
+  /* Surfaces */
+  --bg: #070a1a;
+  --surface: #0f1336;
+  --glass: rgba(255, 255, 255, 0.04);
+  --glass-strong: rgba(255, 255, 255, 0.06);
+
+  /* Borders */
+  --line: rgba(165, 160, 255, 0.14);
+  --line-strong: rgba(170, 160, 255, 0.3);
+
+  /* Text */
+  --ink: #eef0ff;
+  --ink-2: #b0b6da;
+  --ink-3: #8189b5;
+
+  /* Accents */
+  --purple: #7c3aed;
+  --violet: #a78bfa;
+  --blue: #60a5fa;
+  --pink: #f472b6;
+  --indigo: #4f46e5;
+  --success: #34d399;
+
+  /* Urgency (always paired with a "N days left" label) */
+  --urgent: #f87171; /* ≤ 3 days */
+  --soon: #fb923c; /* 4–10 days */
+  --later: #60a5fa; /* > 10 days */
+
+  /* Gradients */
+  --grad-brand: linear-gradient(135deg, #7c3aed 0%, #4f46e5 50%, #2563eb 100%);
+  --grad-headline: linear-gradient(90deg, #a78bfa 0%, #60a5fa 55%, #f472b6 100%);
+  --grad-ai-border: linear-gradient(135deg, #7c3aed 0%, #60a5fa 50%, #f472b6 100%);
+
+  /* Elevation */
+  --shadow-card: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset, 0 12px 32px -12px rgba(0, 0, 0, 0.6);
+  --glow-brand: 0 0 0 1px rgba(167, 139, 250, 0.35), 0 8px 28px -6px rgba(124, 58, 237, 0.55);
+  --glow-soft: 0 0 24px -4px rgba(124, 58, 237, 0.45);
+
+  /* Layout */
+  --sidebar-w: 230px;
+  --sidebar-w-collapsed: 72px;
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-glass: var(--glass);
+  --color-glass-strong: var(--glass-strong);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-purple: var(--purple);
+  --color-violet: var(--violet);
+  --color-blue: var(--blue);
+  --color-pink: var(--pink);
+  --color-indigo: var(--indigo);
+  --color-success: var(--success);
+  --color-urgent: var(--urgent);
+  --color-soon: var(--soon);
+  --color-later: var(--later);
+
+  --font-sans: var(--font-jakarta), "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-google: var(--font-roboto), "Roboto", arial, sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-card: 20px;
+
+  /* Type scale */
+  --text-hero: clamp(2.5rem, 5.2vw, 4.375rem); /* 40 → 70px */
+  --text-hero--line-height: 1.05;
+  --text-hero--font-weight: 800;
+  --text-section: clamp(2rem, 3.4vw, 2.875rem); /* 32 → 46px */
+  --text-section--line-height: 1.1;
+  --text-section--font-weight: 800;
+  --text-meta: 0.8125rem; /* 13px */
+  --text-meta--line-height: 1.25rem;
+
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-orb: pulse-orb 2.4s ease-in-out infinite;
+  --animate-fade-up: fade-up 260ms ease-out both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-drawer-in: drawer-in 240ms ease-out both;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  @keyframes pulse-orb {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 22px 2px rgba(124, 58, 237, 0.55); }
+    50% { transform: scale(1.06); box-shadow: 0 0 34px 8px rgba(96, 165, 250, 0.45); }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes drawer-in {
+    from { opacity: 0; transform: translateX(24px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes shimmer {
+    from { background-position: -200% 0; }
+    to { background-position: 200% 0; }
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Shared utilities (used by components, never restyled per page)
+ * ------------------------------------------------------------------ */
+@utility glass {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+@utility glass-strong {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035));
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+@utility bg-brand {
+  background-image: var(--grad-brand);
+}
+
+@utility text-gradient {
+  background-image: var(--grad-headline);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Gradient hairline border for AI surfaces. Needs `relative` on the element. */
+@utility ai-border {
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: var(--grad-ai-border);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
+@utility focus-ring {
+  outline: none;
+  &:focus-visible {
+    outline: 2px solid var(--violet);
+    outline-offset: 2px;
+  }
+}
+
+@layer base {
+  html {
+    background: var(--bg);
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100dvh;
+  }
+  ::selection {
+    background: rgba(124, 58, 237, 0.45);
+    color: #fff;
+  }
+  :focus-visible {
+    outline: 2px solid var(--violet);
+    outline-offset: 2px;
+  }
+  /* Thin themed scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(170, 160, 255, 0.25) transparent;
+  }
+}
+
+/* Ambient purple/blue light behind every page */
+.ambient {
+  background:
+    radial-gradient(60rem 36rem at 85% -10%, rgba(124, 58, 237, 0.18), transparent 60%),
+    radial-gradient(48rem 30rem at -10% 20%, rgba(37, 99, 235, 0.14), transparent 60%),
+    radial-gradient(40rem 30rem at 50% 110%, rgba(244, 114, 182, 0.06), transparent 60%),
+    var(--bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

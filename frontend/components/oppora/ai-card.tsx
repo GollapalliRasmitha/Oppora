@@ -1,0 +1,40 @@
+import type { ReactNode } from "react";
+import { Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { AIOrb } from "./ai-orb";
+
+type Props = {
+  title?: string;
+  children: ReactNode;
+  actions?: ReactNode;
+  /** Shows the orb instead of the Sparkles icon in the header. */
+  orb?: boolean;
+  className?: string;
+};
+
+/** Card for AI-generated content: gradient hairline border + soft glow. */
+export function AICard({ title = "AI Recommendation", children, actions, orb, className }: Props) {
+  return (
+    <section
+      aria-label={title}
+      className={cn(
+        "ai-border relative overflow-hidden rounded-card bg-[linear-gradient(135deg,rgba(124,58,237,.16),rgba(37,99,235,.08)_55%,rgba(244,114,182,.06))] p-5 shadow-[0_0_40px_-12px_rgba(124,58,237,.55)]",
+        className,
+      )}
+    >
+      <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 size-36 rounded-full bg-purple/25 blur-3xl" />
+      <div className="relative flex items-center gap-2.5">
+        {orb ? (
+          <AIOrb className="size-7" />
+        ) : (
+          <span className="flex size-8 items-center justify-center rounded-md bg-purple/20 text-violet">
+            <Sparkles aria-hidden className="size-4" />
+          </span>
+        )}
+        <h2 className="text-base font-bold text-ink">{title}</h2>
+      </div>
+      <div className="relative mt-3 text-[15px] leading-relaxed text-ink-2">{children}</div>
+      {actions && <div className="relative mt-4 flex flex-wrap gap-2">{actions}</div>}
+    </section>
+  );
+}
