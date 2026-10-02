@@ -11,6 +11,9 @@
  *    CLAUDE.md → "Seed targets".
  *  - Programs without a real-world equivalent use fictional organizers
  *    (CodeCircle, Bright Futures Foundation).
+ *  - Application links point to the organization's official careers/program
+ *    page (not a specific posting); fictional or moved programs use
+ *    example.com. Zoho and Bright Futures intentionally have no link.
  */
 import { explainMatch } from "@/lib/domain/match";
 import type { Application, Email, ISODate, ISODateTime, Opportunity, User } from "@/lib/domain/types";
@@ -21,7 +24,7 @@ export const seedUser: User = {
   email: "rasmitha@example.com",
   plan: "Free",
   interests: ["frontend development", "software engineering", "hackathons"],
-  // Demo profile values (used by the AI Summary checklist). Editable in Settings (Stage 5).
+  // Skills: demo values until the real list is provided. Editable in Settings (Stage 5).
   skills: ["JavaScript", "TypeScript", "React", "HTML", "CSS", "Data structures", "Algorithms", "Problem solving"],
   experienceLevel: "Undergraduate student",
 };
@@ -85,7 +88,7 @@ export function createSeed(today: Date = new Date()): Seed {
       eligibility: "Students pursuing a Bachelor's or Master's degree",
       skills: ["Software engineering", "Data structures", "Algorithms"],
       requirements: ["Currently pursuing a Bachelor's or Master's degree"],
-      applicationLink: null,
+      applicationLink: "https://www.google.com/about/careers/applications/",
       sourceEmailIds: ["em_google_careers"],
       saved: true,
       application: inProgress([-12, "18:10"]),
@@ -104,7 +107,7 @@ export function createSeed(today: Date = new Date()): Seed {
       duration: null,
       eligibility: "First- and second-year undergraduate students",
       skills: ["Programming fundamentals"],
-      applicationLink: null,
+      applicationLink: "https://careers.microsoft.com/",
       sourceEmailIds: ["em_microsoft_explore", "em_microsoft_reminder"],
       saved: true,
       application: inProgress([-14, "20:45"]),
@@ -123,7 +126,7 @@ export function createSeed(today: Date = new Date()): Seed {
       duration: null,
       eligibility: null,
       skills: ["Competitive programming", "Problem solving"],
-      applicationLink: null,
+      applicationLink: "https://codevita.tcsapps.com/",
       sourceEmailIds: ["em_tcs_codevita", "em_tcs_reminder"],
       saved: true,
       application: inProgress([-4, "19:30"]),
@@ -142,7 +145,7 @@ export function createSeed(today: Date = new Date()): Seed {
       duration: null,
       eligibility: null,
       skills: ["React", "TypeScript", "CSS"],
-      applicationLink: null,
+      applicationLink: "https://www.amazon.jobs/",
       sourceEmailIds: ["em_amazon_jobs"],
       saved: true,
       application: null,
@@ -161,7 +164,7 @@ export function createSeed(today: Date = new Date()): Seed {
       duration: null,
       eligibility: "Women studying computer science or a related field",
       skills: [],
-      applicationLink: null,
+      applicationLink: "https://example.com/women-techmakers-scholarship",
       sourceEmailIds: ["em_wtm"],
       saved: true,
       application: applied([-7, "17:00"], [-2, "21:12"]),
@@ -181,7 +184,7 @@ export function createSeed(today: Date = new Date()): Seed {
       eligibility: "Final-year undergraduate students",
       skills: ["Java", "JavaScript"],
       requirements: ["Final-year undergraduate student"],
-      applicationLink: null,
+      applicationLink: "https://www.atlassian.com/company/careers",
       sourceEmailIds: ["em_atlassian"],
       saved: true,
       application: applied([-24, "10:00"], [-17, "22:05"]),
@@ -202,7 +205,7 @@ export function createSeed(today: Date = new Date()): Seed {
       skills: ["Web development", "AI"],
       requirements: ["Teams of 2–4 college students"],
       benefits: ["Prizes for the top three teams", "Mentorship from industry engineers"],
-      applicationLink: null,
+      applicationLink: "https://example.com/hacksprint-2026",
       sourceEmailIds: ["em_hacksprint"],
       saved: true,
       application: applied([-28, "11:00"], [-23, "19:40"]),
@@ -221,7 +224,7 @@ export function createSeed(today: Date = new Date()): Seed {
       duration: null,
       eligibility: "2026 graduates",
       skills: ["React", "JavaScript", "HTML", "CSS"],
-      applicationLink: null,
+      applicationLink: "https://careers.swiggy.com/",
       sourceEmailIds: ["em_swiggy"],
       saved: false,
       application: applied([-26, "16:00"], [-22, "18:25"]),
@@ -240,7 +243,7 @@ export function createSeed(today: Date = new Date()): Seed {
       duration: "6 months",
       eligibility: null,
       skills: ["React", "TypeScript"],
-      applicationLink: null,
+      applicationLink: "https://razorpay.com/careers/",
       sourceEmailIds: ["em_razorpay"],
       saved: false,
       application: applied([-33, "10:30"], [-30, "12:15"]),
@@ -278,7 +281,7 @@ export function createSeed(today: Date = new Date()): Seed {
       duration: null,
       eligibility: null,
       skills: ["Problem solving"],
-      applicationLink: null,
+      applicationLink: "https://www.hackerearth.com/challenges/",
       sourceEmailIds: ["em_hackerearth"],
       saved: false,
       application: applied([-41, "09:00"], [-34, "20:20"]),

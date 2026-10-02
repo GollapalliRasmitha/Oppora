@@ -102,10 +102,19 @@ describe("OpportunityCard", () => {
     expect(screen.getByText("86% Match")).toBeInTheDocument();
     expect(screen.getByText("Medium Priority")).toBeInTheDocument();
 
-    const save = screen.getByRole("button", { name: /saved: frontend developer/i });
-    expect(save).toHaveAttribute("aria-pressed", "true");
+    const save = screen.getByRole("button", { name: "Saved. Remove Frontend Developer from saved" });
+    expect(save.querySelector("svg")).toHaveClass("fill-violet");
     await userEvent.click(save);
     expect(onToggleSave).toHaveBeenCalledWith(amazon);
+  });
+});
+
+describe("SaveToggle", () => {
+  it("says and shows when it is not saved", () => {
+    const zoho = byId("opp_zoho_web_dev");
+    render(<OpportunityCard opp={zoho} now={NOW} onToggleSave={vi.fn()} />);
+    const btn = screen.getByRole("button", { name: "Not saved. Save Junior Web Developer" });
+    expect(btn.querySelector("svg")).toHaveClass("fill-none");
   });
 });
 

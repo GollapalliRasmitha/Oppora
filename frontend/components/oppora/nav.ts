@@ -38,3 +38,11 @@ export function isActive(pathname: string, href: string) {
 export function isFullScreenOnMobile(pathname: string) {
   return /^\/opportunities\/[^/]+$/.test(pathname);
 }
+
+/**
+ * Pages with their own search bar. The header search is hidden there at every
+ * width so there's only ever one search on screen.
+ */
+export function hasOwnSearch(pathname: string) {
+  return pathname === "/opportunities" || pathname === "/inbox";
+}

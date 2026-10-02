@@ -11,13 +11,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toast";
 import { Avatar } from "./avatar";
 import { LogoMark } from "./logo";
+import { hasOwnSearch } from "./nav";
 import { NotificationsPanel, useNotifications } from "./notifications-panel";
 import { useShell } from "./shell-context";
 
 export function Header() {
   const router = useRouter();
-  // Pages with their own search bar don't need the header's mobile search row.
-  const pageHasSearch = usePathname() === "/opportunities";
+  const pageHasSearch = hasOwnSearch(usePathname());
   const { user, userStatus, setAssistantOpen, notificationsOpen, setNotificationsOpen } = useShell();
   const notifications = useNotifications();
   const [q, setQ] = useState("");
@@ -37,7 +37,7 @@ export function Header() {
           <LogoMark />
         </Link>
 
-        <form onSubmit={onSearch} className="hidden max-w-xl flex-1 sm:block">
+        <form onSubmit={onSearch} className={pageHasSearch ? "hidden" : "hidden max-w-xl flex-1 sm:block"}>
           <SearchBar
             value={q}
             onValueChange={setQ}
@@ -45,7 +45,7 @@ export function Header() {
             placeholder="Search opportunities, companies or keywords…"
           />
         </form>
-        <div className="flex-1 sm:hidden" />
+        <div className={pageHasSearch ? "flex-1" : "flex-1 sm:hidden"} />
 
         <IconButton
           label={bellLabel}

@@ -23,7 +23,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Sidebar expanded={sidebarExpanded} onExpandedChange={setSidebarExpanded} />
         <div className="md:pl-[var(--sidebar-w-collapsed)] lg:pl-[var(--sidebar-w)]">
           <Header />
-          <main id="main" tabIndex={-1} className="mx-auto max-w-[1280px] px-4 pb-28 pt-6 outline-none sm:px-6 md:pb-12 lg:px-8">
+          <main id="main" tabIndex={-1} className="mx-auto max-w-[1280px] px-4 pb-[var(--fab-clearance)] pt-6 outline-none sm:px-6 lg:px-8">
             {children}
           </main>
         </div>

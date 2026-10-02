@@ -46,6 +46,12 @@
   /* Layout */
   --sidebar-w: 230px;
   --sidebar-w-collapsed: 72px;
+  /*
+   * Bottom padding for signed-in pages so the last content can always scroll
+   * clear of the floating AI button. Mobile: bottom nav (64) + gap (16) +
+   * button (56) + 24 = 160. md+: bottom offset (24) + button (56) + 24 = 104.
+   */
+  --fab-clearance: 160px;
 
   color-scheme: dark;
 }
@@ -204,6 +210,12 @@
     radial-gradient(48rem 30rem at -10% 20%, rgba(37, 99, 235, 0.14), transparent 60%),
     radial-gradient(40rem 30rem at 50% 110%, rgba(244, 114, 182, 0.06), transparent 60%),
     var(--bg);
+}
+
+@media (min-width: 768px) {
+  :root {
+    --fab-clearance: 104px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

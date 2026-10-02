@@ -1,10 +1,14 @@
 "use client";
 
-import { Bookmark, BookmarkCheck } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/** Save / Saved toggle. `compact` renders an icon-only 44px button. */
+/**
+ * Save toggle. Not saved = outline bookmark; saved = filled violet bookmark.
+ * The accessible name states the current state and what activating does.
+ * `compact` renders an icon-only 44px button.
+ */
 export function SaveToggle({
   saved,
   onToggle,
@@ -19,28 +23,40 @@ export function SaveToggle({
   compact?: boolean;
   className?: string;
 }) {
-  const Icon = saved ? BookmarkCheck : Bookmark;
+  const label = saved ? `Saved. Remove ${title} from saved` : `Not saved. Save ${title}`;
+  const icon = (
+    <Bookmark
+      aria-hidden
+      strokeWidth={2}
+      className={cn("transition-[fill,color] duration-200", saved ? "fill-violet text-violet" : "fill-none")}
+    />
+  );
+
   if (compact) {
     return (
       <button
         type="button"
-        aria-pressed={saved}
-        aria-label={saved ? `Saved: ${title}. Remove from saved` : `Save ${title}`}
-        title={saved ? "Saved" : "Save"}
+        aria-label={label}
+        title={saved ? "Saved — click to remove" : "Save"}
         onClick={onToggle}
         className={cn(
-          "inline-flex size-11 shrink-0 items-center justify-center rounded-md focus-ring transition-colors duration-200",
-          saved ? "text-violet hover:bg-purple/15" : "text-ink-3 hover:bg-white/[.06] hover:text-ink",
+          "inline-flex size-11 shrink-0 items-center justify-center rounded-md focus-ring transition-colors duration-200 [&_svg]:size-5",
+          saved ? "bg-purple/15 hover:bg-purple/25" : "text-ink-3 hover:bg-white/[.06] hover:text-ink",
           className,
         )}
       >
-        <Icon aria-hidden className={cn("size-5", saved && "fill-violet/30")} />
+        {icon}
       </button>
     );
   }
   return (
-    <Button variant="secondary" aria-pressed={saved} onClick={onToggle} className={cn(saved && "border-violet/50 text-violet", className)}>
-      <Icon aria-hidden className={cn(saved && "fill-violet/30")} />
+    <Button
+      variant="secondary"
+      aria-label={label}
+      onClick={onToggle}
+      className={cn(saved && "border-violet/60 bg-purple/15 text-violet hover:bg-purple/25", className)}
+    >
+      {icon}
       {saved ? "Saved" : "Save"}
     </Button>
   );
