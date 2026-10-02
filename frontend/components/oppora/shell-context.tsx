@@ -7,6 +7,8 @@ import { useResource } from "@/lib/hooks/use-resource";
 
 type Shell = {
   user: User | undefined;
+  /** "error" = the profile couldn't load; show fallbacks, never a permanent skeleton. */
+  userStatus: "loading" | "error" | "success";
   assistantOpen: boolean;
   setAssistantOpen: (open: boolean) => void;
   notificationsOpen: boolean;
@@ -16,12 +18,12 @@ type Shell = {
 const ShellContext = createContext<Shell | null>(null);
 
 export function ShellProvider({ children }: { children: ReactNode }) {
-  const { data: user } = useResource(getCurrentUser);
+  const { data: user, status: userStatus } = useResource(getCurrentUser);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const value = useMemo(
-    () => ({ user, assistantOpen, setAssistantOpen, notificationsOpen, setNotificationsOpen }),
-    [user, assistantOpen, notificationsOpen],
+    () => ({ user, userStatus, assistantOpen, setAssistantOpen, notificationsOpen, setNotificationsOpen }),
+    [user, userStatus, assistantOpen, notificationsOpen],
   );
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>;
 }

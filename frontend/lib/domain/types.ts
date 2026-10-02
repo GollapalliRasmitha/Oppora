@@ -34,6 +34,18 @@ export interface Application {
   appliedAt: ISODateTime | null;
 }
 
+/** Result of one match check. "unknown" = the email or profile doesn't say. */
+export type MatchCheck = "met" | "unmet" | "unknown";
+
+/** Why an opportunity matched — stored with it so the UI can explain. */
+export interface MatchReasons {
+  skills: MatchCheck;
+  interests: MatchCheck;
+  experience: MatchCheck;
+  matchedSkills: string[];
+  matchedInterests: string[];
+}
+
 export interface Opportunity {
   id: string;
   title: string;
@@ -50,7 +62,11 @@ export interface Opportunity {
   duration: string | null;
   eligibility: string | null;
   skills: string[];
+  /** Empty = not mentioned in the email. */
+  requirements: string[];
+  benefits: string[];
   applicationLink: string | null;
+  matchReasons: MatchReasons;
   sourceEmailIds: string[];
   saved: boolean;
   application: Application | null;
@@ -78,6 +94,9 @@ export interface User {
   email: string;
   plan: "Free" | "Pro";
   interests: string[];
+  skills: string[];
+  /** e.g. "Undergraduate student". `null` = not set in the profile. */
+  experienceLevel: string | null;
 }
 
 export type SyncPhase = "idle" | "scanning" | "analyzing" | "completed" | "error";

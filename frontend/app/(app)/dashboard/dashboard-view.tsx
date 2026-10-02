@@ -35,7 +35,9 @@ import { useResource } from "@/lib/hooks/use-resource";
 
 export function DashboardView() {
   const now = useNow();
-  const { user } = useShell();
+  const { user, userStatus } = useShell();
+  // The name is optional: if the profile fails, greet without it rather than spin forever.
+  const greetingReady = now !== null && userStatus !== "loading";
   const dash = useResource(() => getDashboard());
   const { mutate, revalidate } = dash;
 
@@ -60,16 +62,17 @@ export function DashboardView() {
           <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-purple/30 blur-3xl" />
           <div className="relative">
             <h1 id="greeting" className="flex flex-wrap items-center gap-2 text-2xl font-extrabold tracking-tight text-ink sm:text-[32px]">
-              {now && user ? (
+              {greetingReady ? (
                 <>
-                  {greetingFor(now)}, {user.name}!
+                  {greetingFor(now)}
+                  {user ? `, ${user.name}` : ""}!
                   <Sparkles aria-hidden className="size-6 text-violet" />
                 </>
               ) : (
                 <span className="sr-only">Loading your greeting</span>
               )}
             </h1>
-            {!(now && user) && <Skeleton className="h-9 w-72 max-w-full" />}
+            {!greetingReady && <Skeleton className="h-9 w-72 max-w-full" />}
             <p className="mt-2 text-[15px] text-ink-2 sm:text-base">Here&apos;s what&apos;s happening with your opportunities today.</p>
           </div>
         </GlassCard>

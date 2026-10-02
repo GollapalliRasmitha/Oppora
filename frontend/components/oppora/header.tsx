@@ -16,7 +16,7 @@ import { useShell } from "./shell-context";
 
 export function Header() {
   const router = useRouter();
-  const { user, setAssistantOpen, notificationsOpen, setNotificationsOpen } = useShell();
+  const { user, userStatus, setAssistantOpen, notificationsOpen, setNotificationsOpen } = useShell();
   const notifications = useNotifications();
   const [q, setQ] = useState("");
 
@@ -60,7 +60,7 @@ export function Header() {
 
         <Dropdown>
           <DropdownTrigger aria-label="Account menu" className="inline-flex size-11 items-center justify-center rounded-full focus-ring">
-            {user ? <Avatar name={user.name} /> : <Skeleton className="size-9 rounded-full" />}
+            {userStatus === "loading" ? <Skeleton className="size-9 rounded-full" /> : <Avatar name={user?.name} />}
           </DropdownTrigger>
           <DropdownContent align="end">
             {user && (

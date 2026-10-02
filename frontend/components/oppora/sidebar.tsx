@@ -20,7 +20,7 @@ export const navItemActive =
  */
 export function Sidebar({ expanded, onExpandedChange }: { expanded: boolean; onExpandedChange: (v: boolean) => void }) {
   const pathname = usePathname();
-  const { user } = useShell();
+  const { user, userStatus } = useShell();
   const labelCls = expanded ? "" : "md:sr-only lg:not-sr-only";
 
   useEffect(() => {
@@ -94,20 +94,20 @@ export function Sidebar({ expanded, onExpandedChange }: { expanded: boolean; onE
               !expanded && "md:justify-center lg:justify-start",
             )}
           >
-            {user ? (
-              <>
-                <Avatar name={user.name} online />
-                <span className={cn("min-w-0", labelCls)}>
-                  <span className="block truncate text-sm font-bold text-ink">{user.name}</span>
-                  <span className="block text-meta text-ink-3">{user.plan} Plan</span>
-                </span>
-              </>
-            ) : (
+            {userStatus === "loading" ? (
               <>
                 <Skeleton className="size-9 rounded-full" />
                 <span className={cn("flex-1 space-y-1.5", labelCls)}>
                   <Skeleton className="h-3.5 w-20" />
                   <Skeleton className="h-3 w-14" />
+                </span>
+              </>
+            ) : (
+              <>
+                <Avatar name={user?.name} online={!!user} />
+                <span className={cn("min-w-0", labelCls)}>
+                  <span className="block truncate text-sm font-bold text-ink">{user?.name ?? "Your account"}</span>
+                  <span className="block text-meta text-ink-3">{user ? `${user.plan} Plan` : "Profile unavailable"}</span>
                 </span>
               </>
             )}

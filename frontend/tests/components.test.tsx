@@ -9,7 +9,7 @@ import { StatCard } from "@/components/oppora/stat-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { IconButton } from "@/components/ui/icon-button";
-import { seedOpportunities } from "@/lib/mock/seed";
+import { createSeed } from "@/lib/mock/seed";
 
 vi.mock("next/link", () => ({
   default: ({ href, children, ...rest }: { href: string; children: ReactNode }) => (
@@ -20,7 +20,7 @@ vi.mock("next/link", () => ({
 }));
 
 const NOW = new Date(2026, 9, 2, 9, 30);
-const tcs = seedOpportunities.find((o) => o.id === "opp_tcs_codevita_2026")!;
+const tcs = createSeed(NOW).opportunities.find((o) => o.id === "opp_tcs_codevita_2026")!;
 
 describe("DeadlineIndicator", () => {
   it("writes the day count, not only colour", () => {

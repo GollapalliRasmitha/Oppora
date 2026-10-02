@@ -5,12 +5,21 @@ import {
   latestOpportunities,
   upcomingDeadlines,
 } from "@/lib/domain/stats";
-import { seedEmails, seedOpportunities } from "@/lib/mock/seed";
+import { createSeed } from "@/lib/mock/seed";
 
-// The brief's dashboard targets must come out of the data on the demo date.
-const NOW = new Date(2026, 9, 2, 9, 30);
+// The seed is relative to "today", so the brief's targets must hold on any
+// date and at any time of day — including month/year boundaries.
+const DEMO_DAYS = [
+  new Date(2026, 9, 2, 9, 30),
+  new Date(2026, 9, 2, 0, 5),
+  new Date(2026, 9, 2, 23, 55),
+  new Date(2027, 0, 1, 12, 0),
+  new Date(2028, 1, 29, 18, 0),
+  new Date(),
+];
 
-describe("seed targets on 2 Oct 2026", () => {
+describe.each(DEMO_DAYS)("seed targets on %s", (NOW) => {
+  const { opportunities: seedOpportunities, emails: seedEmails } = createSeed(NOW);
   const stats = computeDashboardStats(seedOpportunities, NOW);
 
   it("Total opportunities 12 (+2 this week)", () => {
@@ -65,6 +74,14 @@ describe("seed targets on 2 Oct 2026", () => {
     for (const o of seedOpportunities) for (const id of o.sourceEmailIds) expect(ids.has(id)).toBe(true);
   });
 
+  it("never puts a received/discovered/applied time in the future", () => {
+    const stamps = [
+      ...seedEmails.map((e) => e.receivedAt),
+      ...seedOpportunities.flatMap((o) => [o.discoveredAt, o.application?.startedAt, o.application?.appliedAt]),
+    ].filter((s): s is string => !!s);
+    for (const s of stamps) expect(new Date(s).getTime()).toBeLessThanOrEqual(NOW.getTime());
+  });
+
   it("includes non-opportunity emails and a read/unread mix", () => {
     const cats = new Set<string>(seedEmails.map((e) => e.category));
     expect(["Newsletter", "College", "Promotion"].every((c) => cats.has(c))).toBe(true);
@@ -74,6 +91,9 @@ describe("seed targets on 2 Oct 2026", () => {
 });
 
 describe("stats react to user actions", () => {
+  const NOW = new Date(2026, 9, 2, 9, 30);
+  const { opportunities: seedOpportunities } = createSeed(NOW);
+
   it("ignores dismissed opportunities", () => {
     const opps = seedOpportunities.map((o) => (o.id === "opp_amazon_frontend" ? { ...o, dismissed: true } : o));
     const s = computeDashboardStats(opps, NOW);
