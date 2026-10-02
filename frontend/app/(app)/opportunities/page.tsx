@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
-import { UpcomingPage } from "@/components/oppora/upcoming-page";
+import { Suspense } from "react";
+import { OpportunitiesView } from "./opportunities-view";
 
 export const metadata: Metadata = { title: "Opportunities" };
 
-export default function Page() {
-  return <UpcomingPage title="Opportunities" subtitle="All the opportunities found from your Gmail, sorted by relevance." />;
+export default function OpportunitiesPage() {
+  // useSearchParams needs a Suspense boundary for static rendering.
+  return (
+    <Suspense>
+      <OpportunitiesView />
+    </Suspense>
+  );
 }

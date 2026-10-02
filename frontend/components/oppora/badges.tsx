@@ -1,4 +1,5 @@
 import { CalendarClock, Flame } from "lucide-react";
+import { useId } from "react";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { daysLeftLabel, formatDate, urgencyFor } from "@/lib/domain/dates";
 import type { ISODate, Priority } from "@/lib/domain/types";
@@ -75,6 +76,51 @@ export function MatchMeter({ value, className }: { value: number; className?: st
         <div className="h-full rounded-full bg-[image:var(--grad-ai-border)]" style={{ width: `${v}%` }} />
       </div>
       <span className="text-meta font-semibold text-ink">{v}% Match</span>
+    </div>
+  );
+}
+
+/** Circular match score ("92% Match") used in AI summaries. */
+export function MatchRing({ value, size = 96, className }: { value: number; size?: number; className?: string }) {
+  const v = Math.max(0, Math.min(100, Math.round(value)));
+  const gradId = `match-ring-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const r = 42;
+  const c = 2 * Math.PI * r;
+  return (
+    <div
+      role="meter"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={v}
+      aria-label={`${v}% match with your profile`}
+      className={cn("relative inline-flex shrink-0 items-center justify-center", className)}
+      style={{ width: size, height: size }}
+    >
+      <svg viewBox="0 0 100 100" className="absolute inset-0 -rotate-90" aria-hidden>
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#7c3aed" />
+            <stop offset=".5" stopColor="#60a5fa" />
+            <stop offset="1" stopColor="#f472b6" />
+          </linearGradient>
+        </defs>
+        <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth="8" />
+        <circle
+          cx="50"
+          cy="50"
+          r={r}
+          fill="none"
+          stroke={`url(#${gradId})`}
+          strokeWidth="8"
+          strokeLinecap="round"
+          strokeDasharray={`${(v / 100) * c} ${c}`}
+          className="drop-shadow-[0_0_6px_rgba(124,58,237,.6)]"
+        />
+      </svg>
+      <span className="relative text-center leading-none">
+        <span className="block text-xl font-extrabold text-ink">{v}%</span>
+        <span className="mt-1 block text-xs font-semibold uppercase tracking-wide text-ink-3">Match</span>
+      </span>
     </div>
   );
 }

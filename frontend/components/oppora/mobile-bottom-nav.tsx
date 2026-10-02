@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { MOBILE_NAV, isActive } from "./nav";
+import { MOBILE_NAV, isActive, isFullScreenOnMobile } from "./nav";
 
 /** Mobile only (<768px). Home · Opportunities · Deadlines · Inbox · Profile. */
 export function MobileBottomNav() {
   const pathname = usePathname();
+  if (isFullScreenOnMobile(pathname)) return null;
   return (
     <nav
       aria-label="Main"

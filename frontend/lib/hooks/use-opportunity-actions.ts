@@ -18,8 +18,9 @@ export function useOpportunityActions({
   onChanged,
 }: {
   update: Updater;
-  remove: (id: string) => void;
-  reinsert: (opp: Opportunity) => void;
+  /** Only needed by lists that support "Not interested". */
+  remove?: (id: string) => void;
+  reinsert?: (opp: Opportunity) => void;
   /** Called after the server confirms a change (e.g. to refresh stats). */
   onChanged?: () => void;
 }) {
@@ -79,7 +80,7 @@ export function useOpportunityActions({
 
   const dismiss = useCallback(
     async (opp: Opportunity) => {
-      remove(opp.id);
+      remove?.(opp.id);
       try {
         await dismissOpportunity(opp.id);
         onChanged?.();
@@ -90,7 +91,7 @@ export function useOpportunityActions({
             onClick: () => {
               restoreOpportunity(opp.id)
                 .then(() => {
-                  reinsert(opp);
+                  reinsert?.(opp);
                   onChanged?.();
                   toast.success("Restored", { description: opp.title });
                 })
@@ -99,7 +100,7 @@ export function useOpportunityActions({
           },
         });
       } catch {
-        reinsert(opp);
+        reinsert?.(opp);
         toast.error("Couldn't hide this opportunity. Please try again.");
       }
     },

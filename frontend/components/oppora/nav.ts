@@ -33,3 +33,8 @@ export const MOBILE_NAV: NavItem[] = [
 export function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
+
+/** Routes that take over the whole screen on mobile (no bottom nav; they bring their own action bar). */
+export function isFullScreenOnMobile(pathname: string) {
+  return /^\/opportunities\/[^/]+$/.test(pathname);
+}

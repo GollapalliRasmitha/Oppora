@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bell, LogOut, Settings, Sparkles, UserRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Dropdown, DropdownContent, DropdownItem, DropdownSeparator, DropdownTrigger } from "@/components/ui/dropdown";
@@ -16,6 +16,8 @@ import { useShell } from "./shell-context";
 
 export function Header() {
   const router = useRouter();
+  // Pages with their own search bar don't need the header's mobile search row.
+  const pageHasSearch = usePathname() === "/opportunities";
   const { user, userStatus, setAssistantOpen, notificationsOpen, setNotificationsOpen } = useShell();
   const notifications = useNotifications();
   const [q, setQ] = useState("");
@@ -94,7 +96,7 @@ export function Header() {
       </div>
 
       {/* Mobile: search gets its own sticky row */}
-      <form onSubmit={onSearch} className="px-4 pb-3 sm:hidden">
+      <form onSubmit={onSearch} className={pageHasSearch ? "hidden" : "px-4 pb-3 sm:hidden"}>
         <SearchBar value={q} onValueChange={setQ} label="Search opportunities" placeholder="Search opportunities, companies…" />
       </form>
 
