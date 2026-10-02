@@ -6,7 +6,8 @@ import { DeadlineItem } from "@/components/oppora/deadline-item";
 import { EmailCard } from "@/components/oppora/email-card";
 import { MonthCalendar } from "@/components/oppora/month-calendar";
 import { Swipeable } from "@/components/ui/swipeable";
-import { deadlineKind, eventsByDay, groupDeadlines, monthGrid } from "@/lib/domain/deadlines";
+import { deadlineItems, itemsByDay } from "@/lib/domain/calendar";
+import { deadlineKind, groupDeadlines, monthGrid } from "@/lib/domain/deadlines";
 import { buildInbox, isDeadlineEmail, parseInboxFilter } from "@/lib/domain/inbox";
 import { createSeed } from "@/lib/mock/seed";
 
@@ -36,8 +37,8 @@ describe("deadlines domain", () => {
   });
 
   it("indexes events by date and skips dismissed ones", () => {
-    const map = eventsByDay(opps.map((o) => (o.id === "opp_amazon_frontend" ? { ...o, dismissed: true } : o)));
-    expect(map.get("2026-10-04")?.map((o) => o.id)).toEqual(["opp_tcs_codevita_2026"]);
+    const map = itemsByDay(deadlineItems(opps.map((o) => (o.id === "opp_amazon_frontend" ? { ...o, dismissed: true } : o))));
+    expect(map.get("2026-10-04")?.map((o) => o.opportunityId)).toEqual(["opp_tcs_codevita_2026"]);
     expect(map.has("2026-10-09")).toBe(false);
   });
 
@@ -59,8 +60,8 @@ describe("deadlines domain", () => {
 describe("inbox domain", () => {
   it("counts filters from the data", () => {
     const v = buildInbox(emails, opps, "", "All", NOW);
-    expect(v.counts).toEqual({ All: 18, Opportunities: 15, Deadlines: 6, Other: 3 });
-    expect(v.unread).toBe(4);
+    expect(v.counts).toEqual({ All: 20, Opportunities: 17, Deadlines: 6, Other: 3 });
+    expect(v.unread).toBe(5);
     expect(v.items[0].id).toBe("em_amazon_jobs"); // newest first
   });
 
@@ -80,7 +81,7 @@ describe("inbox domain", () => {
 });
 
 describe("MonthCalendar", () => {
-  const events = eventsByDay(opps);
+  const events = itemsByDay(deadlineItems(opps));
 
   it("labels days with their deadlines and supports keyboard selection", async () => {
     const onSelect = vi.fn();
@@ -93,7 +94,7 @@ describe("MonthCalendar", () => {
 
     today.focus();
     await userEvent.keyboard("{ArrowRight}{ArrowRight}");
-    const sunday = screen.getByRole("button", { name: "Sunday, 4 October 2026, 1 deadline: TCS CodeVita 2026" });
+    const sunday = screen.getByRole("button", { name: "Sunday, 4 October 2026, 1 item: TCS CodeVita 2026" });
     expect(sunday).toHaveFocus();
     await userEvent.keyboard("{Enter}");
     expect(onSelect).toHaveBeenCalledWith("2026-10-04");

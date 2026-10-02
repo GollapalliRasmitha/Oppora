@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
-import { UpcomingPage } from "@/components/oppora/upcoming-page";
+import { Suspense } from "react";
+import { CalendarView } from "./calendar-view";
 
 export const metadata: Metadata = { title: "Calendar" };
 
-export default function Page() {
-  return <UpcomingPage title="Calendar" subtitle="Deadlines, interviews and events in one view." />;
+export default function CalendarPage() {
+  // useSearchParams needs a Suspense boundary for static rendering.
+  return (
+    <Suspense>
+      <CalendarView />
+    </Suspense>
+  );
 }

@@ -20,16 +20,6 @@ export const DEADLINE_KIND_LABEL: Record<DeadlineKind, string> = {
 const pad = (n: number) => String(n).padStart(2, "0");
 export const toISODate = (d: Date): ISODate => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-/** Opportunities with a deadline, grouped by date. */
-export function eventsByDay(opps: Opportunity[]): Map<ISODate, Opportunity[]> {
-  const map = new Map<ISODate, Opportunity[]>();
-  for (const o of opps) {
-    if (o.dismissed || !o.deadline) continue;
-    map.set(o.deadline, [...(map.get(o.deadline) ?? []), o]);
-  }
-  return map;
-}
-
 export interface DeadlineGroups {
   thisWeek: Opportunity[];
   later: Opportunity[];

@@ -8,9 +8,10 @@ Personal AI agent that reads a user's Gmail, finds opportunities, extracts deadl
 
 - Stage 1 — Foundation + Landing + Dashboard: done.
 - Stage 2 — Opportunities + Opportunity details: done.
-- **Stage 3 — Deadlines + Inbox: done** (awaiting "continue").
-- Next: Stage 4 — AI Insights + Calendar.
-- Open question: real profile skills (the request contained the placeholder "[YOUR SKILLS]"; demo skills kept until provided).
+- Stage 3 — Deadlines + Inbox: done.
+- **Stage 4 — AI Insights + Calendar: done** (awaiting "continue").
+- Next: Stage 5 — Settings + Notifications + AI assistant (mock answers).
+- Profile skills: keep the demo skills for now (user decision, Stage 3 review).
 
 ## Working rules (from PROMPT.md §0)
 
@@ -42,14 +43,17 @@ app/
   (app)/opportunities/    list (search/filter/sort in the URL) + [id]/ details
   (app)/deadlines/        month calendar + upcoming list
   (app)/inbox/            emails: search/filter in the URL, extract, swipe save/archive
-  (app)/{insights,calendar,settings}/
+  (app)/insights/         highlight cards, trends bar chart (7/30 days), progress donut, AI recommendation
+  (app)/calendar/         Month / Week / Day views; ?view=&date= in the URL
+  (app)/settings/
                           placeholder pages (UpcomingPage) until their stage
 components/ui/            generic primitives (no Oppora domain knowledge)
 components/oppora/        Oppora components (domain-aware) + app shell
 components/landing/       landing-page sections + hero illustration
 lib/domain/               types.ts, dates.ts (days left, urgency), stats.ts (all computed numbers),
                           match.ts (match reasons + sentence), opportunities.ts (search/filter/sort),
-                          deadlines.ts (grouping, month grid, deadline kinds), inbox.ts (filters/counts/search)
+                          deadlines.ts (grouping, month grid, deadline kinds), inbox.ts (filters/counts/search),
+                          calendar.ts (calendar items, week/day helpers), insights.ts (all insight numbers)
 lib/mock/seed.ts          THE seed file: createSeed(today) (later loaded into the DB); store.ts = in-memory mock DB
 lib/api/*                 typed service functions — the ONLY data entry point for components
 lib/hooks/                useResource (loading/error/retry/optimistic), useOpportunityActions, useEmailActions,
@@ -87,9 +91,9 @@ Brand-gradient end is `#2563EB` (not `#3B82F6`) so white button text keeps ≥4.
 
 `components/ui`: Button (primary/secondary/ghost/danger; sm keeps a 44px hit area), IconButton (required `label`), GlassCard, Badge, Input, SearchBar, Tabs, FilterChips, Select (Dropdown/Select), Dropdown (menu), Modal, Drawer (right panel; full-screen on mobile), Toast (`toast.success/error/info`; toasts with an action stay 8s), Skeleton, EmptyState, ErrorState, Swipeable (touch-only swipe actions; always paired with buttons).
 
-`components/oppora`: Logo/LogoMark, AIOrb, AICard, Monogram (letter tile instead of company logos), PriorityBadge, DeadlineIndicator (stacked | pill, always writes "N days left"), MatchMeter, MatchRing, MatchChecklist (+`matchChecklist()`), OpportunityCard (+Skeleton), SaveToggle (button | compact icon; outline = not saved, filled violet = saved), EmailCard (+Skeleton; `onOpen`, `expanded`, `footer` actions), MonthCalendar (roving-focus grid; dots when narrow, chips ≥672px container), CalendarEvent (chip | dot; kind icon + urgency colour), DeadlineItem (+Skeleton; Set Reminder · Open · Mark Complete), InfoItem + NotMentioned (the one way to render missing fields), StatCard (+Skeleton), OpportunityRow (+Skeleton, ⋯ menu; container-query layout), StatusBadge, NotificationItem, NotificationsPanel, SyncStatus (+useSyncStatus), Sidebar, Header, MobileBottomNav, FloatingAIButton, AIAssistantPanel, AppShell, ShellProvider/useShell, PageHeader, UpcomingPage, Avatar, GoogleSignInButton.
+`components/oppora`: Logo/LogoMark, AIOrb, AICard, Monogram (letter tile instead of company logos), PriorityBadge, DeadlineIndicator (stacked | pill, always writes "N days left"), MatchMeter, MatchRing, MatchChecklist (+`matchChecklist()`), OpportunityCard (+Skeleton), SaveToggle (button | compact icon; outline = not saved, filled violet = saved), EmailCard (+Skeleton; `onOpen`, `expanded`, `footer` actions), MonthCalendar (roving-focus grid; dots when narrow, chips ≥672px container; `showHeader`, `colorBy`), DeadlineItem (+Skeleton; Set Reminder · Open · Mark Complete), CalendarEvent (chip | dot | card; colorBy urgency | kind) + CalendarLegend, InsightCard (+Skeleton), BarChart (single series, hover/focus tooltip, table view), DonutChart (ordinal, legend with values + %), InfoItem + NotMentioned (the one way to render missing fields), StatCard (+Skeleton), OpportunityRow (+Skeleton, ⋯ menu; container-query layout), StatusBadge, NotificationItem, NotificationsPanel, SyncStatus (+useSyncStatus), Sidebar, Header, MobileBottomNav, FloatingAIButton, AIAssistantPanel, AppShell, ShellProvider/useShell, PageHeader, UpcomingPage, Avatar, GoogleSignInButton.
 
-Still to build in their stages: Week/Day calendar views + interview/reminder event types (S4), charts (S4).
+Still to build in their stages: settings controls (switches etc.) and the assistant answers (S5).
 
 ## Decisions
 
@@ -114,6 +118,11 @@ Still to build in their stages: Week/Day calendar views + interview/reminder eve
 - Opening an email (subject) marks it read silently and expands the preview; explicit read/unread, save and archive buttons toast.
 - Extract Opportunity (mock): only for unlinked emails; creates an opportunity from the email's own fields (title from subject, organizer = sender, summary = snippet, match = AI relevance; priority from relevance ≥85 High / ≥70 Medium / else Low); everything else null. Non-opportunity emails return "No opportunity found".
 - Swipe (touch only): right = save, left = archive; buttons are the fallback and the keyboard path.
+- **Charts** follow the dataviz skill: palette validated on the #0F1336 surface. Trend bars = one hue (`#A78BFA`, hover `#C4B5FD`); the progress donut is an ordered sequence, so an ordinal violet ramp `#EDE9FE → #C4B5FD → #8B5CF6 → #5B21B6` (validator: all checks pass). The violet/blue token pair failed CVD separation, so it is not used as a categorical pair. Every chart has a text alternative, hover/focus tooltips and a table or legend with values. Viz colours live in `components/oppora/charts.tsx` (`VIZ`), not as design tokens.
+- Insights definitions: Most common category = most frequent type (% of all tracked); Top company = organization with most opportunities; Best Day To Apply = weekday on which the most opportunities arrived (ties are flagged, never hidden); Trends = opportunities found per day (7 or 30 days, ending today); Progress = applied ÷ all tracked, split into disjoint Applied / In Progress / Saved (saved, not started) / Other; recommendation count = strong matches.
+- Calendar items: deadlines (all-day; kind from type: application / hackathon / scholarship), interviews (timed, from seed `interviews`, each backed by an invitation email) and reminders (09:00 the day before the deadline for opportunities with `reminderSet`; none for closed deadlines). Calendar page colours by kind (with icons + legend); Deadlines page colours by urgency.
+- Seed: TCS and Microsoft have reminders on; Atlassian (+5 days 14:00–14:45, video call) and Swiggy (+9 days 11:00, location not stated) interviews.
+- Calendar: month day click → Day view; week day header → Day view; every event links to its opportunity. Mobile week view collapses empty days to one line.
 - **All numbers are computed** in `lib/domain/stats.ts` from the seed and today's date (`lib/clock.ts`). Nothing is hard-coded in the UI.
 - "This week" for trends = the last 7 days. "Deadlines this week" / "coming up soon" = deadlines in the next 0–7 days. Urgent = ≤3 days.
 - Strong match = match ≥ 88 %, not yet applied, deadline not passed. Drives the AI recommendation, assistant greeting and notifications.

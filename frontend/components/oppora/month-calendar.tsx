@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { parseISODate } from "@/lib/domain/dates";
 import { addDays, monthGrid, toISODate } from "@/lib/domain/deadlines";
-import type { ISODate, Opportunity } from "@/lib/domain/types";
+import type { CalendarItem, ISODate } from "@/lib/domain/types";
 import { cn } from "@/lib/utils";
-import { CalendarEvent } from "./calendar-event";
+import { CalendarEvent, type ColorBy } from "./calendar-event";
 
 export type MonthRef = { year: number; month: number };
 
@@ -27,6 +27,7 @@ const sameMonth = (iso: ISODate, m: MonthRef) => {
  * (container ≥ 672px), urgency dots when compact. Keyboard: arrows move by
  * day/week, Home/End to week start/end, PageUp/PageDown by month, Enter/Space
  * selects. Clicking a chip opens the opportunity; clicking a day selects it.
+ * `showHeader={false}` lets a page supply its own toolbar (pass `labelledBy`).
  */
 export function MonthCalendar({
   month,
@@ -35,14 +36,20 @@ export function MonthCalendar({
   selected,
   onSelect,
   now,
+  colorBy = "urgency",
+  showHeader = true,
+  labelledBy = "calendar-title",
   className,
 }: {
   month: MonthRef;
   onMonthChange: (m: MonthRef) => void;
-  events: Map<ISODate, Opportunity[]>;
+  events: Map<ISODate, CalendarItem[]>;
   selected: ISODate | null;
   onSelect: (iso: ISODate | null) => void;
   now: Date;
+  colorBy?: ColorBy;
+  showHeader?: boolean;
+  labelledBy?: string;
   className?: string;
 }) {
   const today = toISODate(now);
@@ -97,6 +104,7 @@ export function MonthCalendar({
 
   return (
     <div className={cn("@container", className)}>
+      {showHeader && (
       <div className="mb-3 flex items-center gap-1">
         <h2 id="calendar-title" aria-live="polite" className="mr-auto text-lg font-bold text-ink">
           {monthFmt.format(new Date(month.year, month.month, 1))}
@@ -116,8 +124,9 @@ export function MonthCalendar({
         <IconButton label="Previous month" icon={<ChevronLeft aria-hidden />} onClick={() => go(-1)} />
         <IconButton label="Next month" icon={<ChevronRight aria-hidden />} onClick={() => go(1)} />
       </div>
+      )}
 
-      <table ref={gridRef} role="grid" aria-labelledby="calendar-title" className="w-full table-fixed border-separate border-spacing-1">
+      <table ref={gridRef} role="grid" aria-labelledby={labelledBy} className="w-full table-fixed border-separate border-spacing-1">
         <thead>
           <tr>
             {WEEKDAYS.map((d, i) => (
@@ -137,7 +146,7 @@ export function MonthCalendar({
                 const isToday = iso === today;
                 const isSelected = iso === selected;
                 const label = `${dayFmt.format(date)}${
-                  dayEvents.length ? `, ${dayEvents.length} deadline${dayEvents.length > 1 ? "s" : ""}: ${dayEvents.map((o) => o.title).join(", ")}` : ""
+                  dayEvents.length ? `, ${dayEvents.length} ${dayEvents.length > 1 ? "items" : "item"}: ${dayEvents.map((o) => o.title).join(", ")}` : ""
                 }`;
                 return (
                   <td
@@ -177,7 +186,7 @@ export function MonthCalendar({
                       {dayEvents.length > 0 && (
                         <span className="mt-0.5 flex gap-0.5 @lg:mt-1 @lg:gap-1 @2xl:hidden">
                           {dayEvents.slice(0, 3).map((o) => (
-                            <CalendarEvent key={o.id} opp={o} now={now} variant="dot" />
+                            <CalendarEvent key={o.id} item={o} now={now} variant="dot" colorBy={colorBy} />
                           ))}
                         </span>
                       )}
@@ -186,7 +195,7 @@ export function MonthCalendar({
                     {dayEvents.length > 0 && (
                       <div className="pointer-events-none absolute inset-x-1 top-9 hidden space-y-0.5 @2xl:block">
                         {dayEvents.slice(0, 2).map((o) => (
-                          <CalendarEvent key={o.id} opp={o} now={now} className="pointer-events-auto" />
+                          <CalendarEvent key={o.id} item={o} now={now} colorBy={colorBy} className="pointer-events-auto" />
                         ))}
                         {dayEvents.length > 2 && (
                           <span className="block px-1 text-[12px] font-semibold text-ink-3">+{dayEvents.length - 2} more</span>

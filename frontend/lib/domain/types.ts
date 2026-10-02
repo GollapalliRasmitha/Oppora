@@ -121,4 +121,32 @@ export interface Notification {
   opportunityId: string | null;
 }
 
+/** An interview scheduled from an email (Stage 8 extracts these). */
+export interface Interview {
+  id: string;
+  opportunityId: string;
+  title: string;
+  start: ISODateTime;
+  end: ISODateTime;
+  /** e.g. "Video call". `null` = not mentioned in the email. */
+  location: string | null;
+  sourceEmailId: string;
+}
+
+export type CalendarKind = "application" | "hackathon" | "scholarship" | "interview" | "reminder";
+
+/** Anything shown on a calendar. All-day items have `start === null`. */
+export interface CalendarItem {
+  id: string;
+  kind: CalendarKind;
+  title: string;
+  /** Local date the item falls on. */
+  date: ISODate;
+  start: ISODateTime | null;
+  end: ISODateTime | null;
+  location: string | null;
+  opportunityId: string;
+  organization: string;
+}
+
 export type Urgency = "urgent" | "soon" | "later" | "passed" | "none";

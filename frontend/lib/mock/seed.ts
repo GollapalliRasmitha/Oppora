@@ -16,7 +16,7 @@
  *    example.com. Zoho and Bright Futures intentionally have no link.
  */
 import { explainMatch } from "@/lib/domain/match";
-import type { Application, Email, ISODate, ISODateTime, Opportunity, User } from "@/lib/domain/types";
+import type { Application, Email, ISODate, ISODateTime, Interview, Opportunity, User } from "@/lib/domain/types";
 
 export const seedUser: User = {
   id: "u_rasmitha",
@@ -33,6 +33,7 @@ export interface Seed {
   user: User;
   opportunities: Opportunity[];
   emails: Email[];
+  interviews: Interview[];
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -49,7 +50,11 @@ export function createSeed(today: Date = new Date()): Seed {
     const t = new Date(y, m, d + offset);
     return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
   };
-  /** Timestamp `offset` days from today at a local time ("HH:MM"). Offsets are ≤ -1 so it is always in the past. */
+  /**
+   * Timestamp `offset` days from today at a local time ("HH:MM"). Received /
+   * discovered / applied times use offsets ≤ -1 so they're always in the past;
+   * interviews use future offsets.
+   */
   const at = (offset: number, time: string): ISODateTime => {
     const [h, min] = time.split(":").map(Number);
     return new Date(y, m, d + offset, h, min).toISOString();
@@ -185,7 +190,7 @@ export function createSeed(today: Date = new Date()): Seed {
       skills: ["Java", "JavaScript"],
       requirements: ["Final-year undergraduate student"],
       applicationLink: "https://www.atlassian.com/company/careers",
-      sourceEmailIds: ["em_atlassian"],
+      sourceEmailIds: ["em_atlassian", "em_atlassian_interview"],
       saved: true,
       application: applied([-24, "10:00"], [-17, "22:05"]),
     },
@@ -225,7 +230,7 @@ export function createSeed(today: Date = new Date()): Seed {
       eligibility: "2026 graduates",
       skills: ["React", "JavaScript", "HTML", "CSS"],
       applicationLink: "https://careers.swiggy.com/",
-      sourceEmailIds: ["em_swiggy"],
+      sourceEmailIds: ["em_swiggy", "em_swiggy_interview"],
       saved: false,
       application: applied([-26, "16:00"], [-22, "18:25"]),
     },
@@ -308,16 +313,65 @@ export function createSeed(today: Date = new Date()): Seed {
     },
   ];
 
+  // The user turned reminders on for the two most urgent deadlines.
+  const withReminder = new Set(["opp_tcs_codevita_2026", "opp_microsoft_explore"]);
+
   const opportunities: Opportunity[] = drafts.map((o) => ({
     ...o,
     requirements: o.requirements ?? [],
     benefits: o.benefits ?? [],
     matchReasons: explainMatch(o, seedUser),
-    reminderSet: false,
+    reminderSet: withReminder.has(o.id),
     dismissed: false,
   }));
 
+  // Interviews for two applications, each backed by an invitation email below.
+  const interviews: Interview[] = [
+    {
+      id: "iv_atlassian",
+      opportunityId: "opp_atlassian_swe_intern",
+      title: "Technical interview — Atlassian",
+      start: at(5, "14:00"),
+      end: at(5, "14:45"),
+      location: "Video call",
+      sourceEmailId: "em_atlassian_interview",
+    },
+    {
+      id: "iv_swiggy",
+      opportunityId: "opp_swiggy_ui_engineer",
+      title: "Interview — Swiggy UI Engineer",
+      start: at(9, "11:00"),
+      end: at(9, "12:00"),
+      location: null,
+      sourceEmailId: "em_swiggy_interview",
+    },
+  ];
+
   const emailDrafts: Omit<Email, "saved" | "archived">[] = [
+    {
+      id: "em_atlassian_interview",
+      sender: "Atlassian Careers",
+      senderEmail: "careers@atlassian.example",
+      subject: "Interview invitation: Software Engineering Intern",
+      snippet: `Your technical interview is scheduled for ${on(5)} at 2:00 PM (45 minutes, video call).`,
+      receivedAt: at(-3, "10:15"),
+      category: "Internship",
+      relevance: 81,
+      read: false,
+      opportunityId: "opp_atlassian_swe_intern",
+    },
+    {
+      id: "em_swiggy_interview",
+      sender: "Swiggy Careers",
+      senderEmail: "careers@swiggy.example",
+      subject: "Next steps: UI Engineer interview",
+      snippet: `We'd like to invite you to an interview on ${on(9)} at 11:00 AM.`,
+      receivedAt: at(-4, "16:20"),
+      category: "Job",
+      relevance: 80,
+      read: true,
+      opportunityId: "opp_swiggy_ui_engineer",
+    },
     {
       id: "em_microsoft_reminder",
       sender: "Microsoft University Recruiting",
@@ -538,5 +592,5 @@ export function createSeed(today: Date = new Date()): Seed {
 
   const emails: Email[] = emailDrafts.map((e) => ({ ...e, saved: false, archived: false }));
 
-  return { user: structuredClone(seedUser), opportunities, emails };
+  return { user: structuredClone(seedUser), opportunities, emails, interviews };
 }

@@ -13,6 +13,7 @@ export const db = {
   user: seed.user,
   opportunities: seed.opportunities,
   emails: seed.emails,
+  interviews: seed.interviews,
   /** Notification ids the user has read or cleared (notifications are derived). */
   readNotificationIds: new Set<string>(),
   clearedNotificationIds: new Set<string>(),

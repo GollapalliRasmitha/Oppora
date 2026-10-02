@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CalendarCheck, CalendarX2, ChevronDown, X } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import { CalendarLegend } from "@/components/oppora/calendar-event";
 import { DeadlineItem, DeadlineItemSkeleton } from "@/components/oppora/deadline-item";
 import { MonthCalendar, type MonthRef } from "@/components/oppora/month-calendar";
 import { PageHeader } from "@/components/oppora/page-header";
@@ -13,7 +14,8 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listOpportunities } from "@/lib/api";
 import { parseISODate } from "@/lib/domain/dates";
-import { eventsByDay, groupDeadlines } from "@/lib/domain/deadlines";
+import { deadlineItems, itemsByDay } from "@/lib/domain/calendar";
+import { groupDeadlines } from "@/lib/domain/deadlines";
 import type { ISODate, Opportunity } from "@/lib/domain/types";
 import { useNow } from "@/lib/hooks/use-now";
 import { useOpportunityActions } from "@/lib/hooks/use-opportunity-actions";
@@ -36,7 +38,7 @@ export function DeadlinesView() {
   const [showClosed, setShowClosed] = useState(false);
 
   const shownMonth: MonthRef | null = month ?? (now ? { year: now.getFullYear(), month: now.getMonth() } : null);
-  const events = useMemo(() => (res.status === "success" ? eventsByDay(res.data) : new Map()), [res.status, res.data]);
+  const events = useMemo(() => (res.status === "success" ? itemsByDay(deadlineItems(res.data)) : new Map()), [res.status, res.data]);
   const groups = useMemo(
     () => (res.status === "success" && now ? groupDeadlines(res.data, now) : null),
     [res.status, res.data, now],
@@ -65,14 +67,14 @@ export function DeadlinesView() {
               onSelect={setSelected}
               now={now}
             />
-            <Legend />
+            <CalendarLegend colorBy="urgency" />
           </GlassCard>
 
           <GlassCard as="section" aria-labelledby="deadline-list-title" className="min-w-0 p-4 sm:p-5">
             {selected ? (
               <SelectedDay
                 iso={selected}
-                items={events.get(selected) ?? []}
+                items={res.data.filter((o) => o.deadline === selected)}
                 now={now}
                 onClear={() => setSelected(null)}
                 onRemind={remind}
@@ -190,25 +192,6 @@ function SelectedDay({
         </ul>
       )}
     </>
-  );
-}
-
-function Legend() {
-  const items = [
-    { cls: "bg-urgent", label: "3 days or less" },
-    { cls: "bg-soon", label: "4–10 days" },
-    { cls: "bg-later", label: "More than 10 days" },
-    { cls: "bg-ink-3", label: "Closed" },
-  ];
-  return (
-    <ul aria-label="Urgency colours" className="mt-3 flex flex-wrap gap-x-4 gap-y-1 px-1">
-      {items.map((i) => (
-        <li key={i.label} className="flex items-center gap-1.5 text-meta text-ink-3">
-          <span aria-hidden className={`size-2 rounded-full ${i.cls}`} />
-          {i.label}
-        </li>
-      ))}
-    </ul>
   );
 }
 
