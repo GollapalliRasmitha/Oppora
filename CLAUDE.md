@@ -7,8 +7,10 @@ Personal AI agent that reads a user's Gmail, finds opportunities, extracts deadl
 ## Current stage
 
 - Stage 1 — Foundation + Landing + Dashboard: done.
-- **Stage 2 — Opportunities + Opportunity details: done** (awaiting "continue").
-- Next: Stage 3 — Deadlines + Inbox.
+- Stage 2 — Opportunities + Opportunity details: done.
+- **Stage 3 — Deadlines + Inbox: done** (awaiting "continue").
+- Next: Stage 4 — AI Insights + Calendar.
+- Open question: real profile skills (the request contained the placeholder "[YOUR SKILLS]"; demo skills kept until provided).
 
 ## Working rules (from PROMPT.md §0)
 
@@ -38,16 +40,20 @@ app/
   (app)/layout.tsx        AppShell for every signed-in page
   (app)/dashboard/        Dashboard (page.tsx = server, dashboard-view.tsx = client)
   (app)/opportunities/    list (search/filter/sort in the URL) + [id]/ details
-  (app)/{deadlines,inbox,insights,calendar,settings}/
+  (app)/deadlines/        month calendar + upcoming list
+  (app)/inbox/            emails: search/filter in the URL, extract, swipe save/archive
+  (app)/{insights,calendar,settings}/
                           placeholder pages (UpcomingPage) until their stage
 components/ui/            generic primitives (no Oppora domain knowledge)
 components/oppora/        Oppora components (domain-aware) + app shell
 components/landing/       landing-page sections + hero illustration
 lib/domain/               types.ts, dates.ts (days left, urgency), stats.ts (all computed numbers),
-                          match.ts (match reasons + sentence), opportunities.ts (search/filter/sort)
+                          match.ts (match reasons + sentence), opportunities.ts (search/filter/sort),
+                          deadlines.ts (grouping, month grid, deadline kinds), inbox.ts (filters/counts/search)
 lib/mock/seed.ts          THE seed file: createSeed(today) (later loaded into the DB); store.ts = in-memory mock DB
 lib/api/*                 typed service functions — the ONLY data entry point for components
-lib/hooks/                useResource (loading/error/retry/optimistic), useOpportunityActions, useNow
+lib/hooks/                useResource (loading/error/retry/optimistic), useOpportunityActions, useEmailActions,
+                          useUrlParams (page state in the query string), useNow
 tests/                    Vitest + Testing Library
 ```
 
@@ -79,16 +85,16 @@ Brand-gradient end is `#2563EB` (not `#3B82F6`) so white button text keeps ≥4.
 
 ## Components
 
-`components/ui`: Button (primary/secondary/ghost/danger; sm keeps a 44px hit area), IconButton (required `label`), GlassCard, Badge, Input, SearchBar, Tabs, FilterChips, Select (Dropdown/Select), Dropdown (menu), Modal, Drawer (right panel; full-screen on mobile), Toast (`toast.success/error/info`), Skeleton, EmptyState, ErrorState.
+`components/ui`: Button (primary/secondary/ghost/danger; sm keeps a 44px hit area), IconButton (required `label`), GlassCard, Badge, Input, SearchBar, Tabs, FilterChips, Select (Dropdown/Select), Dropdown (menu), Modal, Drawer (right panel; full-screen on mobile), Toast (`toast.success/error/info`; toasts with an action stay 8s), Skeleton, EmptyState, ErrorState, Swipeable (touch-only swipe actions; always paired with buttons).
 
-`components/oppora`: Logo/LogoMark, AIOrb, AICard, Monogram (letter tile instead of company logos), PriorityBadge, DeadlineIndicator (stacked | pill, always writes "N days left"), MatchMeter, MatchRing, MatchChecklist (+`matchChecklist()`), OpportunityCard (+Skeleton), SaveToggle (button | compact icon), EmailCard (basic; Inbox actions in S3), InfoItem + NotMentioned (the one way to render missing fields), StatCard (+Skeleton), OpportunityRow (+Skeleton, ⋯ menu; container-query layout), StatusBadge, NotificationItem, NotificationsPanel, SyncStatus (+useSyncStatus), Sidebar, Header, MobileBottomNav, FloatingAIButton, AIAssistantPanel, AppShell, ShellProvider/useShell, PageHeader, UpcomingPage, Avatar, GoogleSignInButton.
+`components/oppora`: Logo/LogoMark, AIOrb, AICard, Monogram (letter tile instead of company logos), PriorityBadge, DeadlineIndicator (stacked | pill, always writes "N days left"), MatchMeter, MatchRing, MatchChecklist (+`matchChecklist()`), OpportunityCard (+Skeleton), SaveToggle (button | compact icon; outline = not saved, filled violet = saved), EmailCard (+Skeleton; `onOpen`, `expanded`, `footer` actions), MonthCalendar (roving-focus grid; dots when narrow, chips ≥672px container), CalendarEvent (chip | dot; kind icon + urgency colour), DeadlineItem (+Skeleton; Set Reminder · Open · Mark Complete), InfoItem + NotMentioned (the one way to render missing fields), StatCard (+Skeleton), OpportunityRow (+Skeleton, ⋯ menu; container-query layout), StatusBadge, NotificationItem, NotificationsPanel, SyncStatus (+useSyncStatus), Sidebar, Header, MobileBottomNav, FloatingAIButton, AIAssistantPanel, AppShell, ShellProvider/useShell, PageHeader, UpcomingPage, Avatar, GoogleSignInButton.
 
-Still to build in their stages: EmailCard inbox actions + swipe (S3), CalendarEvent (S3/S4), charts (S4).
+Still to build in their stages: Week/Day calendar views + interview/reminder event types (S4), charts (S4).
 
 ## Decisions
 
 - **Data layer:** components never `fetch`. They call `lib/api/*`, which return typed mock data via `mock()` (latency + dev switches). Stage 7 swaps the bodies for real API calls; signatures stay.
-- **Dev state switches:** append `?mock=error`, `?mock=empty` or `?mock=slow` to any app URL to preview error / empty / loading states.
+- **Dev state switches:** append `?mock=error`, `?mock=empty`, `?mock=slow` or `?mock=gmail` to any app URL to preview error / empty / loading / Gmail-disconnected states.
 - **Seed is relative to today:** `createSeed(today)` expresses every date as an offset, so targets and days-left hold on any demo date (tests run it across several dates incl. midnight and month/year boundaries). Past timestamps use offsets ≤ -1 day so nothing is ever in the future.
 - The mock store resets on a full page reload (client-side navigation keeps changes).
 - **Match reasons are stored** on each opportunity (`matchReasons`: skills / interests / experience as met | unmet | unknown, plus matched skills/interests), computed by `explainMatch()` — the Stage 8 pipeline stores the same shape. The deadline check is computed live. Unmet/unknown checks show as warnings, never hidden.
@@ -99,6 +105,15 @@ Still to build in their stages: EmailCard inbox actions + swipe (S3), CalendarEv
 - Apply Now opens a modal: application link if the email had one (none do in the seed → points to Related Emails), then "Mark as applied".
 - Share uses the Web Share API, falling back to copying the link.
 - SVG gradients use `useId()` ids — a duplicate id inside a `display:none` subtree breaks rendering elsewhere.
+- One search bar per screen: the header search hides on pages with their own search (`hasOwnSearch`: /opportunities, /inbox).
+- `--fab-clearance` bottom padding on signed-in pages (160px mobile, 104px md+) so the floating AI button never covers the last content.
+- Application links: official careers/program pages (not specific postings); example.com for fictional or moved programs (Women Techmakers now redirects elsewhere); Zoho and Bright Futures intentionally have none.
+- **Mark Complete = mark as applied** (the deadline's required action is done); no separate "completed" flag. Completed items stay in the list with a check.
+- Deadlines: "This week" = next 0–7 days (same window as the dashboard), then Later, then Closed (collapsed). Clicking a day filters the list to that day; chips/links open the opportunity. Week starts Monday.
+- Inbox filters: Opportunities = opportunity categories; Deadlines = emails linked to an opportunity due in the next 7 days; Other = College/Newsletter/Promotion/Other. Counts follow the search. Archived emails are hidden (Undo in toast).
+- Opening an email (subject) marks it read silently and expands the preview; explicit read/unread, save and archive buttons toast.
+- Extract Opportunity (mock): only for unlinked emails; creates an opportunity from the email's own fields (title from subject, organizer = sender, summary = snippet, match = AI relevance; priority from relevance ≥85 High / ≥70 Medium / else Low); everything else null. Non-opportunity emails return "No opportunity found".
+- Swipe (touch only): right = save, left = archive; buttons are the fallback and the keyboard path.
 - **All numbers are computed** in `lib/domain/stats.ts` from the seed and today's date (`lib/clock.ts`). Nothing is hard-coded in the UI.
 - "This week" for trends = the last 7 days. "Deadlines this week" / "coming up soon" = deadlines in the next 0–7 days. Urgent = ≤3 days.
 - Strong match = match ≥ 88 %, not yet applied, deadline not passed. Drives the AI recommendation, assistant greeting and notifications.

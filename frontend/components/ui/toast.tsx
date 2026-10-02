@@ -26,9 +26,12 @@ export function Toaster() {
 
 type Opts = { description?: string; action?: { label: string; onClick: () => void } };
 
+/** Toasts with an action (e.g. Undo) stay longer so there's time to reach the button. */
+const withTiming = (opts?: Opts) => (opts?.action ? { duration: 8000, ...opts } : opts);
+
 /** Feedback after every user action. */
 export const toast = {
-  success: (msg: string, opts?: Opts) => sonner.success(msg, opts),
-  error: (msg: string, opts?: Opts) => sonner.error(msg, opts),
-  info: (msg: string, opts?: Opts) => sonner(msg, opts),
+  success: (msg: string, opts?: Opts) => sonner.success(msg, withTiming(opts)),
+  error: (msg: string, opts?: Opts) => sonner.error(msg, withTiming(opts)),
+  info: (msg: string, opts?: Opts) => sonner(msg, withTiming(opts)),
 };

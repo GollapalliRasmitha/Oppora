@@ -1,6 +1,5 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { ScanSearch, SearchX } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { OpportunityCard, OpportunityCardSkeleton } from "@/components/oppora/opportunity-card";
@@ -31,33 +30,15 @@ import type { Opportunity } from "@/lib/domain/types";
 import { useNow } from "@/lib/hooks/use-now";
 import { useOpportunityActions } from "@/lib/hooks/use-opportunity-actions";
 import { useResource } from "@/lib/hooks/use-resource";
+import { useUrlParams } from "@/lib/hooks/use-url-params";
+
+const LIST_DEFAULTS = { q: "", type: "All", sort: "relevance" };
 
 /** Search, filter and sort live in the URL so they survive reloads and back/forward. */
 function useListParams() {
-  const params = useSearchParams();
-  const q = params.get("q") ?? "";
-  const type = parseTypeFilter(params.get("type"));
-  const sort = parseSort(params.get("sort"));
-
-  const set = useCallback(
-    (patch: Partial<{ q: string; type: TypeFilter; sort: SortKey }>) => {
-      const next = new URLSearchParams(params.toString());
-      const apply = (key: string, value: string | undefined, fallback: string) => {
-        if (value === undefined) return;
-        if (value && value !== fallback) next.set(key, value);
-        else next.delete(key);
-      };
-      apply("q", patch.q, "");
-      apply("type", patch.type, "All");
-      apply("sort", patch.sort, "relevance");
-      const qs = next.toString();
-      // Native history updates are synced into useSearchParams by Next.js without a navigation.
-      window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
-    },
-    [params],
-  );
-
-  return { q, type, sort, set };
+  const [raw, setRaw] = useUrlParams(LIST_DEFAULTS);
+  const set = (patch: Partial<{ q: string; type: TypeFilter; sort: SortKey }>) => setRaw(patch);
+  return { q: raw.q, type: parseTypeFilter(raw.type), sort: parseSort(raw.sort), set };
 }
 
 export function OpportunitiesView() {

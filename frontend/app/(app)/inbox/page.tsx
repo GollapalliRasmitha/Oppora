@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
-import { UpcomingPage } from "@/components/oppora/upcoming-page";
+import { Suspense } from "react";
+import { InboxView } from "./inbox-view";
 
 export const metadata: Metadata = { title: "Inbox" };
 
-export default function Page() {
-  return <UpcomingPage title="Inbox" subtitle="Relevant emails from your Gmail." />;
+export default function InboxPage() {
+  // useSearchParams needs a Suspense boundary for static rendering.
+  return (
+    <Suspense>
+      <InboxView />
+    </Suspense>
+  );
 }

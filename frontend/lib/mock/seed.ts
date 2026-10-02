@@ -317,7 +317,7 @@ export function createSeed(today: Date = new Date()): Seed {
     dismissed: false,
   }));
 
-  const emails: Email[] = [
+  const emailDrafts: Omit<Email, "saved" | "archived">[] = [
     {
       id: "em_microsoft_reminder",
       sender: "Microsoft University Recruiting",
@@ -535,6 +535,8 @@ export function createSeed(today: Date = new Date()): Seed {
       opportunityId: "opp_bright_futures_merit",
     },
   ];
+
+  const emails: Email[] = emailDrafts.map((e) => ({ ...e, saved: false, archived: false }));
 
   return { user: structuredClone(seedUser), opportunities, emails };
 }

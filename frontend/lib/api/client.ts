@@ -6,6 +6,7 @@
  *   ?mock=error  → every service call rejects
  *   ?mock=empty  → list endpoints return no data
  *   ?mock=slow   → 2.5s latency to inspect skeletons
+ *   ?mock=gmail  → every service call fails with the Gmail-access error
  */
 export class ApiError extends Error {
   constructor(
@@ -17,18 +18,21 @@ export class ApiError extends Error {
   }
 }
 
-export type MockMode = "normal" | "error" | "empty" | "slow";
+export type MockMode = "normal" | "error" | "empty" | "slow" | "gmail";
 
 export function mockMode(): MockMode {
   if (typeof window === "undefined") return "normal";
   const m = new URLSearchParams(window.location.search).get("mock");
-  return m === "error" || m === "empty" || m === "slow" ? m : "normal";
+  return m === "error" || m === "empty" || m === "slow" || m === "gmail" ? m : "normal";
 }
 
 /** Simulates network latency and the dev error switch. */
 export async function mock<T>(produce: () => T, latency = 350): Promise<T> {
   const mode = mockMode();
   await new Promise((r) => setTimeout(r, mode === "slow" ? 2500 : latency));
+  if (mode === "gmail") {
+    throw new ApiError("We couldn't access your Gmail. Reconnect your account to continue.", "gmail");
+  }
   if (mode === "error") {
     throw new ApiError("We couldn't reach Oppora. Check your connection and try again.", "network");
   }

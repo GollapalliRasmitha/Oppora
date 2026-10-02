@@ -85,6 +85,10 @@ export interface Email {
   /** AI relevance to the user's interests, 0–100. */
   relevance: number;
   read: boolean;
+  /** Saved (bookmarked) by the user from the Inbox. */
+  saved: boolean;
+  /** Archived emails are hidden from the Inbox. */
+  archived: boolean;
   opportunityId: string | null;
 }
 

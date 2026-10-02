@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { UpcomingPage } from "@/components/oppora/upcoming-page";
+import { DeadlinesView } from "./deadlines-view";
 
 export const metadata: Metadata = { title: "Deadlines" };
 
-export default function Page() {
-  return <UpcomingPage title="Deadlines" subtitle="Stay on top of your important dates." />;
+export default function DeadlinesPage() {
+  return <DeadlinesView />;
 }
