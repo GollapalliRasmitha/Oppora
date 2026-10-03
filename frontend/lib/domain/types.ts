@@ -109,6 +109,8 @@ export interface SyncStatus {
   phase: SyncPhase;
   emailsInBatch: number;
   lastSyncedAt: ISODateTime | null;
+  /** Emails waiting for the AI (its daily limit was reached); processed on a later sync. */
+  queued?: number;
 }
 
 export interface Notification {

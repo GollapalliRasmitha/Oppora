@@ -18,7 +18,7 @@ from core import clock
 from core.domain.constants import deadline_kind
 from core.domain.dates import parse_dt
 from core.domain.match import explain_match
-from mail.models import Email, EmailClassification
+from mail.models import Email, EmailClassification, ProcessedMessage
 from notifications.models import Notification
 from opportunities.models import Application, Deadline, Interview, Opportunity, SavedItem
 
@@ -57,6 +57,7 @@ def clear_user_data(user: User) -> None:
     """Deletes everything Oppora stored for the user (the account itself remains)."""
     with transaction.atomic():
         Notification.objects.filter(user=user).delete()
+        ProcessedMessage.objects.filter(user=user).delete()
         SavedItem.objects.filter(user=user).delete()
         Interview.objects.filter(user=user).delete()
         Email.objects.filter(user=user).delete()
@@ -108,6 +109,11 @@ def load_seed(exported: dict, email: str | None = None) -> tuple[User, dict[str,
             "connected_at": parse_dt(g["connectedAt"]) if g["connectedAt"] else None,
             "scopes": g["scopes"],
             "initial_sync_days": g["initialSyncDays"],
+            "is_demo": True,  # no real mailbox: scans are simulated
+            "refresh_token_enc": "",
+            "access_token_enc": "",
+            "history_id": "",
+            "sync_queued": 0,
             "sync_phase": GmailConnection.Phase.COMPLETED,
             "sync_started_at": None,
             "sync_emails_in_batch": 0,

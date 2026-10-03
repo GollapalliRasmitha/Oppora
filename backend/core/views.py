@@ -1,15 +1,12 @@
-from datetime import timedelta
-
-from django.db import transaction
 from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.models import GmailConnection
 from accounts.serializers import SyncStatusSerializer
+from mail import sync
 
 from . import clock
-from .api import GmailAccessError
 from .data import email_dicts, interview_dicts, opportunity_dicts
 from .domain.assistant import answer_question
 from .domain.insights import TREND_RANGES, compute_insights
@@ -56,52 +53,30 @@ class InsightsView(APIView):
         return Response(data)
 
 
-# Stage 7 simulates the scan's phases from elapsed time; Stage 9 replaces this
-# with the Celery job reporting real progress. The response shape stays.
-SCANNING_FOR = timedelta(seconds=1.4)
-COMPLETES_AFTER = timedelta(seconds=3.6)
-
-
-def _advance(g: GmailConnection, now) -> None:
-    if g.sync_phase not in (GmailConnection.Phase.SCANNING, GmailConnection.Phase.ANALYZING) or not g.sync_started_at:
-        return
-    elapsed = now - g.sync_started_at
-    if elapsed >= COMPLETES_AFTER:
-        g.sync_phase, g.last_synced_at = GmailConnection.Phase.COMPLETED, g.sync_started_at + COMPLETES_AFTER
-    elif elapsed >= SCANNING_FOR:
-        g.sync_phase = GmailConnection.Phase.ANALYZING
-    else:
-        return
-    g.save(update_fields=["sync_phase", "last_synced_at"])
+def _sync_payload(g: GmailConnection) -> dict:
+    data = SyncStatusSerializer(g).data
+    if g.sync_phase != GmailConnection.Phase.ANALYZING:
+        data["emailsInBatch"] = 0
+    return data
 
 
 class SyncView(APIView):
-    """GET /api/sync/ — status (polled by the UI). POST /api/sync/ — start a scan (needs a connected Gmail)."""
+    """
+    GET /api/sync/ — status (polled by the UI while a scan runs).
+    POST /api/sync/ — start a scan in the background (409 gmail_access unless Gmail is connected).
+    """
 
     def get(self, request):
         g = request.user.gmail
-        _advance(g, clock.now())
-        data = SyncStatusSerializer(g).data
-        if g.sync_phase != GmailConnection.Phase.ANALYZING:
-            data["emailsInBatch"] = 0
-        return Response(data)
+        sync.advance_demo(g, clock.now())
+        return Response(_sync_payload(g))
 
     def post(self, request):
-        with transaction.atomic():
-            g = GmailConnection.objects.select_for_update().get(user=request.user)
-            if g.status != GmailConnection.Status.CONNECTED:
-                raise GmailAccessError()
-            now = clock.now()
-            _advance(g, now)
-            if g.sync_phase not in (GmailConnection.Phase.SCANNING, GmailConnection.Phase.ANALYZING):
-                g.sync_phase = GmailConnection.Phase.SCANNING
-                g.sync_started_at = now
-                g.sync_emails_in_batch = recent_email_count(email_dicts(request.user), clock.user_now(request))
-                g.save(update_fields=["sync_phase", "sync_started_at", "sync_emails_in_batch"])
-        data = SyncStatusSerializer(g).data
-        if g.sync_phase != GmailConnection.Phase.ANALYZING:
-            data["emailsInBatch"] = 0
-        return Response(data, status=202)
+        demo_batch = 0
+        if request.user.gmail.is_demo:
+            demo_batch = recent_email_count(email_dicts(request.user), clock.user_now(request))
+        g = sync.start_sync(request.user, demo_batch=demo_batch)
+        return Response(_sync_payload(g), status=202)
 
 
 class AssistantQuery(serializers.Serializer):

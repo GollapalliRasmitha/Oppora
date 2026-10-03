@@ -74,11 +74,12 @@ function describe(s: SyncState | null, error: boolean): { title: string; detail:
       return { title: "Sync failed", detail: "We couldn't access your Gmail." };
     case "idle":
       return { title: "Not synced yet", detail: "Scan Gmail to find opportunities." };
-    case "completed":
-      return {
-        title: "Sync completed",
-        detail: s.lastSyncedAt ? `Last synced ${relativeTime(s.lastSyncedAt, new Date())}` : "Not synced yet",
-      };
+    case "completed": {
+      const last = s.lastSyncedAt ? `Last synced ${relativeTime(s.lastSyncedAt, new Date())}` : "Not synced yet";
+      // The AI's free-tier daily limit was reached: the rest is processed on a later sync.
+      const queued = s.queued ? ` · ${s.queued} email${s.queued === 1 ? "" : "s"} queued` : "";
+      return { title: "Sync completed", detail: last + queued };
+    }
   }
 }
 

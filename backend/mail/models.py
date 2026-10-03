@@ -15,6 +15,7 @@ class Email(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="emails")
     gmail_message_id = models.CharField(max_length=128)
+    gmail_thread_id = models.CharField(max_length=128, blank=True)
     sender = models.CharField(max_length=200)
     sender_email = models.EmailField()
     subject = models.CharField(max_length=300)
@@ -55,3 +56,31 @@ class EmailClassification(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=["category"], name="classification_category")]
+
+
+class ProcessedMessage(models.Model):
+    """
+    The pipeline's queue and idempotency record: one row per Gmail message id
+    per user, so a message is never processed twice. Holds no email content.
+    """
+
+    class Status(models.TextChoices):
+        QUEUED = "queued"
+        DONE = "done"
+        SKIPPED = "skipped"
+        NEEDS_REVIEW = "needs_review"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="processed_messages")
+    gmail_message_id = models.CharField(max_length=128)
+    status = models.CharField(max_length=14, choices=Status.choices, default=Status.QUEUED)
+    #: Why it ended up where it did: prefilter, not_relevant, stored, linked, invalid_output, …
+    outcome = models.CharField(max_length=32, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    last_error = models.CharField(max_length=300, blank=True)
+    email = models.ForeignKey(Email, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["user", "gmail_message_id"], name="uniq_processed_message")]
+        indexes = [models.Index(fields=["user", "status", "created_at"], name="processed_user_status")]

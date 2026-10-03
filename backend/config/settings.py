@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "mail",
     "opportunities",
     "notifications",
+    "ai",
 ]
 
 MIDDLEWARE = [
@@ -114,11 +115,48 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "core.api.exception_handler",
 }
 
-# Stage 7 only: lets the local frontend sign in as the seeded demo user until
-# Google OAuth lands in Stage 8. Never enabled unless DEBUG is on as well.
-DEV_LOGIN_ENABLED = DEBUG and env_bool("DJANGO_DEV_LOGIN", True)
-DEMO_USER_EMAIL = os.environ.get("DEMO_USER_EMAIL", "rasmitha@example.com")
+# --- Google sign-in + Gmail (Stage 8) ---
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
+# Through the Next.js origin, so the session cookie it sets is first-party.
+GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", f"{FRONTEND_ORIGIN}/api/auth/google/callback")
+GOOGLE_OAUTH_ENABLED = bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
+# Minimum scopes: read-only Gmail + basic profile and email. Never more.
+GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+GOOGLE_SCOPES = [
+    "openid",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+    GMAIL_SCOPE,
+]
 GMAIL_INITIAL_SYNC_DAYS = int(os.environ.get("GMAIL_INITIAL_SYNC_DAYS", "60"))
+#: Upper bound on messages looked at in one scan (the AI's daily limit is the real cap).
+GMAIL_MAX_MESSAGES_PER_SYNC = int(os.environ.get("GMAIL_MAX_MESSAGES_PER_SYNC", "500"))
+
+# Fernet key that encrypts OAuth tokens at rest (start-oppora.ps1 generates one).
+TOKEN_ENCRYPTION_KEY = os.environ.get("TOKEN_ENCRYPTION_KEY", "").strip()
+
+# Local development without Google credentials: sign in as the seeded demo user.
+# Off as soon as Google sign-in is configured, and never without DEBUG.
+DEV_LOGIN_ENABLED = DEBUG and env_bool("DJANGO_DEV_LOGIN", True) and not GOOGLE_OAUTH_ENABLED
+DEMO_USER_EMAIL = os.environ.get("DEMO_USER_EMAIL", "rasmitha@example.com")
+
+# --- AI pipeline (Stage 8) ---
+# One interface (ai.providers); switch providers with AI_PROVIDER=gemini|openai.
+AI_PROVIDER = os.environ.get("AI_PROVIDER", "gemini").strip().lower()
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip()
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "").strip()
+# Free-tier limits (check yours at https://aistudio.google.com/rate-limit). The
+# pipeline waits and retries instead of failing when it gets close to them.
+AI_REQUESTS_PER_MINUTE = int(os.environ.get("AI_REQUESTS_PER_MINUTE", "9"))
+AI_REQUESTS_PER_DAY = int(os.environ.get("AI_REQUESTS_PER_DAY", "200"))
+#: Characters of cleaned email text sent to the AI (subject + sender + trimmed body; never attachments).
+AI_MAX_BODY_CHARS = int(os.environ.get("AI_MAX_BODY_CHARS", "4000"))
+
+# Background jobs: a thread per sync until Celery arrives in Stage 9. Tests run them inline.
+JOBS_EAGER = env_bool("JOBS_EAGER", False)
 
 LOGGING = {
     "version": 1,

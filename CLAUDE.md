@@ -12,8 +12,9 @@ Personal AI agent that reads a user's Gmail, finds opportunities, extracts deadl
 - Stage 4 — AI Insights + Calendar: done.
 - Stage 5 — Settings + Notifications + AI assistant: done.
 - Stage 6 — UX review pass: done.
-- **Stage 7 — Backend + frontend switched to the API: done** (awaiting "continue").
-- Next: Stage 8 — Google OAuth + Gmail sync + AI pipeline.
+- Stage 7 — Backend + frontend switched to the API: done.
+- **Stage 8 — Google sign-in + Gmail sync + AI pipeline (Gemini free tier): done** (awaiting "continue"). Live Google/Gemini check pending the user's Google Cloud setup (docs/google-cloud-setup.md).
+- Next: Stage 9 — Celery + Redis background processing and live sync status.
 - Profile skills: keep the demo skills for now (user decision, Stage 3 review).
 
 ## Working rules (from PROMPT.md §0)
@@ -66,7 +67,7 @@ tests/                    Vitest + Testing Library
 
 Scripts (in `/frontend`): `npm run dev | build | lint | typecheck | test | check` (`check` = lint + typecheck + tests).
 Backend checks (in `/backend`): `.venv/Scripts/ruff check . && .venv/Scripts/ruff format --check .`, `manage.py makemigrations --check --dry-run`, `.venv/Scripts/python -m pytest`.
-Local dev: `docker compose up -d` → `manage.py migrate` → `manage.py seed_demo` → `manage.py runserver 127.0.0.1:8000` + `npm run dev` (or the `backend` / `frontend` entries in `.claude/launch.json`).
+Local dev on Windows: `powershell -ExecutionPolicy Bypass -File .\start-oppora.ps1` (Docker + migrations + Django + Next.js + browser; `-RefreshDemo` re-runs seed_demo, `-NoBrowser` skips the browser). Manual: `docker compose up -d` → `manage.py migrate` → `manage.py seed_demo` → `manage.py runserver 127.0.0.1:8000` + `npm run dev` (or the `backend` / `frontend` entries in `.claude/launch.json`). Root `README.md` explains it; `docs/google-cloud-setup.md` is the beginner Google Cloud + Gemini walkthrough.
 
 ### Backend structure (Stage 7)
 
@@ -76,8 +77,13 @@ core/            api.py (Pagination, exception handler → {"error": {code, mess
                  clock.py (now(); user_now(request) = user's zone from X-Timezone header, else profile),
                  data.py (per-user dicts in API shape), seed.py (export_seed → node, load_seed), views.py
                  (dashboard, insights, sync, assistant), domain/ (pure logic: dates, match, stats, insights, calendar, assistant)
-accounts/        User (UUID pk, email login, interests/skills/experience_level/timezone), UserPreference, GmailConnection (+ sync state)
-mail/            Email (message id, sender, subject, date, snippet — never bodies), EmailClassification (category, relevance)
+accounts/        User (UUID pk, email login, interests/skills/experience_level/timezone), UserPreference, GmailConnection
+                 (+ encrypted tokens, historyId, sync state, is_demo); google.py = OAuth code + PKCE flow
+mail/            Email (message id, thread id, sender, subject, date, snippet — never bodies), EmailClassification,
+                 ProcessedMessage (queue + idempotency, no content); content.py (MIME → minimal text), prefilter.py,
+                 gmail.py (read-only client), pipeline.py (extract → score → store), sync.py (orchestration)
+ai/              providers/ (base interface, gemini, openai, fake), client.py (rate limiter, daily budget, retries),
+                 schema.py (one neutral schema → Gemini/OpenAI), extract.py (prompt + validation/grounding), AIUsage model
 opportunities/   Opportunity, Deadline (1:1), Application (1:1), SavedItem (opportunity XOR email), Interview
 notifications/   Notification (derived, upserted by `key`)
 tests/           pytest-django against Postgres
@@ -119,13 +125,11 @@ All brief components exist; later stages connect them to the real API.
 
 - **Data layer:** components never `fetch`. They call `lib/api/*`, which call `request()` / `listAll()` in `lib/api/client.ts`. Requests go to `/api/*` on the Next.js origin; `next.config.ts` rewrites them to Django (`BACKEND_ORIGIN`, adding Django's trailing slash), so cookies are first-party and there is no CORS. Signatures and return types are unchanged from the mock era; no UI component changed for the switch.
 - **The server owns computed logic:** dashboard stats, recommendation, insights, calendar items, notifications, match explanation and the assistant live in `backend/core/domain/` (ported from TS; the TS copies were deleted and their tests moved to pytest). TS keeps UI helpers (dates/urgency, filters/sort, inbox filters, deadline grouping, calendar view helpers, `matchChecklist`/`matchSentence`, `strongMatches` for the assistant greeting). `explainMatch` exists in both (TS for the seed, Python for profile edits/extraction); `test_domain.py` asserts they agree on every seed opportunity.
-- **Auth (Stage 7):** session cookie (httpOnly, SameSite=Lax, Secure when not DEBUG) + CSRF (`X-CSRFToken` from the `csrftoken` cookie, fetched via `/api/auth/csrf/` if missing; `FRONTEND_ORIGIN` is a trusted origin). Until Google OAuth (Stage 8) the client calls `POST /api/auth/dev-login/` once on a 401 and retries; the server only allows it when DEBUG and `DJANGO_DEV_LOGIN` are on, so a production build can't sign in until Stage 8. Expected in dev: the first page load logs a few 401s in the console before the automatic sign-in.
+- **Auth (Stage 7, still the base):** session cookie (httpOnly, SameSite=Lax, Secure when not DEBUG) + CSRF (`X-CSRFToken` from the `csrftoken` cookie, fetched via `/api/auth/csrf/` if missing; `FRONTEND_ORIGIN` is a trusted origin). Until Google OAuth (Stage 8) the client calls `POST /api/auth/dev-login/` once on a 401 and retries; the server only allows it when DEBUG and `DJANGO_DEV_LOGIN` are on, so a production build can't sign in until Stage 8. Expected in dev: the first page load logs a few 401s in the console before the automatic sign-in.
 - **Every queryset is filtered by `request.user`**; related ids in bodies (`opportunityId`, `emailId`) must belong to the user (else 400 "does not exist"). `test_isolation.py` loads the full seed for two users and tries every endpoint with the other user's ids.
 - **IDs are UUIDs** (not enumerable). Seed ids (`opp_…`, `em_…`) only exist in seed.ts; emails keep theirs as `gmail_message_id` (the pipeline's idempotency key, unique per user).
 - `sourceEmailIds` = emails linked to the opportunity (`Email.opportunity` FK); the seed's lists matched exactly, so there is no M2M.
 - **"Today"** is computed in the user's zone: the browser sends `X-Timezone`, falling back to `User.timezone` (default `Asia/Kolkata`). Stored timestamps are UTC.
-- **Sync (Stage 7):** `POST /api/sync/` (409 `gmail_access` unless connected) starts a simulated scan whose phase is derived from elapsed time (scanning <1.4s, analyzing <3.6s, then completed). Stage 9 replaces it with the Celery job; the response shape stays.
-- **Gmail connect (Stage 7)** marks the connection connected (dev only); Stage 8 turns it into the OAuth flow.
 - **Notifications** are derived on each GET and upserted by a stable key (`new:<opp>`, `deadline:<opp>`, `ai_recommendation`), so read/cleared state survives text changes ("closes in 2 days" → "1 day").
 - Ties in assistant/list ordering follow seed order: the loader creates rows one by one and snapshots order by `created_at`.
 - Percentages use JS-style rounding (`js_round`, half up), not Python's banker's rounding.
@@ -197,3 +201,29 @@ All seed dates are offsets from today, so these hold on every date (offsets repr
 - Mobile bottom nav keeps the brief's full labels: 11px labels, and the Opportunities column is wider (`1fr 1.45fr 1fr 1fr 1fr`) so labels have ≥18px between them at 360px; targets stay 64px tall.
 - Opportunities Show/Sort: stacked below 430px, two equal columns from 430px, inline from 640px. `Select` triggers can shrink (`min-w-0`, value truncates) instead of overflowing.
 - Trend chart is titled "Opportunity Emails Found" (it counts opportunity emails, not opportunities).
+
+## Stage 8 decisions (Google sign-in, Gmail sync, AI pipeline)
+
+- **Google OAuth** (accounts/google.py): authorization-code flow with **PKCE (S256)**, `access_type=offline` + `prompt=consent` (refresh token for the sync), `state` + verifier in the session (10-minute TTL, popped on use → no replay / login CSRF). Scopes are exactly `openid`, `userinfo.email`, `userinfo.profile`, `gmail.readonly`. The ID token is verified with google-auth (`verify_oauth2_token`, audience = client id, `email_verified` required). Implemented directly with `requests` (no google-auth-oauthlib).
+- Redirect URI goes **through the Next.js origin** (`http://localhost:3000/api/auth/google/callback`, no trailing slash; Next adds Django's slash), so the session cookie is first-party. Next.js passes Django's 302s through unchanged.
+- `GET /api/auth/google/login/?next=&intent=signin|connect` (plain Django view). Without Google credentials it signs in the seeded demo user (DEBUG only); `DEV_LOGIN_ENABLED` is automatically **off once `GOOGLE_CLIENT_ID/SECRET` are set**. `next` must be a same-site path (`safe_next`).
+- Callback: creates/gets the user by verified email, stores tokens, starts the first scan for new users, redirects to `next`. Errors → `/?auth_error=<code>` (shown by `AuthErrorNotice` on the landing page). Gmail box unticked → signed in but disconnected → `/settings?gmail_error=scope_missing`. Reconnecting with a different Google account → grant revoked, `gmail_error=account_mismatch`.
+- `POST /api/auth/gmail/connect/` returns `{redirect}` (Google consent) for real accounts; `connectGmail()` navigates there. The seeded demo account (`GmailConnection.is_demo`) has no mailbox: connect and scans stay simulated (time-based phases, as in Stage 7).
+- Disconnect and Delete my data **revoke the token at Google** and delete stored tokens + historyId (+ ProcessedMessage rows for delete).
+- **Tokens are encrypted at rest now** (core/crypto.py, Fernet/MultiFernet from `TOKEN_ENCRYPTION_KEY`, comma-separated for rotation; start-oppora.ps1 generates the key). Never serialized to the client.
+- **Testing mode:** refresh tokens expire after 7 days → the next sync gets `invalid_grant` → `GmailAuthError` → connection "Needs reconnect" (sync phase error). Documented for the user.
+- **Gmail sync** (mail/sync.py): first scan = `newer_than:GMAIL_INITIAL_SYNC_DAYS d` minus chats/spam/trash/sent/drafts, capped at `GMAIL_MAX_MESSAGES_PER_SYNC`; later scans = `history.list(startHistoryId)` (404 → full scan). Message ids are queued as `ProcessedMessage` rows (unique per user + message id → **idempotent**, never processed twice); processing is oldest first. A sync stuck >30 min (server restart) can be started again; queued work is never lost.
+- **Background jobs** (core/jobs.py): a daemon thread per sync in Stage 8 (Celery in Stage 9; same call sites). `JOBS_EAGER=True` in tests.
+- **Minimum content to the AI**: subject, sender name + address, sent time, and a cleaned plain-text body trimmed to `AI_MAX_BODY_CHARS` (4000): text parts only (HTML → text keeping link targets), **attachments never read** (parts with a filename/attachmentId are skipped), reply quotes and signatures removed. Forwarded content is kept. Bodies are never stored; Email keeps id, thread, sender, subject, date, snippet.
+- **Pre-filter** (mail/prefilter.py, no AI): skips SPAM/TRASH/CHAT/DRAFT/SENT/CATEGORY_SOCIAL, the user's own messages, obvious promotions (promo words + Promotions tab, unless internship/hackathon/scholarship/… in the subject/opening), and anything without opportunity words. **Skipped emails are never stored** (only a content-free ProcessedMessage row).
+- **AI provider interface** (ai/providers/base.py): one method `generate_json(system, prompt, schema) -> dict` + typed errors (NotConfigured, RateLimited, DailyLimitReached, TransientAIError, InvalidOutput). `AI_PROVIDER=gemini` (default; REST `generateContent`, key in the `x-goog-api-key` header, `responseMimeType=application/json` + `responseSchema`, temperature 0) or `openai` (Chat Completions strict json_schema; paid, unit-tested with mocked HTTP only). One neutral schema (ai/schema.py) is converted per provider. REST instead of the google-genai SDK, whose API is in flux (new `interactions` API).
+- **Model:** `GEMINI_MODEL=gemini-3.8-flash` (current stable Flash, Oct 2026). `gemini-3.5-flash-lite` is the fallback if the free daily limit is too low.
+- **Free-tier limits, never failing the sync** (ai/client.py): sliding-window limiter at `AI_REQUESTS_PER_MINUTE` (default 9, under the ~10 RPM free tier) shared by all threads; daily budget `AI_REQUESTS_PER_DAY` (default 200) counted in `AIUsage` per provider per **Pacific-time quota day**; a 429 pauses for Gemini's `retryDelay` (else 10/20/40/80/120 s backoff) and retries up to 5×; per-day quota 429s → DailyLimitReached. Remaining emails stay **queued**, the sync completes and reports `queued` (the sync card shows "N emails queued"). Three transient failures in a row stop the run (the rest stays queued).
+- **One AI call per email** does classify + extract + summarize (schema: category, is_opportunity, relevance, priority, summary, organization, opportunity_name, deadline, eligibility, location, duration, skills, requirements, benefits, application_link, action_required, interview, confidence). The prompt says the email is data, not instructions (prompt-injection guard), to use null for anything not stated, and gives the user's interests for relevance.
+- **Validation + grounding** (ai/extract.py): schema/type checks (missing fields, unknown category → InvalidOutput → one retry with the error → then `needs_review`, nothing stored). Grounding: the application link must be a URL that appears in the email; skills must be mentioned in the email; deadlines must be real dates within −400…+730 days of the email; interviews need a parseable start within −1…+365 days. Dropped fields become null.
+- **Store** (mail/pipeline.py): not an opportunity and relevance < 50 → not stored. Confidence < 0.5 → email stored with classification `needs_review`, no opportunity. Follow-ups (same Gmail thread, or same type + organization + name) **link to the existing opportunity** and only fill fields it doesn't have yet (never overwrite); interviews/deadlines are added once.
+- **Match score** = blend of AI relevance and a profile score from the stored match reasons (interests met 40, skills up to 30 / unknown 15, experience met 15 / unknown 8, deadline open or unknown 15). The weight comes from **personalization** (low 0.3, balanced 0.5, high 0.7 profile weight); +5 for a preferred location. **Categories to track** and **minimum match** now apply to new opportunities (the email is still stored). Priority = the AI's when given; a deadline ≤3 days on a ≥70 match is always High; otherwise High ≥85 (or ≤7 days and ≥70), Medium ≥65, else Low.
+- **Privacy disclosure:** on Gemini's free tier Google may use submitted content to improve its products. Settings → Privacy says exactly what is sent and that it's the free tier. Paid tiers/OpenAI are never enabled without asking.
+- The assistant stays deterministic and grounded (it now answers from the real synced data). An LLM front end is optional later; it would share the same AI budget.
+- Frontend: `GoogleSignInButton` and both Get Started buttons are plain `<a href="/api/auth/google/login?next=/dashboard">` (full navigation); Sign out calls `POST /api/auth/logout/`; Settings shows toasts for `?gmail=connected` / `?gmail_error=…`; `SyncStatus` type gained optional `queued`.
+- Tests: everything offline. `tests/gmail_fakes.py` (Gmail message builder + FakeGmail) and `ai.providers.fake.FakeProvider`; the rate limiter and backoff use a fake clock (no sleeping). The conftest blanks all AI keys so no test can reach a real API.

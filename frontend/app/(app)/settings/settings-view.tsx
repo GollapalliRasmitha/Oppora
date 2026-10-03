@@ -17,7 +17,7 @@ import {
   TriangleAlert,
   UserRound,
 } from "lucide-react";
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { LoadError } from "@/components/oppora/load-error";
 import { PageHeader } from "@/components/oppora/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,7 @@ import {
   connectGmail,
   deleteMyData,
   disconnectGmail,
+  signOut,
   getSettings,
   updatePreferences,
   updateProfile,
@@ -65,9 +66,29 @@ function Section({ id, title, description, children }: { id: string; title: stri
   );
 }
 
+/** Messages for the return trip from Google's consent screen (/settings?gmail=… or ?gmail_error=…). */
+const GMAIL_RETURN: Record<string, () => void> = {
+  connected: () => toast.success("Gmail connected", { description: "Use Scan Gmail to look for new opportunities." }),
+  account_mismatch: () =>
+    toast.error("That Google account isn't the one you're signed in with.", { description: "Choose the same account to reconnect." }),
+  scope_missing: () =>
+    toast.error("Oppora needs permission to read your Gmail.", { description: "Reconnect and tick the Gmail box on Google's screen." }),
+};
+
+function useGmailReturnToast() {
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const key = q.get("gmail") ?? q.get("gmail_error");
+    if (!key) return;
+    (GMAIL_RETURN[key] ?? (() => toast.error("We couldn't connect your Gmail. Please try again.")))();
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.hash}`);
+  }, []);
+}
+
 export function SettingsView() {
   const res = useResource(getSettings);
   const { mutate } = res;
+  useGmailReturnToast();
 
   if (res.status === "loading") return <SettingsSkeleton />;
   if (res.status === "error")
@@ -518,6 +539,11 @@ function AccountSection({
           <p className="mt-3 text-sm text-ink-2">
             Full email bodies are not kept after processing, and Oppora never sees your Gmail password.
           </p>
+          <p className="mt-3 text-sm text-ink-2">
+            To find opportunities, the subject, sender and a trimmed text version of each email that looks relevant (never
+            attachments) is sent to Google Gemini. Oppora uses Gemini&apos;s free tier, where Google may use this content to
+            improve its products. Emails that don&apos;t look like opportunities are never sent or stored.
+          </p>
           <div className="mt-4 rounded-md border border-urgent/30 bg-urgent/[.06] p-4">
             <p className="text-sm font-semibold text-ink">Delete my data</p>
             <p className="mt-0.5 text-meta text-ink-2">
@@ -533,9 +559,14 @@ function AccountSection({
         <div className="border-t border-line pt-6">
           <Button
             variant="secondary"
-            onClick={() => {
-              toast.success("Signed out");
-              router.push("/");
+            onClick={async () => {
+              try {
+                await signOut();
+                toast.success("Signed out");
+                router.push("/");
+              } catch {
+                toast.error("We couldn't sign you out. Please try again.");
+              }
             }}
           >
             <LogOut aria-hidden /> Sign out

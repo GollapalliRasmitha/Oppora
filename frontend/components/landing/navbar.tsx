@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SIGN_IN_URL } from "@/components/oppora/google-sign-in-button";
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/oppora/logo";
@@ -40,7 +41,7 @@ export function Navbar() {
           ))}
         </ul>
         <Button asChild size="sm" className="ml-auto md:ml-2">
-          <Link href="/dashboard">Get Started</Link>
+          <a href={SIGN_IN_URL}>Get Started</a>
         </Button>
         <IconButton
           label={open ? "Close menu" : "Open menu"}

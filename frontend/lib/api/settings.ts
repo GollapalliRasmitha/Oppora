@@ -37,12 +37,22 @@ export function updateProfile(patch: ProfilePatch): Promise<User> {
   return request<User>("/auth/me", { method: "PATCH", body: patch, ...NO_GMAIL });
 }
 
-/** POST /api/auth/gmail/connect/ — Stage 8 turns this into the Google OAuth flow. */
-export function connectGmail(): Promise<GmailConnection> {
-  return request<GmailConnection>("/auth/gmail/connect", { method: "POST", ...NO_GMAIL });
+/**
+ * POST /api/auth/gmail/connect/ — for a real account the server answers with
+ * Google's consent URL and the browser goes there (this promise then never
+ * settles; the page comes back via /settings?gmail=connected). The seeded demo
+ * account is connected directly.
+ */
+export async function connectGmail(): Promise<GmailConnection> {
+  const res = await request<GmailConnection | { redirect: string }>("/auth/gmail/connect", { method: "POST", ...NO_GMAIL });
+  if ("redirect" in res) {
+    window.location.assign(res.redirect);
+    return new Promise<GmailConnection>(() => {});
+  }
+  return res;
 }
 
-/** POST /api/auth/gmail/disconnect/ — Stage 8 also revokes the token and deletes stored tokens. */
+/** POST /api/auth/gmail/disconnect/ — revokes the token at Google and deletes the stored tokens. */
 export function disconnectGmail(): Promise<GmailConnection> {
   return request<GmailConnection>("/auth/gmail/disconnect", { method: "POST", ...NO_GMAIL });
 }

@@ -77,8 +77,8 @@ class UserPreference(models.Model):
 
 class GmailConnection(models.Model):
     """
-    Connection status plus the sync state the UI polls. OAuth tokens are added
-    in Stage 8 (encrypted at rest in Stage 10) and never leave the server.
+    Connection status, OAuth tokens and the sync state the UI polls. Tokens are
+    encrypted at rest (core.crypto) and never leave the server.
     """
 
     class Status(models.TextChoices):
@@ -100,7 +100,43 @@ class GmailConnection(models.Model):
     scopes = models.JSONField(default=list, blank=True)
     initial_sync_days = models.PositiveSmallIntegerField(default=60)
 
+    #: The seeded demo account: no real mailbox, so scans are simulated.
+    is_demo = models.BooleanField(default=False)
+    google_sub = models.CharField(max_length=64, blank=True)
+    refresh_token_enc = models.TextField(blank=True)
+    access_token_enc = models.TextField(blank=True)
+    token_expiry = models.DateTimeField(null=True, blank=True)
+    #: Gmail historyId of the last completed scan, for incremental sync.
+    history_id = models.CharField(max_length=32, blank=True)
+
     sync_phase = models.CharField(max_length=10, choices=Phase.choices, default=Phase.IDLE)
     sync_started_at = models.DateTimeField(null=True, blank=True)
     sync_emails_in_batch = models.PositiveIntegerField(default=0)
     last_synced_at = models.DateTimeField(null=True, blank=True)
+    #: Emails waiting for the AI (e.g. after the free tier's daily limit).
+    sync_queued = models.PositiveIntegerField(default=0)
+
+    @property
+    def refresh_token(self) -> str | None:
+        from core.crypto import decrypt
+
+        return decrypt(self.refresh_token_enc)
+
+    @property
+    def access_token(self) -> str | None:
+        from core.crypto import decrypt
+
+        return decrypt(self.access_token_enc)
+
+    def set_tokens(self, *, refresh_token: str | None, access_token: str | None, expiry) -> None:
+        from core.crypto import encrypt
+
+        if refresh_token:  # Google only sends one on consent; keep the stored one otherwise
+            self.refresh_token_enc = encrypt(refresh_token)
+        self.access_token_enc = encrypt(access_token)
+        self.token_expiry = expiry
+
+    def clear_tokens(self) -> None:
+        self.refresh_token_enc = self.access_token_enc = ""
+        self.token_expiry = None
+        self.history_id = ""

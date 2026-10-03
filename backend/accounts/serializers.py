@@ -98,8 +98,10 @@ class SyncStatusSerializer(serializers.ModelSerializer):
     phase = serializers.CharField(source="sync_phase")
     emailsInBatch = serializers.IntegerField(source="sync_emails_in_batch")
     lastSyncedAt = serializers.DateTimeField(source="last_synced_at")
+    #: Emails waiting for the AI (its free-tier daily limit was reached); processed on the next sync.
+    queued = serializers.IntegerField(source="sync_queued")
 
     class Meta:
         model = GmailConnection
-        fields = ["phase", "emailsInBatch", "lastSyncedAt"]
+        fields = ["phase", "emailsInBatch", "lastSyncedAt", "queued"]
         read_only_fields = fields

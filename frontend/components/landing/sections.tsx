@@ -13,7 +13,8 @@ import {
   Target,
   WandSparkles,
 } from "lucide-react";
-import { GoogleSignInButton } from "@/components/oppora/google-sign-in-button";
+import { GoogleSignInButton, SIGN_IN_URL } from "@/components/oppora/google-sign-in-button";
+import { AuthErrorNotice } from "./auth-error-notice";
 import { Logo } from "@/components/oppora/logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ export function Hero() {
         <p className="mt-6 max-w-xl text-base leading-relaxed text-ink-2 sm:text-lg">
           Oppora uses AI to scan your Gmail, find relevant opportunities, track deadlines and help you stay ahead — all in one place.
         </p>
+        <AuthErrorNotice />
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <GoogleSignInButton />
           <Button asChild variant="ghost" size="lg">
@@ -143,9 +145,9 @@ export function FinalCTA() {
         </h2>
         <p className="relative mt-4 text-lg text-ink-2">Let Oppora find it for you.</p>
         <Button asChild size="lg" className="relative mt-8">
-          <Link href="/dashboard">
+          <a href={SIGN_IN_URL}>
             Get Started <ArrowRight aria-hidden />
-          </Link>
+          </a>
         </Button>
       </div>
     </section>

@@ -24,6 +24,8 @@ auth = [
     path("gmail/", accounts.GmailStatusView.as_view()),
     path("gmail/connect/", accounts.GmailConnectView.as_view()),
     path("gmail/disconnect/", accounts.GmailDisconnectView.as_view()),
+    path("google/login/", accounts.google_login),
+    path("google/callback/", accounts.google_callback),
 ]
 
 api = [

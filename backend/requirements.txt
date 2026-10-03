@@ -1,4 +1,4 @@
-# Runtime dependencies (Python 3.14). Stage 8+ adds google-auth, openai, celery, redis, cryptography.
+# Runtime dependencies (Python 3.14). Stage 9 adds celery + redis.
 Django==5.2.17
 djangorestframework==3.18.1
 django-filter==26.1
@@ -6,3 +6,8 @@ psycopg[binary]==3.3.6
 dj-database-url==3.1.2
 python-dotenv==1.2.4
 tzdata==2026.4
+# Stage 8: Google sign-in + Gmail (read-only), token encryption, Gemini REST calls
+google-auth==2.59.1
+google-api-python-client==2.201.0
+cryptography==50.0.2
+requests==2.34.2
