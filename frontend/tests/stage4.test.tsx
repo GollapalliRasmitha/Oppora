@@ -28,7 +28,7 @@ const NOW = new Date(2026, 9, 2, 9, 30); // Friday
 const seed = createSeed(NOW);
 
 describe("insights", () => {
-  const ins = computeInsights(seed.opportunities, NOW);
+  const ins = computeInsights(seed.opportunities, seed.emails, NOW);
 
   it("computes the highlight cards from the data", () => {
     expect(ins.mostCommonCategory).toEqual({ type: "Internship", count: 4, percent: 33, tied: false });
@@ -36,11 +36,17 @@ describe("insights", () => {
     expect(ins.bestDay?.count).toBeGreaterThan(0);
   });
 
-  it("counts opportunities found per day over the range, ending today", () => {
+  it("counts opportunity emails found per day over the range, ending today", () => {
     expect(ins.trend).toHaveLength(7);
     expect(ins.trend.at(-1)!.date).toBe("2026-10-02");
-    expect(ins.trendTotal).toBe(2); // Amazon (yesterday) + TCS (5 days ago)
-    expect(computeInsights(seed.opportunities, NOW, 30).trend).toHaveLength(30);
+    // Oldest → today: bars on 6 of 7 days (nothing has arrived yet today).
+    expect(ins.trend.map((p) => p.count)).toEqual([1, 1, 1, 2, 2, 3, 0]);
+    expect(ins.trendTotal).toBe(10);
+    const month = computeInsights(seed.opportunities, seed.emails, NOW, 30);
+    expect(month.trend).toHaveLength(30);
+    expect(month.trendTotal).toBe(19);
+    // Non-opportunity emails (newsletter, college, promotion) are not counted.
+    expect(month.trendTotal).toBeLessThan(seed.emails.filter((e) => new Date(e.receivedAt) > new Date(2026, 8, 3)).length);
   });
 
   it("splits progress into disjoint groups (applied ÷ all tracked)", () => {
@@ -49,12 +55,12 @@ describe("insights", () => {
 
   it("writes the recommendation from the data", () => {
     expect(ins.recommendation).toBe("Based on your profile, you have 3 opportunities worth reviewing this week.");
-    expect(computeInsights([], NOW).recommendation).toMatch(/Nothing new/);
+    expect(computeInsights([], [], NOW).recommendation).toMatch(/Nothing new/);
   });
 
   it("reports ties instead of hiding them", () => {
     const tied = seed.opportunities.filter((o) => o.type === "Hackathon" || o.type === "Job");
-    expect(computeInsights(tied, NOW).mostCommonCategory?.tied).toBe(true);
+    expect(computeInsights(tied, [], NOW).mostCommonCategory?.tied).toBe(true);
   });
 });
 

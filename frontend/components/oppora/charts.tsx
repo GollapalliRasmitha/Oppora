@@ -29,11 +29,14 @@ export function BarChart({
   data,
   title,
   unit,
+  valueHeader = "Count",
   className,
 }: {
   data: BarDatum[];
   /** Used for the accessible name and table caption. */
   title: string;
+  /** Header of the value column in the table view. */
+  valueHeader?: string;
   /** e.g. ["opportunity", "opportunities"] */
   unit: [string, string];
   className?: string;
@@ -53,7 +56,7 @@ export function BarChart({
           <thead>
             <tr className="text-left text-meta text-ink-3">
               <th scope="col" className="py-1.5 font-semibold">Day</th>
-              <th scope="col" className="py-1.5 text-right font-semibold">Found</th>
+              <th scope="col" className="py-1.5 text-right font-semibold">{valueHeader}</th>
             </tr>
           </thead>
           <tbody>

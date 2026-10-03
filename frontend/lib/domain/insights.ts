@@ -1,7 +1,8 @@
 import { startOfDay } from "./dates";
 import { addDays, toISODate } from "./deadlines";
 import { strongMatches } from "./stats";
-import type { ISODate, Opportunity, OpportunityType } from "./types";
+import { isOpportunityCategory } from "./inbox";
+import type { Email, ISODate, Opportunity, OpportunityType } from "./types";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const shortDay = new Intl.DateTimeFormat("en-GB", { weekday: "short" });
@@ -22,6 +23,7 @@ export interface Insights {
   topCompany: { name: string; count: number; tied: boolean } | null;
   /** Weekday on which the most opportunities were found in Gmail. */
   bestDay: { weekday: string; count: number; tied: boolean } | null;
+  /** Opportunity emails Oppora found per day (new opportunities plus updates, reminders and invitations). */
   trend: TrendPoint[];
   trendTotal: number;
   progress: { applied: number; inProgress: number; saved: number; other: number; total: number; appliedPercent: number };
@@ -39,7 +41,7 @@ function top<K extends string>(counts: Map<K, number>, order: (a: K, b: K) => nu
   return { key, count, tied: entries.length > 1 && entries[1][1] === count };
 }
 
-export function computeInsights(opps: Opportunity[], now: Date, range: TrendRange = 7): Insights {
+export function computeInsights(opps: Opportunity[], emails: Email[], now: Date, range: TrendRange = 7): Insights {
   const list = opps.filter((o) => !o.dismissed);
   const total = list.length;
 
@@ -58,7 +60,7 @@ export function computeInsights(opps: Opportunity[], now: Date, range: TrendRang
   const mondayFirst = (d: string) => (WEEKDAYS.indexOf(d) + 6) % 7;
   const day = top(byWeekday, (a, b) => mondayFirst(a) - mondayFirst(b));
 
-  // Daily counts of opportunities found, oldest → today.
+  // Daily counts of opportunity emails found, oldest → today.
   const today = toISODate(startOfDay(now));
   const trend: TrendPoint[] = Array.from({ length: range }, (_, i) => {
     const date = addDays(today, i - (range - 1));
@@ -71,8 +73,9 @@ export function computeInsights(opps: Opportunity[], now: Date, range: TrendRang
     };
   });
   const index = new Map(trend.map((p, i) => [p.date, i]));
-  for (const o of list) {
-    const i = index.get(toISODate(new Date(o.discoveredAt)));
+  for (const e of emails) {
+    if (!isOpportunityCategory(e.category)) continue;
+    const i = index.get(toISODate(new Date(e.receivedAt)));
     if (i !== undefined) trend[i].count++;
   }
 

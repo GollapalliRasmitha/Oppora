@@ -97,7 +97,7 @@ function InsightsContent({ data, range, onRangeChange }: { data: Insights; range
             <div>
               <h2 id="trend-title" className="text-lg font-bold text-ink">Opportunity Trends</h2>
               <p className="text-meta text-ink-3">
-                {plural(data.trendTotal, "opportunity", "opportunities")} found in the last {range} days
+                {plural(data.trendTotal, "opportunity email", "opportunity emails")} found in the last {range} days
               </p>
             </div>
             <FilterChips<"7" | "30">
@@ -112,8 +112,8 @@ function InsightsContent({ data, range, onRangeChange }: { data: Insights; range
             />
           </div>
           <BarChart
-            title={`Opportunities found per day, last ${range} days`}
-            unit={["opportunity", "opportunities"]}
+            title={`Opportunity emails found per day, last ${range} days`}
+            unit={["opportunity email", "opportunity emails"]}
             data={data.trend.map((t) => ({ key: t.date, label: t.label, fullLabel: t.fullLabel, value: t.count }))}
           />
         </GlassCard>

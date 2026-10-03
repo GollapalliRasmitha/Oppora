@@ -60,7 +60,7 @@ describe("deadlines domain", () => {
 describe("inbox domain", () => {
   it("counts filters from the data", () => {
     const v = buildInbox(emails, opps, "", "All", NOW);
-    expect(v.counts).toEqual({ All: 20, Opportunities: 17, Deadlines: 6, Other: 3 });
+    expect(v.counts).toEqual({ All: 27, Opportunities: 24, Deadlines: 8, Other: 3 });
     expect(v.unread).toBe(5);
     expect(v.items[0].id).toBe("em_amazon_jobs"); // newest first
   });
