@@ -32,7 +32,7 @@ The script:
 7. opens two windows: **Oppora backend** (Django, port 8000) and **Oppora frontend** (Next.js, port 3000)
 8. opens <http://localhost:3000> in your browser
 
-It's safe to run again: anything already running is left alone. `-ExecutionPolicy Bypass` applies only to this one run. It doesn't change your system's PowerShell settings.
+It's safe to run again: anything already running is left alone, except that the backend is restarted when `.env` changed after it started. `-ExecutionPolicy Bypass` applies only to this one run. It doesn't change your system's PowerShell settings.
 
 ### Refresh the demo data
 The demo account's dates are relative to the day the data was loaded. To reload it for today:
@@ -42,6 +42,15 @@ powershell -ExecutionPolicy Bypass -File .\start-oppora.ps1 -RefreshDemo
 ```
 
 This replaces the demo account's data only (`rasmitha@example.com`). Your real Google account isn't touched. Add `-NoBrowser` to either command to skip opening the browser.
+
+### After editing `.env`
+The backend restarts by itself when you save `.env`, so new keys apply within a few seconds. To restart both servers explicitly:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start-oppora.ps1 -Restart
+```
+
+`-Restart` only stops Oppora's own servers. If another program is using port 8000 or 3000, the script stops and tells you.
 
 ### Stop
 Close the *Oppora backend* and *Oppora frontend* windows. To stop the database too:

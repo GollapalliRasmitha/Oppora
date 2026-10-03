@@ -11,11 +11,38 @@ from pathlib import Path
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 REPO_DIR = BASE_DIR.parent
-load_dotenv(REPO_DIR / ".env")
+ENV_FILE = REPO_DIR / ".env"
+#: Names of variables that came from .env (not from the real environment).
+_FROM_DOTENV = "_OPPORA_DOTENV_KEYS"
+
+
+def load_env_file(path: Path = ENV_FILE) -> None:
+    """
+    Loads ../.env on every start, including runserver's auto-reloads.
+
+    Real environment variables win. Values that an earlier load took from .env
+    are re-read, though: runserver's reloader process passes its environment
+    to every reloaded copy, so plain load_dotenv() would keep the values from
+    the first start forever (e.g. empty Google keys after you fill them in).
+    """
+    previous = set(filter(None, os.environ.get(_FROM_DOTENV, "").split(",")))
+    loaded = []
+    for key, value in dotenv_values(path).items():
+        if value is None:
+            continue
+        if key in previous or key not in os.environ:
+            os.environ[key] = value
+            loaded.append(key)
+    for key in previous - set(loaded):
+        os.environ.pop(key, None)  # removed from .env since the last load
+    os.environ[_FROM_DOTENV] = ",".join(loaded)
+
+
+load_env_file()
 
 
 def env_bool(name: str, default: bool = False) -> bool:

@@ -20,14 +20,19 @@ TEST_FERNET_KEY = "0Kc2j3cnUGs6rfvlDhqI2Mw8Xl8m3xqgW8rB1nC9oXs="
 
 @pytest.fixture(autouse=True)
 def _test_settings(settings):
-    """Jobs run inline, tokens use a test key, and no test can reach a real AI or Google."""
+    """Jobs run inline, tokens use a test key, and no test can reach a real AI or Google (or see real keys)."""
     from ai import client
     from core.crypto import _fernet
 
     settings.JOBS_EAGER = True
     settings.TOKEN_ENCRYPTION_KEY = TEST_FERNET_KEY
+    # Hermetic: never use the developer's real keys from ../.env.
     settings.GEMINI_API_KEY = ""
     settings.OPENAI_API_KEY = ""
+    settings.GOOGLE_CLIENT_ID = ""
+    settings.GOOGLE_CLIENT_SECRET = ""
+    settings.GOOGLE_OAUTH_ENABLED = False
+    settings.DEV_LOGIN_ENABLED = True
     _fernet.cache_clear()
     client.set_provider(None)
     yield
