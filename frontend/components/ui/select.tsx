@@ -20,13 +20,16 @@ export function Select<T extends string>({ value, onValueChange, options, label,
       <RadixSelect.Trigger
         aria-label={label}
         className={cn(
-          "inline-flex h-11 items-center gap-2 rounded-md border border-line bg-white/[.04] px-4 text-sm font-semibold text-ink focus-ring transition-colors hover:border-line-strong",
+          "inline-flex h-11 min-w-0 items-center gap-2 rounded-md border border-line bg-white/[.04] px-4 text-sm font-semibold text-ink focus-ring transition-colors hover:border-line-strong",
           className,
         )}
       >
-        {prefix && <span className="font-medium text-ink-3">{prefix}</span>}
-        <RadixSelect.Value />
-        <RadixSelect.Icon>
+        {prefix && <span className="shrink-0 font-medium text-ink-3">{prefix}</span>}
+        {/* min-w-0 + truncate: the trigger can shrink to its container instead of overflowing */}
+        <span className="min-w-0 truncate">
+          <RadixSelect.Value />
+        </span>
+        <RadixSelect.Icon className="ml-auto shrink-0">
           <ChevronDown aria-hidden className="size-4 text-ink-3" />
         </RadixSelect.Icon>
       </RadixSelect.Trigger>

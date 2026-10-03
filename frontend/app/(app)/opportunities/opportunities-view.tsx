@@ -125,14 +125,15 @@ export function OpportunitiesView() {
             placeholder="Search opportunities…"
             className="sm:w-full sm:max-w-md"
           />
-          <div className="flex gap-3 max-sm:mb-3 sm:ml-auto">
+          {/* Mobile: two equal columns from 430px, stacked below so neither dropdown overflows. */}
+          <div className="grid grid-cols-1 gap-3 max-sm:mb-3 min-[430px]:grid-cols-2 sm:ml-auto sm:flex">
             <Select<ViewFilter>
               label="Show opportunities"
               prefix="Show:"
               value={show}
               onValueChange={(v) => set({ show: v })}
               options={VIEWS.map((v) => ({ value: v, label: VIEW_LABELS[v] }))}
-              className="flex-1 sm:flex-none"
+              className="w-full sm:w-auto"
             />
             <Select<SortKey>
               label="Sort opportunities"
@@ -140,7 +141,7 @@ export function OpportunitiesView() {
               value={sort}
               onValueChange={(v) => set({ sort: v })}
               options={SORTS.map((s) => ({ value: s, label: SORT_LABELS[s] }))}
-              className="flex-1 sm:flex-none"
+              className="w-full sm:w-auto"
             />
           </div>
         </div>

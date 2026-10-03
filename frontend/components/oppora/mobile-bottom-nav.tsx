@@ -14,7 +14,8 @@ export function MobileBottomNav() {
       aria-label="Main"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-[#080b1f]/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden"
     >
-      <ul className="grid grid-cols-5">
+      {/* "Opportunities" gets a wider column so every label fits at 360px. */}
+      <ul className="grid grid-cols-[1fr_1.45fr_1fr_1fr_1fr]">
         {MOBILE_NAV.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
           return (
@@ -23,7 +24,7 @@ export function MobileBottomNav() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex h-16 flex-col items-center justify-center gap-1 text-xs font-semibold text-ink-3 focus-ring transition-colors",
+                  "flex h-16 min-w-0 flex-col items-center justify-center gap-1 px-0.5 text-[11px] font-semibold tracking-tight text-ink-3 focus-ring transition-colors",
                   active && "text-ink",
                 )}
               >
@@ -35,7 +36,7 @@ export function MobileBottomNav() {
                 >
                   <Icon aria-hidden className={cn("size-5", active && "text-violet")} />
                 </span>
-                {label}
+                <span className="max-w-full truncate">{label}</span>
               </Link>
             </li>
           );

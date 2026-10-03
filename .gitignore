@@ -1,8 +1,24 @@
+# --- Secrets: never commit ---
 .env
 .env.*
 !.env.example
-.DS_Store
-Thumbs.db
+*.pem
+*.key
+*.p12
+*.pfx
+client_secret*.json
+credentials*.json
+service-account*.json
+# Claude Code per-machine settings (may hold local permissions/paths)
+.claude/settings.local.json
+
+# --- Dependencies / build output ---
+node_modules/
+.next/
 __pycache__/
 *.pyc
 .venv/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
