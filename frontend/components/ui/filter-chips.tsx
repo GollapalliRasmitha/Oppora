@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { ToggleGroup } from "radix-ui";
 import { cn } from "@/lib/utils";
 
@@ -13,7 +14,11 @@ type Props<T extends string> = {
   className?: string;
 };
 
-/** Single-select chip row. Counts are computed by the caller from data. */
+/**
+ * Single-select chip row. Counts are computed by the caller from data.
+ * The scroller is padded (and pulled back with negative margins) so the
+ * focus ring and the active chip's glow aren't clipped by overflow-x.
+ */
 export function FilterChips<T extends string>({ options, value, onValueChange, label, className }: Props<T>) {
   return (
     <ToggleGroup.Root
@@ -21,7 +26,7 @@ export function FilterChips<T extends string>({ options, value, onValueChange, l
       aria-label={label}
       value={value}
       onValueChange={(v) => v && onValueChange(v as T)}
-      className={cn("flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]", className)}
+      className={cn("-m-1 -mb-4 flex gap-2 overflow-x-auto p-1 pb-5 [scrollbar-width:none]", className)}
     >
       {options.map((o) => (
         <ToggleGroup.Item
@@ -72,7 +77,7 @@ export function MultiChips<T extends string>({
             "[&[data-state=on]_.chip-check]:inline",
           )}
         >
-          <span aria-hidden className="chip-check hidden text-violet">✓</span>
+          <Check aria-hidden className="chip-check hidden size-4 text-violet" />
           {o.label}
         </ToggleGroup.Item>
       ))}

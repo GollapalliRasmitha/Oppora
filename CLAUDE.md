@@ -10,8 +10,9 @@ Personal AI agent that reads a user's Gmail, finds opportunities, extracts deadl
 - Stage 2 — Opportunities + Opportunity details: done.
 - Stage 3 — Deadlines + Inbox: done.
 - Stage 4 — AI Insights + Calendar: done.
-- **Stage 5 — Settings + Notifications + AI assistant: done** (awaiting "continue").
-- Next: Stage 6 — UX review pass (every page vs PROMPT.md §3 on desktop, tablet, mobile).
+- Stage 5 — Settings + Notifications + AI assistant: done.
+- **Stage 6 — UX review pass: done** (awaiting "continue").
+- Next: Stage 7 — Backend (Django models, APIs, tests, seed loader; switch lib/api to the API).
 - Profile skills: keep the demo skills for now (user decision, Stage 3 review).
 
 ## Working rules (from PROMPT.md §0)
@@ -41,7 +42,7 @@ app/
   (marketing)/            public: landing page, /privacy, /terms, /contact
   (app)/layout.tsx        AppShell for every signed-in page
   (app)/dashboard/        Dashboard (page.tsx = server, dashboard-view.tsx = client)
-  (app)/opportunities/    list (search/filter/sort in the URL) + [id]/ details
+  (app)/opportunities/    list (search/type/show/sort in the URL) + [id]/ details
   (app)/deadlines/        month calendar + upcoming list
   (app)/inbox/            emails: search/filter in the URL, extract, swipe save/archive
   (app)/insights/         highlight cards, trends bar chart (7/30 days), progress donut, AI recommendation
@@ -90,16 +91,16 @@ Brand-gradient end is `#2563EB` (not `#3B82F6`) so white button text keeps ≥4.
 
 ## Components
 
-`components/ui`: Button (primary/secondary/ghost/danger; sm keeps a 44px hit area), IconButton (required `label`), GlassCard, Badge, Input, SearchBar, Tabs, FilterChips, Select (Dropdown/Select), Dropdown (menu), Modal, Drawer (right panel; full-screen on mobile), Toast (`toast.success/error/info`; toasts with an action stay 8s), Skeleton, EmptyState, ErrorState, Swipeable (touch-only swipe actions; always paired with buttons), SwitchRow (labelled switch, whole row is the target), TagInput (Enter/comma adds, × removes), MultiChips (multi-select chips).
+`components/ui`: Button (primary/secondary/ghost/danger; sm keeps a 44px hit area), IconButton (required `label`), GlassCard, Badge, Input, SearchBar, Tabs, FilterChips, Select (Dropdown/Select), Dropdown (menu), Modal, Drawer (right panel; full-screen on mobile), Toast (`toast.success/error/info`; toasts with an action stay 8s), Skeleton, EmptyState, ErrorState, Swipeable (touch-only swipe actions; always paired with buttons), `useReturnFocus` (Drawer/Modal put focus back on whatever opened them), SwitchRow (labelled switch, whole row is the target), TagInput (Enter/comma adds, × removes), MultiChips (multi-select chips).
 
-`components/oppora`: Logo/LogoMark, AIOrb, AICard, Monogram (letter tile instead of company logos), PriorityBadge, DeadlineIndicator (stacked | pill, always writes "N days left"), MatchMeter, MatchRing, MatchChecklist (+`matchChecklist()`), OpportunityCard (+Skeleton), SaveToggle (button | compact icon; outline = not saved, filled violet = saved), EmailCard (+Skeleton; `onOpen`, `expanded`, `footer` actions), MonthCalendar (roving-focus grid; dots when narrow, chips ≥672px container; `showHeader`, `colorBy`), DeadlineItem (+Skeleton; Set Reminder · Open · Mark Complete), CalendarEvent (chip | dot | card; colorBy urgency | kind) + CalendarLegend, InsightCard (+Skeleton), RecommendationsOffCard, BarChart (single series, hover/focus tooltip, table view), DonutChart (ordinal, legend with values + %), InfoItem + NotMentioned (the one way to render missing fields), StatCard (+Skeleton), OpportunityRow (+Skeleton, ⋯ menu; container-query layout), StatusBadge, NotificationItem, NotificationsPanel, SyncStatus (+useSyncStatus), Sidebar, Header, MobileBottomNav, FloatingAIButton, AIAssistantPanel, AppShell, ShellProvider/useShell, PageHeader, UpcomingPage, Avatar, GoogleSignInButton.
+`components/oppora`: Logo/LogoMark, AIOrb, AICard, Monogram (letter tile instead of company logos), PriorityBadge, DeadlineIndicator (stacked | pill, always writes "N days left"), MatchMeter, MatchRing, MatchChecklist (+`matchChecklist()`), OpportunityCard (+Skeleton), SaveToggle (button | compact icon; outline = not saved, filled violet = saved), EmailCard (+Skeleton; `onOpen`, `expanded`, `footer` actions), MonthCalendar (roving-focus grid; dots when narrow, chips ≥672px container; `showHeader`, `colorBy`), DeadlineItem (+Skeleton; Set Reminder · Open · Mark Complete), CalendarEvent (chip | dot | card; colorBy urgency | kind) + CalendarLegend, InsightCard (+Skeleton), RecommendationsOffCard, BarChart (single series, hover/focus tooltip, table view), DonutChart (ordinal, legend with values + %), InfoItem + NotMentioned (the one way to render missing fields), LoadError (the one page-load error: Gmail → Reconnect Gmail, else retry), PageSearch (a page's own search; sticky under the header on mobile), StatCard (+Skeleton; optional `href` makes the card a link), OpportunityRow (+Skeleton, ⋯ menu; container-query layout), StatusBadge, NotificationItem, NotificationsPanel, SyncStatus (+useSyncStatus), Sidebar, Header, MobileBottomNav, FloatingAIButton, AIAssistantPanel, AppShell, ShellProvider/useShell, PageHeader, UpcomingPage, Avatar, GoogleSignInButton.
 
 All brief components exist; later stages connect them to the real API.
 
 ## Decisions
 
 - **Data layer:** components never `fetch`. They call `lib/api/*`, which return typed mock data via `mock()` (latency + dev switches). Stage 7 swaps the bodies for real API calls; signatures stay.
-- **Dev state switches:** append `?mock=error`, `?mock=empty`, `?mock=slow` or `?mock=gmail` to any app URL to preview error / empty / loading / Gmail-disconnected states.
+- **Dev state switches:** append `?mock=error`, `?mock=empty`, `?mock=slow` or `?mock=gmail` to any app URL to preview error / empty / loading / Gmail-disconnected states. `?mock=gmail` = expired Gmail access: Gmail-backed data fails with the Gmail error, while account, preferences and sync status (`mock(…, { gmail: false })`) still load and show "Needs reconnect" / "Sync failed", so Settings can reconnect.
 - **Seed is relative to today:** `createSeed(today)` expresses every date as an offset, so targets and days-left hold on any demo date (tests run it across several dates incl. midnight and month/year boundaries). Past timestamps use offsets ≤ -1 day so nothing is ever in the future.
 - The mock store resets on a full page reload (client-side navigation keeps changes).
 - **Match reasons are stored** on each opportunity (`matchReasons`: skills / interests / experience as met | unmet | unknown, plus matched skills/interests), computed by `explainMatch()` — the Stage 8 pipeline stores the same shape. The deadline check is computed live. Unmet/unknown checks show as warnings, never hidden.
@@ -140,7 +141,7 @@ All brief components exist; later stages connect them to the real API.
 - Interview `end` is nullable — the Swiggy invitation gives a start time only, so no end time is shown.
 - OpportunityRow uses container queries (`@container` on the list): full row ≥768px of list width, compact below.
 - `.claude/launch.json` (repo root) starts the frontend dev server for previews.
-- Next.js dev indicator is pinned top-right (`devIndicators.position` in next.config.ts) so it never covers the assistant input.
+- Next.js dev indicator is off (`devIndicators: false`).
 - Seed has 7 follow-up emails (application received, team reminders, practice rounds, info sessions…) linked to existing opportunities, spread across the last 30 days. They add no opportunities, so the dashboard targets are unchanged (inbox: 27 emails, 5 unread).
 
 ## Seed targets (verified by `tests/seed-targets.test.ts` on several dates)
@@ -152,3 +153,14 @@ All seed dates are offsets from today, so these hold on every date (offsets repr
 ## Gmail / Google verification notes (for Stage 8)
 
 `gmail.readonly` is a **restricted** scope. For the demo/MVP keep the Google Cloud app in **Testing** mode with listed test users (max 100). A public launch needs: OAuth consent-screen verification, a published privacy policy and homepage on a verified domain, a demo video of the scope use, and an annual third-party security assessment (CASA) because restricted-scope data is stored on our servers.
+
+## Stage 6 UX review (decisions)
+
+- Audited every page at 1440 / 820 / 768 / 375px for horizontal overflow, unnamed controls, small targets, contrast <4.5:1, focus rings, and the loading / empty / error / Gmail / no-results states.
+- Opportunities has a **Show** select (All · Saved · In progress · Applied, `?show=`) — the brief's Saved and Applications lists, with their own empty states. Dashboard stat cards link to the matching list (Deadlines card → /deadlines).
+- Empty states always have a primary action: Deadlines/Calendar offer **Scan Gmail** when there's nothing to show (Deadlines shows View opportunities if opportunities exist but none have deadlines).
+- Pages with `useSearchParams` render a skeleton Suspense fallback (header + controls + cards), never a blank page.
+- Mobile: page searches stick under the header (`PageSearch`; wrappers use `max-sm:contents` so sticky spans the page).
+- `FilterChips` pads its scroller so focus rings and the active glow aren't clipped. Multi-select chips use the Lucide Check icon.
+- `hit-y` utility (globals.css) extends text-sized buttons/links to a ≥44px hit area; truncation must live on an inner span (overflow clips the ::after).
+- Trend chart is titled "Opportunity Emails Found" (it counts opportunity emails, not opportunities).

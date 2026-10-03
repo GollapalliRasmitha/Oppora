@@ -8,12 +8,12 @@ import {
   CalendarClock,
   CircleCheck,
   Hourglass,
-  MailWarning,
   ScanSearch,
   Sparkles,
 } from "lucide-react";
 import { useCallback } from "react";
 import { DeadlineIndicator } from "@/components/oppora/badges";
+import { LoadError } from "@/components/oppora/load-error";
 import { AICard, RecommendationsOffCard } from "@/components/oppora/ai-card";
 import { Monogram } from "@/components/oppora/monogram";
 import { OpportunityRow, OpportunityRowSkeleton } from "@/components/oppora/opportunity-row";
@@ -22,10 +22,9 @@ import { StatCard, StatCardSkeleton } from "@/components/oppora/stat-card";
 import { SyncStatus } from "@/components/oppora/sync-status";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ErrorState } from "@/components/ui/error-state";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ApiError, getDashboard, type DashboardData } from "@/lib/api";
+import { getDashboard, type DashboardData } from "@/lib/api";
 import { daysLeft, greetingFor } from "@/lib/domain/dates";
 import type { Opportunity } from "@/lib/domain/types";
 import { useNow } from "@/lib/hooks/use-now";
@@ -61,12 +60,16 @@ export function DashboardView() {
         >
           <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-purple/30 blur-3xl" />
           <div className="relative">
-            <h1 id="greeting" className="flex flex-wrap items-center gap-2 text-2xl font-extrabold tracking-tight text-ink sm:text-[32px]">
+            <h1 id="greeting" className="text-2xl font-extrabold tracking-tight text-ink sm:text-[32px]">
               {greetingReady ? (
                 <>
                   {greetingFor(now)}
-                  {user ? `, ${user.name}` : ""}!
-                  <Sparkles aria-hidden className="size-6 text-violet" />
+                  {user ? ", " : ""}
+                  {/* keeps the sparkle on the same line as the last word */}
+                  <span className="whitespace-nowrap">
+                    {user?.name ?? ""}!
+                    <Sparkles aria-hidden className="ml-2 inline size-6 align-[-2px] text-violet" />
+                  </span>
                 </>
               ) : (
                 <span className="sr-only">Loading your greeting</span>
@@ -87,20 +90,7 @@ export function DashboardView() {
 
       {dash.status === "error" && (
         <GlassCard>
-          {dash.error instanceof ApiError && dash.error.code === "gmail" ? (
-            <ErrorState
-              icon={MailWarning}
-              title="Gmail disconnected"
-              description="We couldn't access your Gmail. Reconnect your account to continue."
-              action={
-                <Button asChild>
-                  <Link href="/settings">Reconnect Gmail</Link>
-                </Button>
-              }
-            />
-          ) : (
-            <ErrorState title="Couldn't load your dashboard" description={dash.error.message} onRetry={dash.reload} />
-          )}
+          <LoadError title="Couldn't load your dashboard" error={dash.error} onRetry={dash.reload} />
         </GlassCard>
       )}
 
@@ -145,17 +135,18 @@ function DashboardContent({
   return (
     <>
       <section aria-label="Summary" className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard icon={BriefcaseBusiness} accent="purple" value={stats.total.value} label="Total Opportunities" trend={stats.total.trendLabel} trendKind={stats.total.trend > 0 ? "up" : "neutral"} />
+        <StatCard icon={BriefcaseBusiness} accent="purple" value={stats.total.value} label="Total Opportunities" href="/opportunities" trend={stats.total.trendLabel} trendKind={stats.total.trend > 0 ? "up" : "neutral"} />
         <StatCard
           icon={CalendarClock}
           accent="pink"
           value={stats.deadlinesThisWeek.value}
           label="Deadlines This Week"
+          href="/deadlines"
           trend={stats.deadlinesThisWeek.trendLabel}
           trendKind={stats.deadlinesThisWeek.urgent > 0 ? "alert" : "neutral"}
         />
-        <StatCard icon={CircleCheck} accent="green" value={stats.applied.value} label="Applied" trend={stats.applied.trendLabel} trendKind={stats.applied.trend > 0 ? "up" : "neutral"} />
-        <StatCard icon={Hourglass} accent="blue" value={stats.inProgress.value} label="In Progress" trend={stats.inProgress.trendLabel} trendKind={stats.inProgress.trend > 0 ? "up" : "neutral"} />
+        <StatCard icon={CircleCheck} accent="green" value={stats.applied.value} label="Applied" href="/opportunities?show=applied" trend={stats.applied.trendLabel} trendKind={stats.applied.trend > 0 ? "up" : "neutral"} />
+        <StatCard icon={Hourglass} accent="blue" value={stats.inProgress.value} label="In Progress" href="/opportunities?show=in_progress" trend={stats.inProgress.trendLabel} trendKind={stats.inProgress.trend > 0 ? "up" : "neutral"} />
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">

@@ -4,5 +4,5 @@ import { mock } from "./client";
 
 /** Stage 7: GET /api/auth/me/ */
 export function getCurrentUser(): Promise<User> {
-  return mock(() => structuredClone(db.user), 150);
+  return mock(() => structuredClone(db.user), 150, { gmail: false });
 }

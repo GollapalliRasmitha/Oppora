@@ -18,10 +18,10 @@ import {
   UserRound,
 } from "lucide-react";
 import { useCallback, useState, type ReactNode } from "react";
+import { LoadError } from "@/components/oppora/load-error";
 import { PageHeader } from "@/components/oppora/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ErrorState } from "@/components/ui/error-state";
 import { FilterChips, MultiChips } from "@/components/ui/filter-chips";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
@@ -75,7 +75,7 @@ export function SettingsView() {
       <>
         <PageHeader title="Settings" subtitle="Manage your account and preferences." />
         <GlassCard>
-          <ErrorState title="Couldn't load your settings" description={res.error.message} onRetry={res.reload} />
+          <LoadError title="Couldn't load your settings" error={res.error} onRetry={res.reload} />
         </GlassCard>
       </>
     );
@@ -308,7 +308,11 @@ function GmailSection({ gmail, onChange }: { gmail: GmailConnection; onChange: (
             <Badge tone={status.tone}>
               <status.icon aria-hidden /> {status.label}
             </Badge>
-            {gmail.connectedAt && <span className="text-meta text-ink-3">since {formatDate(gmail.connectedAt.slice(0, 10))}</span>}
+            {gmail.connectedAt && (
+              <span className="text-meta text-ink-3">
+                {gmail.status === "connected" ? "since" : "connected"} {formatDate(gmail.connectedAt.slice(0, 10))}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">

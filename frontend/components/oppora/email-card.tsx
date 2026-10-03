@@ -60,9 +60,10 @@ export function EmailCard({
               type="button"
               onClick={onOpen}
               aria-expanded={expanded}
-              className={cn(subjectCls, "mt-0.5 rounded-sm focus-ring hover:text-violet")}
+              // truncate lives on the inner span so the hit-y area isn't clipped
+              className="hit-y mt-0.5 block w-full rounded-sm text-left focus-ring [&:hover>span]:text-violet"
             >
-              {email.subject}
+              <span className={subjectCls}>{email.subject}</span>
             </button>
           ) : (
             <p className={cn(subjectCls, "mt-0.5")}>{email.subject}</p>

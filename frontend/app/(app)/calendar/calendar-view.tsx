@@ -1,14 +1,13 @@
 "use client";
 
-import { CalendarPlus, CalendarX2, ChevronLeft, ChevronRight } from "lucide-react";
-import Link from "next/link";
+import { CalendarPlus, CalendarX2, ChevronLeft, ChevronRight, ScanSearch } from "lucide-react";
 import { useMemo } from "react";
 import { CalendarEvent, CalendarLegend } from "@/components/oppora/calendar-event";
 import { MonthCalendar } from "@/components/oppora/month-calendar";
+import { LoadError } from "@/components/oppora/load-error";
 import { PageHeader } from "@/components/oppora/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ErrorState } from "@/components/ui/error-state";
 import { GlassCard } from "@/components/ui/glass-card";
 import { IconButton } from "@/components/ui/icon-button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,6 +27,7 @@ import { toISODate } from "@/lib/domain/deadlines";
 import type { CalendarItem, ISODate } from "@/lib/domain/types";
 import { useNow } from "@/lib/hooks/use-now";
 import { useResource } from "@/lib/hooks/use-resource";
+import { useScanGmail } from "@/lib/hooks/use-scan-gmail";
 import { useUrlParams } from "@/lib/hooks/use-url-params";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +47,18 @@ function titleFor(view: View, iso: ISODate) {
 
 const DEFAULTS = { view: "month", date: "" };
 
+/** Suspense fallback (before the URL params are readable). */
+export function CalendarFallback() {
+  return (
+    <>
+      <PageHeader title="Calendar" subtitle="Deadlines, interviews and reminders in one place." />
+      <CalendarSkeleton />
+    </>
+  );
+}
+
 export function CalendarView() {
+  const scanGmail = useScanGmail();
   const now = useNow();
   const res = useResource(() => listCalendarItems());
   const [params, setParams] = useUrlParams(DEFAULTS);
@@ -65,7 +76,7 @@ export function CalendarView() {
 
       {res.status === "error" && (
         <GlassCard>
-          <ErrorState title="Couldn't load your calendar" description={res.error.message} onRetry={res.reload} />
+          <LoadError title="Couldn't load your calendar" error={res.error} onRetry={res.reload} />
         </GlassCard>
       )}
 
@@ -91,8 +102,7 @@ export function CalendarView() {
                 value={view}
                 onValueChange={(v) => setParams({ view: v })}
                 options={CALENDAR_VIEWS.map((v) => ({ value: v, label: VIEW_LABEL[v] }))}
-                className="pb-0"
-              />
+                />
             </div>
 
             {res.data.length === 0 ? (
@@ -101,8 +111,9 @@ export function CalendarView() {
                 title="Nothing on your calendar yet"
                 description="Deadlines, interviews and reminders from your opportunities will appear here."
                 action={
-                  <Button asChild variant="secondary">
-                    <Link href="/opportunities">View opportunities</Link>
+                  <Button onClick={() => scanGmail()}>
+                    <ScanSearch aria-hidden />
+                    Scan Gmail
                   </Button>
                 }
               />

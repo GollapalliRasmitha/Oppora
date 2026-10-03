@@ -1,20 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { Archive, ArrowUpRight, Bookmark, Inbox as InboxIcon, Loader2, Mail, MailOpen, MailWarning, ScanSearch, SearchX, Sparkles } from "lucide-react";
+import { Archive, ArrowUpRight, Bookmark, Inbox as InboxIcon, Loader2, Mail, MailOpen, ScanSearch, SearchX, Sparkles } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { EmailCard, EmailCardSkeleton } from "@/components/oppora/email-card";
+import { LoadError } from "@/components/oppora/load-error";
 import { PageHeader } from "@/components/oppora/page-header";
+import { PageSearch } from "@/components/oppora/page-search";
 import { SaveToggle } from "@/components/oppora/save-toggle";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ErrorState } from "@/components/ui/error-state";
 import { FilterChips } from "@/components/ui/filter-chips";
 import { GlassCard } from "@/components/ui/glass-card";
 import { IconButton } from "@/components/ui/icon-button";
-import { SearchBar } from "@/components/ui/search-bar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Swipeable } from "@/components/ui/swipeable";
-import { ApiError, listEmails, listOpportunities } from "@/lib/api";
+import { listEmails, listOpportunities } from "@/lib/api";
 import { INBOX_FILTERS, buildInbox, parseInboxFilter, type InboxFilter } from "@/lib/domain/inbox";
 import type { Email, Opportunity } from "@/lib/domain/types";
 import { useEmailActions } from "@/lib/hooks/use-email-actions";
@@ -26,6 +27,24 @@ import { useUrlParams } from "@/lib/hooks/use-url-params";
 type Data = { emails: Email[]; opps: Opportunity[] };
 const loadInbox = () => Promise.all([listEmails(), listOpportunities()]).then(([emails, opps]): Data => ({ emails, opps }));
 const DEFAULTS = { q: "", filter: "All" };
+
+/** Suspense fallback (before the URL params are readable): same shape as the loading state. */
+export function InboxFallback() {
+  return (
+    <>
+      <PageHeader title="Inbox" subtitle="Relevant emails from your Gmail." />
+      <div aria-hidden className="mb-6 space-y-3">
+        <Skeleton className="h-11 w-full sm:max-w-md" />
+        <Skeleton className="h-11 w-full max-w-sm" />
+      </div>
+      <div aria-busy="true" aria-label="Loading emails" className="space-y-2">
+        {Array.from({ length: 6 }, (_, i) => (
+          <EmailCardSkeleton key={i} />
+        ))}
+      </div>
+    </>
+  );
+}
 
 export function InboxView() {
   const scanGmail = useScanGmail();
@@ -59,20 +78,22 @@ export function InboxView() {
         actions={view && view.unread > 0 ? <span className="text-meta font-semibold text-ink-3">{view.unread} unread</span> : undefined}
       />
 
-      <div className="mb-6 space-y-3">
-        <SearchBar
+      <div className="mb-6 space-y-3 max-sm:contents">
+        <PageSearch
           value={q}
           onValueChange={(v) => setParams({ q: v })}
           label="Search emails"
           placeholder="Search emails…"
           className="sm:max-w-md"
         />
-        <FilterChips<InboxFilter>
-          label="Filter emails"
-          value={filter}
-          onValueChange={(v) => setParams({ filter: v })}
-          options={INBOX_FILTERS.map((f) => ({ value: f, label: f, count: view?.counts[f] }))}
-        />
+        <div className="max-sm:mb-6">
+          <FilterChips<InboxFilter>
+            label="Filter emails"
+            value={filter}
+            onValueChange={(v) => setParams({ filter: v })}
+            options={INBOX_FILTERS.map((f) => ({ value: f, label: f, count: view?.counts[f] }))}
+          />
+        </div>
       </div>
 
       {(res.status === "loading" || (res.status === "success" && !view)) && (
@@ -85,20 +106,7 @@ export function InboxView() {
 
       {res.status === "error" && (
         <GlassCard>
-          {res.error instanceof ApiError && res.error.code === "gmail" ? (
-            <ErrorState
-              icon={MailWarning}
-              title="Gmail disconnected"
-              description="We couldn't access your Gmail. Reconnect your account to continue."
-              action={
-                <Button asChild>
-                  <Link href="/settings">Reconnect Gmail</Link>
-                </Button>
-              }
-            />
-          ) : (
-            <ErrorState title="Couldn't load your inbox" description={res.error.message} onRetry={res.reload} />
-          )}
+          <LoadError title="Couldn't load your inbox" error={res.error} onRetry={res.reload} />
         </GlassCard>
       )}
 

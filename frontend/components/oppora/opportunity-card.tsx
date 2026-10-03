@@ -28,7 +28,7 @@ export function OpportunityCard({
         <Monogram name={opp.organization} />
         <div className="min-w-0 flex-1">
           <h2 id={`card-${opp.id}`} className="text-base font-bold leading-snug text-ink">
-            <Link href={href} className="rounded-sm focus-ring hover:text-violet">
+            <Link href={href} className="hit-y rounded-sm focus-ring hover:text-violet">
               {opp.title}
             </Link>
           </h2>

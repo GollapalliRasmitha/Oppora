@@ -27,6 +27,7 @@ import { SaveToggle } from "@/components/oppora/save-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { LoadError } from "@/components/oppora/load-error";
 import { ErrorState } from "@/components/ui/error-state";
 import { GlassCard } from "@/components/ui/glass-card";
 import { IconButton } from "@/components/ui/icon-button";
@@ -97,7 +98,7 @@ export function OpportunityDetailView({ id }: { id: string }) {
               }
             />
           ) : (
-            <ErrorState title="Couldn't load this opportunity" description={res.error.message} onRetry={res.reload} />
+            <LoadError title="Couldn't load this opportunity" error={res.error} onRetry={res.reload} />
           )}
         </GlassCard>
       </>
@@ -196,8 +197,8 @@ function Detail({
                 <InfoItem icon={CalendarClock} label="Deadline">{opp.deadline ? formatDate(opp.deadline) : null}</InfoItem>
                 <InfoItem icon={Link2} label="Application link" className="sm:col-span-2">
                   {opp.applicationLink && (
-                    <a href={opp.applicationLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-sm text-violet focus-ring hover:text-ink">
-                      {opp.applicationLink} <ExternalLink aria-hidden className="size-3.5" />
+                    <a href={opp.applicationLink} target="_blank" rel="noopener noreferrer" className="rounded-sm text-violet [overflow-wrap:anywhere] focus-ring hover:text-ink">
+                      {opp.applicationLink} <ExternalLink aria-hidden className="inline size-3.5 align-[-2px]" />
                     </a>
                   )}
                 </InfoItem>

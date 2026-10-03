@@ -175,6 +175,16 @@
   }
 }
 
+/* Text-sized links/buttons: extends the hit area to ≥44px tall without changing layout. */
+@utility hit-y {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -12px 0;
+  }
+}
+
 @layer base {
   html {
     background: var(--bg);

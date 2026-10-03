@@ -4,6 +4,7 @@ import { Dialog } from "radix-ui";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useReturnFocus } from "./return-focus";
 
 type Props = {
   open: boolean;
@@ -22,11 +23,13 @@ type Props = {
  * Right-side panel on tablet/desktop; a full-screen sheet on mobile.
  */
 export function Drawer({ open, onOpenChange, title, icon, description, headerExtra, children, footer, className }: Props) {
+  const focus = useReturnFocus();
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px] data-[state=open]:animate-fade-up" />
         <Dialog.Content
+          {...focus}
           className={cn(
             "fixed inset-0 z-50 flex flex-col bg-surface/95 backdrop-blur-xl focus:outline-none sm:inset-y-3 sm:left-auto sm:right-3 sm:w-[420px] sm:rounded-card sm:border sm:border-line-strong sm:shadow-[0_24px_64px_-16px_rgba(0,0,0,.8)]",
             "data-[state=open]:animate-drawer-in",

@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarCheck, CalendarX2, ChevronDown, X } from "lucide-react";
+import { CalendarCheck, CalendarX2, ChevronDown, ScanSearch, X } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { CalendarLegend } from "@/components/oppora/calendar-event";
 import { DeadlineItem, DeadlineItemSkeleton } from "@/components/oppora/deadline-item";
 import { MonthCalendar, type MonthRef } from "@/components/oppora/month-calendar";
+import { LoadError } from "@/components/oppora/load-error";
 import { PageHeader } from "@/components/oppora/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ErrorState } from "@/components/ui/error-state";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listOpportunities } from "@/lib/api";
@@ -20,10 +20,12 @@ import type { ISODate, Opportunity } from "@/lib/domain/types";
 import { useNow } from "@/lib/hooks/use-now";
 import { useOpportunityActions } from "@/lib/hooks/use-opportunity-actions";
 import { useResource } from "@/lib/hooks/use-resource";
+import { useScanGmail } from "@/lib/hooks/use-scan-gmail";
 
 const dayFmt = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" });
 
 export function DeadlinesView() {
+  const scanGmail = useScanGmail();
   const now = useNow();
   const res = useResource(listOpportunities);
   const { mutate } = res;
@@ -52,7 +54,7 @@ export function DeadlinesView() {
 
       {res.status === "error" && (
         <GlassCard>
-          <ErrorState title="Couldn't load your deadlines" description={res.error.message} onRetry={res.reload} />
+          <LoadError title="Couldn't load your deadlines" error={res.error} onRetry={res.reload} />
         </GlassCard>
       )}
 
@@ -88,9 +90,16 @@ export function DeadlinesView() {
                   title="No deadlines yet"
                   description="When Oppora finds an opportunity with a deadline, it will show up here and on the calendar."
                   action={
-                    <Button asChild variant="secondary">
-                      <Link href="/opportunities">View opportunities</Link>
-                    </Button>
+                    res.status === "success" && res.data.length > 0 ? (
+                      <Button asChild>
+                        <Link href="/opportunities">View opportunities</Link>
+                      </Button>
+                    ) : (
+                      <Button onClick={() => scanGmail()}>
+                        <ScanSearch aria-hidden />
+                        Scan Gmail
+                      </Button>
+                    )
                   }
                 />
               </>

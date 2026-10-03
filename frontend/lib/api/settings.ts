@@ -3,6 +3,8 @@ import type { GmailConnection, Preferences, User } from "@/lib/domain/types";
 import { db } from "@/lib/mock/store";
 import { mock } from "./client";
 
+const NO_GMAIL = { gmail: false };
+
 export interface Settings {
   user: User;
   preferences: Preferences;
@@ -11,7 +13,7 @@ export interface Settings {
 
 /** Stage 7: GET /api/preferences/ + /api/auth/me/ + /api/auth/gmail/status/ */
 export function getSettings(): Promise<Settings> {
-  return mock(() => structuredClone({ user: db.user, preferences: db.preferences, gmail: db.gmail }));
+  return mock(() => structuredClone({ user: db.user, preferences: db.preferences, gmail: db.gmail }), 350, NO_GMAIL);
 }
 
 type PrefPatch = Partial<Omit<Preferences, "notifications" | "ai">> & {
@@ -29,7 +31,7 @@ export function updatePreferences(patch: PrefPatch): Promise<Preferences> {
       ai: { ...db.preferences.ai, ...patch.ai },
     };
     return structuredClone(db.preferences);
-  }, 200);
+  }, 200, NO_GMAIL);
 }
 
 export type ProfilePatch = Partial<Pick<User, "name" | "interests" | "skills" | "experienceLevel">>;
@@ -43,15 +45,16 @@ export function updateProfile(patch: ProfilePatch): Promise<User> {
     db.user = { ...db.user, ...patch };
     for (const o of db.opportunities) o.matchReasons = explainMatch(o, db.user);
     return structuredClone(db.user);
-  }, 300);
+  }, 300, NO_GMAIL);
 }
 
 /** Stage 8: starts Google OAuth. The mock just reconnects. */
 export function connectGmail(): Promise<GmailConnection> {
   return mock(() => {
     db.gmail = { ...db.gmail, email: db.user.email, status: "connected", connectedAt: new Date().toISOString() };
+    if (db.sync.phase === "error") db.sync = { ...db.sync, phase: db.sync.lastSyncedAt ? "completed" : "idle" };
     return structuredClone(db.gmail);
-  }, 600);
+  }, 600, NO_GMAIL);
 }
 
 /** Stage 8: POST /api/auth/gmail/disconnect/ — revokes the token and deletes stored tokens. */
@@ -59,7 +62,7 @@ export function disconnectGmail(): Promise<GmailConnection> {
   return mock(() => {
     db.gmail = { ...db.gmail, status: "disconnected", connectedAt: null };
     return structuredClone(db.gmail);
-  }, 500);
+  }, 500, NO_GMAIL);
 }
 
 /**
@@ -76,5 +79,5 @@ export function deleteMyData(): Promise<void> {
     db.clearedNotificationIds.clear();
     db.gmail = { ...db.gmail, status: "disconnected", connectedAt: null };
     db.sync = { phase: "idle", emailsInBatch: 0, lastSyncedAt: null };
-  }, 800);
+  }, 800, NO_GMAIL);
 }

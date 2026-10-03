@@ -6,10 +6,10 @@ import { useState } from "react";
 import { AICard, RecommendationsOffCard } from "@/components/oppora/ai-card";
 import { BarChart, DonutChart } from "@/components/oppora/charts";
 import { InsightCard, InsightCardSkeleton } from "@/components/oppora/insight-card";
+import { LoadError } from "@/components/oppora/load-error";
 import { PageHeader } from "@/components/oppora/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ErrorState } from "@/components/ui/error-state";
 import { FilterChips } from "@/components/ui/filter-chips";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -39,7 +39,7 @@ function InsightsBody({ range, onRangeChange }: { range: TrendRange; onRangeChan
   if (res.status === "error")
     return (
       <GlassCard>
-        <ErrorState title="Couldn't load your insights" description={res.error.message} onRetry={res.reload} />
+        <LoadError title="Couldn't load your insights" error={res.error} onRetry={res.reload} />
       </GlassCard>
     );
   if (res.data.total === 0)
@@ -92,9 +92,9 @@ function InsightsContent({ data, range, onRangeChange }: { data: Insights; range
         <GlassCard as="section" aria-labelledby="trend-title" className="min-w-0 p-5">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 id="trend-title" className="text-lg font-bold text-ink">Opportunity Trends</h2>
+              <h2 id="trend-title" className="text-lg font-bold text-ink">Opportunity Emails Found</h2>
               <p className="text-meta text-ink-3">
-                {plural(data.trendTotal, "opportunity email", "opportunity emails")} found in the last {range} days
+                {plural(data.trendTotal, "opportunity email", "opportunity emails")} in the last {range} days · new opportunities, updates and reminders
               </p>
             </div>
             <FilterChips<"7" | "30">
@@ -105,11 +105,11 @@ function InsightsContent({ data, range, onRangeChange }: { data: Insights; range
                 { value: "7", label: "7 days" },
                 { value: "30", label: "30 days" },
               ]}
-              className="pb-0"
             />
           </div>
           <BarChart
             title={`Opportunity emails found per day, last ${range} days`}
+            valueHeader="Opportunity emails"
             unit={["opportunity email", "opportunity emails"]}
             data={data.trend.map((t) => ({ key: t.date, label: t.label, fullLabel: t.fullLabel, value: t.count }))}
           />

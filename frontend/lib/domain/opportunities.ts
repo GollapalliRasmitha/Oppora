@@ -8,6 +8,16 @@ export const SORTS = ["relevance", "deadline", "priority"] as const;
 export type SortKey = (typeof SORTS)[number];
 export const SORT_LABELS: Record<SortKey, string> = { relevance: "Relevance", deadline: "Deadline", priority: "Priority" };
 
+/** "Show" filter: the user's own lists (saved items and applications). */
+export const VIEWS = ["all", "saved", "in_progress", "applied"] as const;
+export type ViewFilter = (typeof VIEWS)[number];
+export const VIEW_LABELS: Record<ViewFilter, string> = {
+  all: "All",
+  saved: "Saved",
+  in_progress: "In progress",
+  applied: "Applied",
+};
+
 const PRIORITY_RANK: Record<Priority, number> = { High: 0, Medium: 1, Low: 2 };
 
 /** Case-insensitive match on title, organization, type, location and skills. */
@@ -22,6 +32,17 @@ export function searchOpportunities(opps: Opportunity[], query: string): Opportu
 
 export function filterByType(opps: Opportunity[], type: TypeFilter): Opportunity[] {
   return type === "All" ? opps : opps.filter((o) => o.type === type);
+}
+
+export function filterByView(opps: Opportunity[], view: ViewFilter): Opportunity[] {
+  switch (view) {
+    case "all":
+      return opps;
+    case "saved":
+      return opps.filter((o) => o.saved);
+    default:
+      return opps.filter((o) => o.application?.status === view);
+  }
 }
 
 /** Counts per chip, computed from the (already searched) list. */
@@ -67,4 +88,8 @@ export function parseTypeFilter(v: string | null): TypeFilter {
 
 export function parseSort(v: string | null): SortKey {
   return (SORTS as readonly string[]).includes(v ?? "") ? (v as SortKey) : "relevance";
+}
+
+export function parseView(v: string | null): ViewFilter {
+  return (VIEWS as readonly string[]).includes(v ?? "") ? (v as ViewFilter) : "all";
 }

@@ -15,14 +15,17 @@ export function InsightCard({
   detail: string;
 }) {
   return (
-    <GlassCard className="flex gap-4 p-5">
-      <span className="flex size-11 shrink-0 items-center justify-center rounded-md border border-violet/25 bg-purple/15 text-violet">
-        <Icon aria-hidden className="size-5" />
-      </span>
-      <div className="min-w-0">
-        <h3 className="text-meta font-semibold text-ink-3">{label}</h3>
-        <p className="mt-0.5 truncate text-lg font-bold text-ink">{value}</p>
-        <p className="text-meta text-ink-2">{detail}</p>
+    // Narrow cards (3 across on tablet) stack the icon above the text so values aren't cut off.
+    <GlassCard className="@container p-5">
+      <div className="flex flex-col gap-3 @[15rem]:flex-row @[15rem]:gap-4">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-md border border-violet/25 bg-purple/15 text-violet">
+          <Icon aria-hidden className="size-5" />
+        </span>
+        <div className="min-w-0">
+          <h3 className="text-meta font-semibold text-ink-3">{label}</h3>
+          <p className="mt-0.5 break-words text-lg font-bold text-ink">{value}</p>
+          <p className="text-meta text-ink-2">{detail}</p>
+        </div>
       </div>
     </GlassCard>
   );
