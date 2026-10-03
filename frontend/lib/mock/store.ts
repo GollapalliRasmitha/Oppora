@@ -14,6 +14,8 @@ export const db = {
   opportunities: seed.opportunities,
   emails: seed.emails,
   interviews: seed.interviews,
+  preferences: seed.preferences,
+  gmail: seed.gmail,
   /** Notification ids the user has read or cleared (notifications are derived). */
   readNotificationIds: new Set<string>(),
   clearedNotificationIds: new Set<string>(),

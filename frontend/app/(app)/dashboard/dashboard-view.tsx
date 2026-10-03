@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useCallback } from "react";
 import { DeadlineIndicator } from "@/components/oppora/badges";
-import { AICard } from "@/components/oppora/ai-card";
+import { AICard, RecommendationsOffCard } from "@/components/oppora/ai-card";
 import { Monogram } from "@/components/oppora/monogram";
 import { OpportunityRow, OpportunityRowSkeleton } from "@/components/oppora/opportunity-row";
 import { useShell } from "@/components/oppora/shell-context";
@@ -25,13 +25,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/components/ui/toast";
-import { ApiError, getDashboard, startSync, type DashboardData } from "@/lib/api";
+import { ApiError, getDashboard, type DashboardData } from "@/lib/api";
 import { daysLeft, greetingFor } from "@/lib/domain/dates";
 import type { Opportunity } from "@/lib/domain/types";
 import { useNow } from "@/lib/hooks/use-now";
 import { useOpportunityActions } from "@/lib/hooks/use-opportunity-actions";
 import { useResource } from "@/lib/hooks/use-resource";
+import { useScanGmail } from "@/lib/hooks/use-scan-gmail";
 
 export function DashboardView() {
   const now = useNow();
@@ -118,6 +118,7 @@ function DashboardContent({
   now: Date;
   actions: ReturnType<typeof useOpportunityActions>;
 }) {
+  const scanGmail = useScanGmail();
   const { setAssistantOpen } = useShell();
   const { stats, latest, upcoming, recommendation } = data;
 
@@ -130,11 +131,7 @@ function DashboardContent({
           description="Scan your Gmail and Oppora AI will find internships, hackathons, jobs and scholarships for you."
           action={
             <Button
-              onClick={() =>
-                startSync()
-                  .then(() => toast.info("Oppora AI is analyzing your Gmail…", { description: "Finding opportunities relevant to you." }))
-                  .catch(() => toast.error("Couldn't start the scan. Please try again."))
-              }
+              onClick={() => scanGmail()}
             >
               <ScanSearch aria-hidden />
               Scan Gmail
@@ -233,22 +230,26 @@ function DashboardContent({
             )}
           </GlassCard>
 
-          <AICard
-            orb
-            actions={
-              <>
-                <Button asChild size="sm">
-                  <Link href="/opportunities">View Opportunities</Link>
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => setAssistantOpen(true)}>
-                  <Sparkles aria-hidden />
-                  Ask AI
-                </Button>
-              </>
-            }
-          >
-            <p>{recommendation.message}</p>
-          </AICard>
+          {recommendation ? (
+            <AICard
+              orb
+              actions={
+                <>
+                  <Button asChild size="sm">
+                    <Link href="/opportunities">View Opportunities</Link>
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => setAssistantOpen(true)}>
+                    <Sparkles aria-hidden />
+                    Ask AI
+                  </Button>
+                </>
+              }
+            >
+              <p>{recommendation.message}</p>
+            </AICard>
+          ) : (
+            <RecommendationsOffCard />
+          )}
         </div>
       </div>
     </>

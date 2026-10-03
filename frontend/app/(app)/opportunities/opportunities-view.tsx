@@ -11,8 +11,7 @@ import { FilterChips } from "@/components/ui/filter-chips";
 import { GlassCard } from "@/components/ui/glass-card";
 import { SearchBar } from "@/components/ui/search-bar";
 import { Select } from "@/components/ui/select";
-import { toast } from "@/components/ui/toast";
-import { listOpportunities, startSync } from "@/lib/api";
+import { listOpportunities } from "@/lib/api";
 import {
   FILTER_TYPES,
   SORTS,
@@ -30,6 +29,7 @@ import type { Opportunity } from "@/lib/domain/types";
 import { useNow } from "@/lib/hooks/use-now";
 import { useOpportunityActions } from "@/lib/hooks/use-opportunity-actions";
 import { useResource } from "@/lib/hooks/use-resource";
+import { useScanGmail } from "@/lib/hooks/use-scan-gmail";
 import { useUrlParams } from "@/lib/hooks/use-url-params";
 
 const LIST_DEFAULTS = { q: "", type: "All", sort: "relevance" };
@@ -42,6 +42,7 @@ function useListParams() {
 }
 
 export function OpportunitiesView() {
+  const scanGmail = useScanGmail();
   const now = useNow();
   const { q, type, sort, set } = useListParams();
   const res = useResource(listOpportunities);
@@ -121,11 +122,7 @@ export function OpportunitiesView() {
             description="Scan your Gmail and Oppora AI will find internships, hackathons, jobs and scholarships for you."
             action={
               <Button
-                onClick={() =>
-                  startSync()
-                    .then(() => toast.info("Oppora AI is analyzing your Gmail…", { description: "Finding opportunities relevant to you." }))
-                    .catch(() => toast.error("Couldn't start the scan. Please try again."))
-                }
+                onClick={() => scanGmail()}
               >
                 <ScanSearch aria-hidden />
                 Scan Gmail

@@ -1,3 +1,4 @@
+import { daysLeft, daysLeftLabel } from "./dates";
 import type { MatchCheck, MatchReasons, Opportunity, User } from "./types";
 
 /**
@@ -51,3 +52,48 @@ export function matchSentence(r: MatchReasons): string {
   }
   return "This opportunity is only a partial match for your profile.";
 }
+
+export type ChecklistItem = { ok: boolean; label: string; detail?: string };
+
+const joinList = (xs: string[]) => xs.join(", ");
+
+/** Builds the four AI Summary checks. Unmet or unknown checks become warnings. */
+export function matchChecklist(opp: Opportunity, now: Date): ChecklistItem[] {
+  const r = opp.matchReasons;
+  const items: ChecklistItem[] = [];
+
+  const skills: Record<MatchCheck, ChecklistItem> = {
+    met: { ok: true, label: "Matches your skills", detail: joinList(r.matchedSkills) },
+    unmet: { ok: false, label: "Doesn't list skills from your profile", detail: joinList(opp.skills) },
+    unknown: { ok: false, label: "Skills not mentioned in email" },
+  };
+  items.push(skills[r.skills]);
+
+  items.push(
+    r.interests === "met"
+      ? { ok: true, label: "Matches your interests", detail: joinList(r.matchedInterests) }
+      : { ok: false, label: "Outside your listed interests" },
+  );
+
+  const experience: Record<MatchCheck, ChecklistItem> = {
+    met: { ok: true, label: "Suitable experience level", detail: opp.eligibility ?? undefined },
+    unmet: { ok: false, label: "May not fit your experience level", detail: opp.eligibility ?? undefined },
+    unknown: {
+      ok: false,
+      label: opp.eligibility ? "Check the eligibility for your level" : "Eligibility not mentioned in email",
+      detail: opp.eligibility ?? undefined,
+    },
+  };
+  items.push(experience[r.experience]);
+
+  const d = daysLeft(opp.deadline, now);
+  items.push(
+    d === null
+      ? { ok: false, label: "Deadline not mentioned in email" }
+      : d < 0
+        ? { ok: false, label: "Deadline has passed" }
+        : { ok: true, label: "Deadline is still available", detail: daysLeftLabel(d) },
+  );
+  return items;
+}
+

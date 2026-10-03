@@ -39,3 +39,43 @@ export function FilterChips<T extends string>({ options, value, onValueChange, l
     </ToggleGroup.Root>
   );
 }
+
+/** Multi-select chip group (e.g. categories to track). Selected chips show a check. */
+export function MultiChips<T extends string>({
+  options,
+  value,
+  onValueChange,
+  label,
+  className,
+}: {
+  options: { value: T; label: string }[];
+  value: T[];
+  onValueChange: (v: T[]) => void;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <ToggleGroup.Root
+      type="multiple"
+      aria-label={label}
+      value={value}
+      onValueChange={(v) => onValueChange(v as T[])}
+      className={cn("flex flex-wrap gap-2", className)}
+    >
+      {options.map((o) => (
+        <ToggleGroup.Item
+          key={o.value}
+          value={o.value}
+          className={cn(
+            "inline-flex h-11 items-center gap-1.5 rounded-full border border-line bg-white/[.03] px-4 text-sm font-semibold text-ink-2 focus-ring transition-[background-color,border-color,color] duration-200 hover:border-line-strong hover:text-ink",
+            "data-[state=on]:border-violet/60 data-[state=on]:bg-purple/20 data-[state=on]:text-ink",
+            "[&[data-state=on]_.chip-check]:inline",
+          )}
+        >
+          <span aria-hidden className="chip-check hidden text-violet">✓</span>
+          {o.label}
+        </ToggleGroup.Item>
+      ))}
+    </ToggleGroup.Root>
+  );
+}

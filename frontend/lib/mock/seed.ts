@@ -16,7 +16,7 @@
  *    example.com. Zoho and Bright Futures intentionally have no link.
  */
 import { explainMatch } from "@/lib/domain/match";
-import type { Application, Email, ISODate, ISODateTime, Interview, Opportunity, User } from "@/lib/domain/types";
+import type { Application, Email, GmailConnection, ISODate, ISODateTime, Interview, Opportunity, Preferences, User } from "@/lib/domain/types";
 
 export const seedUser: User = {
   id: "u_rasmitha",
@@ -29,11 +29,25 @@ export const seedUser: User = {
   experienceLevel: "Undergraduate student",
 };
 
+export const defaultPreferences: Preferences = {
+  notifications: { email: true, deadlineReminders: true, newOpportunities: true, weeklyDigest: false },
+  language: "en",
+  minimumMatch: 0,
+  preferredLocations: [],
+  ai: {
+    recommendations: true,
+    personalization: "balanced",
+    categories: ["Internship", "Job", "Hackathon", "Scholarship", "Competition", "Fellowship", "Event"],
+  },
+};
+
 export interface Seed {
   user: User;
   opportunities: Opportunity[];
   emails: Email[];
   interviews: Interview[];
+  preferences: Preferences;
+  gmail: GmailConnection;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -341,7 +355,7 @@ export function createSeed(today: Date = new Date()): Seed {
       opportunityId: "opp_swiggy_ui_engineer",
       title: "Interview — Swiggy UI Engineer",
       start: at(9, "11:00"),
-      end: at(9, "12:00"),
+      end: null, // the invitation gives a start time only
       location: null,
       sourceEmailId: "em_swiggy_interview",
     },
@@ -679,5 +693,20 @@ export function createSeed(today: Date = new Date()): Seed {
 
   const emails: Email[] = emailDrafts.map((e) => ({ ...e, saved: false, archived: false }));
 
-  return { user: structuredClone(seedUser), opportunities, emails, interviews };
+  const gmail: GmailConnection = {
+    email: seedUser.email,
+    status: "connected",
+    connectedAt: at(-46, "09:00"),
+    scopes: ["gmail.readonly", "openid", "email", "profile"],
+    initialSyncDays: 60,
+  };
+
+  return {
+    user: structuredClone(seedUser),
+    opportunities,
+    emails,
+    interviews,
+    preferences: structuredClone(defaultPreferences),
+    gmail,
+  };
 }

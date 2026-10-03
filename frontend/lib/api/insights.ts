@@ -7,9 +7,10 @@ import { isEmptyMode, mock } from "./client";
 
 /** Stage 7: GET /api/insights/?range=7 */
 export function getInsights(range: TrendRange = 7, now: Date = clockNow()): Promise<Insights> {
-  return mock(() =>
-    isEmptyMode() ? computeInsights([], [], now, range) : computeInsights(structuredClone(db.opportunities), db.emails, now, range),
-  );
+  return mock(() => {
+    const ins = isEmptyMode() ? computeInsights([], [], now, range) : computeInsights(structuredClone(db.opportunities), db.emails, now, range);
+    return db.preferences.ai.recommendations ? ins : { ...ins, recommendation: null };
+  });
 }
 
 /** Stage 7: GET /api/calendar/ — deadlines, interviews and reminders. */

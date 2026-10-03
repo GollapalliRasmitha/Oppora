@@ -14,26 +14,21 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { IconButton } from "@/components/ui/icon-button";
 import { SearchBar } from "@/components/ui/search-bar";
 import { Swipeable } from "@/components/ui/swipeable";
-import { toast } from "@/components/ui/toast";
-import { ApiError, listEmails, listOpportunities, startSync } from "@/lib/api";
+import { ApiError, listEmails, listOpportunities } from "@/lib/api";
 import { INBOX_FILTERS, buildInbox, parseInboxFilter, type InboxFilter } from "@/lib/domain/inbox";
 import type { Email, Opportunity } from "@/lib/domain/types";
 import { useEmailActions } from "@/lib/hooks/use-email-actions";
 import { useNow } from "@/lib/hooks/use-now";
 import { useResource } from "@/lib/hooks/use-resource";
+import { useScanGmail } from "@/lib/hooks/use-scan-gmail";
 import { useUrlParams } from "@/lib/hooks/use-url-params";
 
 type Data = { emails: Email[]; opps: Opportunity[] };
 const loadInbox = () => Promise.all([listEmails(), listOpportunities()]).then(([emails, opps]): Data => ({ emails, opps }));
 const DEFAULTS = { q: "", filter: "All" };
 
-function scanGmail() {
-  startSync()
-    .then(() => toast.info("Oppora AI is analyzing your Gmail…", { description: "Finding opportunities relevant to you." }))
-    .catch(() => toast.error("Couldn't start the scan. Please try again."));
-}
-
 export function InboxView() {
+  const scanGmail = useScanGmail();
   const now = useNow();
   const [params, setParams] = useUrlParams(DEFAULTS);
   const q = params.q;
@@ -114,7 +109,7 @@ export function InboxView() {
             title="No relevant emails yet"
             description="Once Oppora scans your Gmail, emails about opportunities and deadlines show up here."
             action={
-              <Button onClick={scanGmail}>
+              <Button onClick={() => scanGmail()}>
                 <ScanSearch aria-hidden /> Scan Gmail
               </Button>
             }

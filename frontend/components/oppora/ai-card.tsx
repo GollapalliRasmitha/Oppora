@@ -1,4 +1,6 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AIOrb } from "./ai-orb";
@@ -36,5 +38,21 @@ export function AICard({ title = "AI Recommendation", children, actions, orb, cl
       <div className="relative mt-3 text-[15px] leading-relaxed text-ink-2">{children}</div>
       {actions && <div className="relative mt-4 flex flex-wrap gap-2">{actions}</div>}
     </section>
+  );
+}
+
+/** Shown in place of an AI recommendation when the user turned recommendations off. */
+export function RecommendationsOffCard({ className }: { className?: string }) {
+  return (
+    <AICard
+      className={className}
+      actions={
+        <Button asChild size="sm" variant="secondary">
+          <Link href="/settings#ai-preferences">Turn on in Settings</Link>
+        </Button>
+      }
+    >
+      <p>AI recommendations are turned off.</p>
+    </AICard>
   );
 }

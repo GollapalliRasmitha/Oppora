@@ -51,7 +51,11 @@ export function Header() {
           label={bellLabel}
           icon={<Bell aria-hidden />}
           dot={notifications.unread > 0}
-          onClick={() => setNotificationsOpen(true)}
+          onClick={() => {
+            // Refresh on open so settings changes (e.g. reminders off) show immediately.
+            notifications.revalidate();
+            setNotificationsOpen(true);
+          }}
         />
         <IconButton
           label="Open Oppora AI assistant"
@@ -73,7 +77,7 @@ export function Header() {
             )}
             <DropdownSeparator />
             <DropdownItem asChild>
-              <Link href="/settings">
+              <Link href="/settings#account">
                 <UserRound aria-hidden /> Profile
               </Link>
             </DropdownItem>

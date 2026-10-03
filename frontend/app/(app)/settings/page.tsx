@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { UpcomingPage } from "@/components/oppora/upcoming-page";
+import { SettingsView } from "./settings-view";
 
 export const metadata: Metadata = { title: "Settings" };
 
-export default function Page() {
-  return <UpcomingPage title="Settings" subtitle="Manage your account and preferences." />;
+export default function SettingsPage() {
+  return <SettingsView />;
 }

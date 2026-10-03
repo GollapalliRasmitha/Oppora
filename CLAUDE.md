@@ -9,8 +9,9 @@ Personal AI agent that reads a user's Gmail, finds opportunities, extracts deadl
 - Stage 1 — Foundation + Landing + Dashboard: done.
 - Stage 2 — Opportunities + Opportunity details: done.
 - Stage 3 — Deadlines + Inbox: done.
-- **Stage 4 — AI Insights + Calendar: done** (awaiting "continue").
-- Next: Stage 5 — Settings + Notifications + AI assistant (mock answers).
+- Stage 4 — AI Insights + Calendar: done.
+- **Stage 5 — Settings + Notifications + AI assistant: done** (awaiting "continue").
+- Next: Stage 6 — UX review pass (every page vs PROMPT.md §3 on desktop, tablet, mobile).
 - Profile skills: keep the demo skills for now (user decision, Stage 3 review).
 
 ## Working rules (from PROMPT.md §0)
@@ -45,19 +46,19 @@ app/
   (app)/inbox/            emails: search/filter in the URL, extract, swipe save/archive
   (app)/insights/         highlight cards, trends bar chart (7/30 days), progress donut, AI recommendation
   (app)/calendar/         Month / Week / Day views; ?view=&date= in the URL
-  (app)/settings/
-                          placeholder pages (UpcomingPage) until their stage
+  (app)/settings/         Gmail connection, notifications, preferences, AI preferences, account (profile, subscription, privacy, delete data, sign out)
 components/ui/            generic primitives (no Oppora domain knowledge)
 components/oppora/        Oppora components (domain-aware) + app shell
 components/landing/       landing-page sections + hero illustration
 lib/domain/               types.ts, dates.ts (days left, urgency), stats.ts (all computed numbers),
                           match.ts (match reasons + sentence), opportunities.ts (search/filter/sort),
                           deadlines.ts (grouping, month grid, deadline kinds), inbox.ts (filters/counts/search),
-                          calendar.ts (calendar items, week/day helpers), insights.ts (all insight numbers)
+                          calendar.ts (calendar items, week/day helpers), insights.ts (all insight numbers),
+                          assistant.ts (grounded mock answers for Oppora AI)
 lib/mock/seed.ts          THE seed file: createSeed(today) (later loaded into the DB); store.ts = in-memory mock DB
 lib/api/*                 typed service functions — the ONLY data entry point for components
 lib/hooks/                useResource (loading/error/retry/optimistic), useOpportunityActions, useEmailActions,
-                          useUrlParams (page state in the query string), useNow
+                          useUrlParams (page state in the query string), useScanGmail, useNow
 tests/                    Vitest + Testing Library
 ```
 
@@ -89,11 +90,11 @@ Brand-gradient end is `#2563EB` (not `#3B82F6`) so white button text keeps ≥4.
 
 ## Components
 
-`components/ui`: Button (primary/secondary/ghost/danger; sm keeps a 44px hit area), IconButton (required `label`), GlassCard, Badge, Input, SearchBar, Tabs, FilterChips, Select (Dropdown/Select), Dropdown (menu), Modal, Drawer (right panel; full-screen on mobile), Toast (`toast.success/error/info`; toasts with an action stay 8s), Skeleton, EmptyState, ErrorState, Swipeable (touch-only swipe actions; always paired with buttons).
+`components/ui`: Button (primary/secondary/ghost/danger; sm keeps a 44px hit area), IconButton (required `label`), GlassCard, Badge, Input, SearchBar, Tabs, FilterChips, Select (Dropdown/Select), Dropdown (menu), Modal, Drawer (right panel; full-screen on mobile), Toast (`toast.success/error/info`; toasts with an action stay 8s), Skeleton, EmptyState, ErrorState, Swipeable (touch-only swipe actions; always paired with buttons), SwitchRow (labelled switch, whole row is the target), TagInput (Enter/comma adds, × removes), MultiChips (multi-select chips).
 
-`components/oppora`: Logo/LogoMark, AIOrb, AICard, Monogram (letter tile instead of company logos), PriorityBadge, DeadlineIndicator (stacked | pill, always writes "N days left"), MatchMeter, MatchRing, MatchChecklist (+`matchChecklist()`), OpportunityCard (+Skeleton), SaveToggle (button | compact icon; outline = not saved, filled violet = saved), EmailCard (+Skeleton; `onOpen`, `expanded`, `footer` actions), MonthCalendar (roving-focus grid; dots when narrow, chips ≥672px container; `showHeader`, `colorBy`), DeadlineItem (+Skeleton; Set Reminder · Open · Mark Complete), CalendarEvent (chip | dot | card; colorBy urgency | kind) + CalendarLegend, InsightCard (+Skeleton), BarChart (single series, hover/focus tooltip, table view), DonutChart (ordinal, legend with values + %), InfoItem + NotMentioned (the one way to render missing fields), StatCard (+Skeleton), OpportunityRow (+Skeleton, ⋯ menu; container-query layout), StatusBadge, NotificationItem, NotificationsPanel, SyncStatus (+useSyncStatus), Sidebar, Header, MobileBottomNav, FloatingAIButton, AIAssistantPanel, AppShell, ShellProvider/useShell, PageHeader, UpcomingPage, Avatar, GoogleSignInButton.
+`components/oppora`: Logo/LogoMark, AIOrb, AICard, Monogram (letter tile instead of company logos), PriorityBadge, DeadlineIndicator (stacked | pill, always writes "N days left"), MatchMeter, MatchRing, MatchChecklist (+`matchChecklist()`), OpportunityCard (+Skeleton), SaveToggle (button | compact icon; outline = not saved, filled violet = saved), EmailCard (+Skeleton; `onOpen`, `expanded`, `footer` actions), MonthCalendar (roving-focus grid; dots when narrow, chips ≥672px container; `showHeader`, `colorBy`), DeadlineItem (+Skeleton; Set Reminder · Open · Mark Complete), CalendarEvent (chip | dot | card; colorBy urgency | kind) + CalendarLegend, InsightCard (+Skeleton), RecommendationsOffCard, BarChart (single series, hover/focus tooltip, table view), DonutChart (ordinal, legend with values + %), InfoItem + NotMentioned (the one way to render missing fields), StatCard (+Skeleton), OpportunityRow (+Skeleton, ⋯ menu; container-query layout), StatusBadge, NotificationItem, NotificationsPanel, SyncStatus (+useSyncStatus), Sidebar, Header, MobileBottomNav, FloatingAIButton, AIAssistantPanel, AppShell, ShellProvider/useShell, PageHeader, UpcomingPage, Avatar, GoogleSignInButton.
 
-Still to build in their stages: settings controls (switches etc.) and the assistant answers (S5).
+All brief components exist; later stages connect them to the real API.
 
 ## Decisions
 
@@ -130,8 +131,13 @@ Still to build in their stages: settings controls (switches etc.) and the assist
 - "Not interested" hides an opportunity everywhere (`dismissed`), with Undo in the toast.
 - Time-of-day text uses `useNow()` (null during SSR) to avoid hydration mismatches.
 - Landing "Sign in with Google" and "Get Started" link to `/dashboard` until OAuth lands in Stage 8.
-- AI assistant panel exists (greeting computed from data, suggested prompts) but answers "can't answer yet" until Stage 5.
-- Notifications are derived from data until Stage 5 adds the API.
+- **AI assistant** (`lib/domain/assistant.ts`, mock until Stage 8): answers only from the user's stored opportunities, emails and interviews; every answer lists the opportunities/emails it used as links (clicking closes the panel); when the data doesn't contain the answer it says so and offers prompts. The 5 brief prompts are always visible (list before the first question, chip row above the input after). "Why is this opportunity relevant?" uses the opportunity page you're on, otherwise asks which. Conversation persists while navigating; Clear resets it.
+- Notifications are derived from data and filtered by settings (New opportunities, Deadline reminders, AI recommendations); the bell refreshes each time it opens.
+- **Preferences** (`Preferences`, `GmailConnection` types; in the mock store): toggles save instantly with a toast and roll back on failure. AI recommendations off → Home/Insights show RecommendationsOffCard and the AI notification is hidden. Minimum match, preferred locations, personalization and categories are stored for the Stage 8 ranking (not applied to existing lists). Theme is dark-only; language English-only.
+- Profile save (name, interests, skills, experience level) re-runs `explainMatch` on every opportunity so AI Summaries stay truthful.
+- Gmail: Manage (scopes, read-only, 60-day first scan, reconnect), Disconnect (confirm; revokes + deletes tokens; opportunities stay). Scans need a connected Gmail — otherwise the Gmail-error toast with "Reconnect Gmail" (`useScanGmail`, shared by every Scan Gmail button and the sync button).
+- Delete my data (confirm): deletes opportunities, emails, interviews, notification state, disconnects Gmail, resets sync to "Not synced yet". Account and preferences remain.
+- Interview `end` is nullable — the Swiggy invitation gives a start time only, so no end time is shown.
 - OpportunityRow uses container queries (`@container` on the list): full row ≥768px of list width, compact below.
 - `.claude/launch.json` (repo root) starts the frontend dev server for previews.
 - Next.js dev indicator is pinned top-right (`devIndicators.position` in next.config.ts) so it never covers the assistant input.

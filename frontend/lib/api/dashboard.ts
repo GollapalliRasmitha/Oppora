@@ -15,7 +15,8 @@ export interface DashboardData {
   stats: DashboardStats;
   latest: Opportunity[];
   upcoming: Opportunity[];
-  recommendation: Recommendation;
+  /** `null` when AI recommendations are turned off in Settings. */
+  recommendation: Recommendation | null;
 }
 
 /** Stage 7: GET /api/insights/dashboard/ */
@@ -26,7 +27,7 @@ export function getDashboard(now: Date = clockNow()): Promise<DashboardData> {
       stats: computeDashboardStats(opps, now),
       latest: latestOpportunities(opps),
       upcoming: upcomingDeadlines(opps, now),
-      recommendation: buildRecommendation(opps, now),
+      recommendation: db.preferences.ai.recommendations ? buildRecommendation(opps, now) : null,
     };
   });
 }

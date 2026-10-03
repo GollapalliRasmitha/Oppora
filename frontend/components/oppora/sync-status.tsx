@@ -3,7 +3,8 @@
 import { CircleCheck, RefreshCw, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "@/components/ui/toast";
-import { getSyncStatus, startSync } from "@/lib/api";
+import { getSyncStatus } from "@/lib/api";
+import { useScanGmail } from "@/lib/hooks/use-scan-gmail";
 import { relativeTime } from "@/lib/domain/dates";
 import type { SyncStatus as SyncState } from "@/lib/domain/types";
 import { cn } from "@/lib/utils";
@@ -47,16 +48,13 @@ export function useSyncStatus() {
     return () => clearInterval(id);
   }, []);
 
+  const scan = useScanGmail();
   const sync = useCallback(async () => {
-    try {
-      const s = await startSync();
-      prevPhase.current = s.phase;
-      setStatus(s);
-      toast.info("Sync started", { description: "Oppora AI is analyzing your Gmail…" });
-    } catch {
-      toast.error("Couldn't start the sync. Check your connection and try again.");
-    }
-  }, []);
+    const s = await scan();
+    if (!s) return;
+    prevPhase.current = s.phase;
+    setStatus(s);
+  }, [scan]);
 
   return { status, error, running, sync };
 }
@@ -74,8 +72,9 @@ function describe(s: SyncState | null, error: boolean): { title: string; detail:
       };
     case "error":
       return { title: "Sync failed", detail: "We couldn't access your Gmail." };
-    case "completed":
     case "idle":
+      return { title: "Not synced yet", detail: "Scan Gmail to find opportunities." };
+    case "completed":
       return {
         title: "Sync completed",
         detail: s.lastSyncedAt ? `Last synced ${relativeTime(s.lastSyncedAt, new Date())}` : "Not synced yet",

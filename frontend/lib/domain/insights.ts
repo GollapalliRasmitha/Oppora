@@ -28,7 +28,8 @@ export interface Insights {
   trendTotal: number;
   progress: { applied: number; inProgress: number; saved: number; other: number; total: number; appliedPercent: number };
   worthReviewing: number;
-  recommendation: string;
+  /** `null` when AI recommendations are turned off (set by the service). */
+  recommendation: string | null;
 }
 
 export type TrendRange = 7 | 30;

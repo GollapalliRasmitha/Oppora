@@ -127,7 +127,8 @@ export interface Interview {
   opportunityId: string;
   title: string;
   start: ISODateTime;
-  end: ISODateTime;
+  /** `null` when the email doesn't say how long it lasts. */
+  end: ISODateTime | null;
   /** e.g. "Video call". `null` = not mentioned in the email. */
   location: string | null;
   sourceEmailId: string;
@@ -147,6 +148,41 @@ export interface CalendarItem {
   location: string | null;
   opportunityId: string;
   organization: string;
+}
+
+export type PersonalizationLevel = "low" | "balanced" | "high";
+
+/** Mirrors the UserPreference model (Stage 7). */
+export interface Preferences {
+  notifications: {
+    email: boolean;
+    deadlineReminders: boolean;
+    newOpportunities: boolean;
+    weeklyDigest: boolean;
+  };
+  /** Only English is available for now. */
+  language: "en";
+  /** Opportunity preferences used when ranking new opportunities (Stage 8). */
+  minimumMatch: 0 | 50 | 70 | 85;
+  preferredLocations: string[];
+  ai: {
+    recommendations: boolean;
+    personalization: PersonalizationLevel;
+    /** Opportunity categories Oppora should look for in Gmail. */
+    categories: OpportunityType[];
+  };
+}
+
+export type GmailStatus = "connected" | "needs_reconnect" | "disconnected";
+
+/** Mirrors the GmailConnection model (Stage 8). Never holds tokens on the client. */
+export interface GmailConnection {
+  email: string | null;
+  status: GmailStatus;
+  connectedAt: ISODateTime | null;
+  /** OAuth scopes granted — read-only Gmail plus basic profile. */
+  scopes: string[];
+  initialSyncDays: number;
 }
 
 export type Urgency = "urgent" | "soon" | "later" | "passed" | "none";

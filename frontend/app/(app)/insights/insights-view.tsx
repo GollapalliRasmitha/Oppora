@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Building2, CalendarDays, ChartPie, Layers, ScanSearch } from "lucide-react";
 import { useState } from "react";
-import { AICard } from "@/components/oppora/ai-card";
+import { AICard, RecommendationsOffCard } from "@/components/oppora/ai-card";
 import { BarChart, DonutChart } from "@/components/oppora/charts";
 import { InsightCard, InsightCardSkeleton } from "@/components/oppora/insight-card";
 import { PageHeader } from "@/components/oppora/page-header";
@@ -13,10 +13,10 @@ import { ErrorState } from "@/components/ui/error-state";
 import { FilterChips } from "@/components/ui/filter-chips";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/components/ui/toast";
-import { getInsights, startSync } from "@/lib/api";
+import { getInsights } from "@/lib/api";
 import type { Insights, TrendRange } from "@/lib/domain/insights";
 import { useResource } from "@/lib/hooks/use-resource";
+import { useScanGmail } from "@/lib/hooks/use-scan-gmail";
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -32,6 +32,7 @@ export function InsightsView() {
 }
 
 function InsightsBody({ range, onRangeChange }: { range: TrendRange; onRangeChange: (r: TrendRange) => void }) {
+  const scanGmail = useScanGmail();
   const res = useResource(() => getInsights(range));
 
   if (res.status === "loading") return <InsightsSkeleton />;
@@ -50,11 +51,7 @@ function InsightsBody({ range, onRangeChange }: { range: TrendRange; onRangeChan
           description="Insights appear once Oppora has found opportunities in your Gmail."
           action={
             <Button
-              onClick={() =>
-                startSync()
-                  .then(() => toast.info("Oppora AI is analyzing your Gmail…", { description: "Finding opportunities relevant to you." }))
-                  .catch(() => toast.error("Couldn't start the scan. Please try again."))
-              }
+              onClick={() => scanGmail()}
             >
               <ScanSearch aria-hidden /> Scan Gmail
             </Button>
@@ -136,16 +133,20 @@ function InsightsContent({ data, range, onRangeChange }: { data: Insights; range
         </GlassCard>
       </div>
 
-      <AICard
-        orb
-        actions={
-          <Button asChild size="sm">
-            <Link href="/opportunities">View Opportunities</Link>
-          </Button>
-        }
-      >
-        <p>{data.recommendation}</p>
-      </AICard>
+      {data.recommendation ? (
+        <AICard
+          orb
+          actions={
+            <Button asChild size="sm">
+              <Link href="/opportunities">View Opportunities</Link>
+            </Button>
+          }
+        >
+          <p>{data.recommendation}</p>
+        </AICard>
+      ) : (
+        <RecommendationsOffCard />
+      )}
     </div>
   );
 }
