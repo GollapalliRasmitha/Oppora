@@ -1,31 +1,14 @@
-import { now } from "@/lib/clock";
-import { recentEmailCount } from "@/lib/domain/stats";
 import type { SyncStatus } from "@/lib/domain/types";
-import { db } from "@/lib/mock/store";
-import { ApiError, GMAIL_ERROR, mock } from "./client";
+import { mockMode, request } from "./client";
 
-/** Stage 9: GET /api/sync/ (polled by the UI). */
-export function getSyncStatus(): Promise<SyncStatus> {
-  return mock(() => ({ ...db.sync }), 120, { gmail: false });
+/** GET /api/sync/ (polled by the UI). Stage 9 reports the Celery job's real progress. */
+export async function getSyncStatus(): Promise<SyncStatus> {
+  const s = await request<SyncStatus>("/sync", { gmail: false });
+  // ?mock=gmail previews an expired Gmail connection.
+  return mockMode() === "gmail" ? { ...s, phase: "error" } : s;
 }
 
-/**
- * Stage 9: POST /api/sync/. The mock walks through the same phases the real
- * Celery job will report: scanning → analyzing N emails → completed.
- */
+/** POST /api/sync/ — fails with the Gmail error (code "gmail") when Gmail isn't connected. */
 export function startSync(): Promise<SyncStatus> {
-  return mock(() => {
-    if (db.gmail.status !== "connected") {
-      throw new ApiError(GMAIL_ERROR, "gmail");
-    }
-    if (db.sync.phase === "scanning" || db.sync.phase === "analyzing") return { ...db.sync };
-    db.sync = { ...db.sync, phase: "scanning", emailsInBatch: 0 };
-    setTimeout(() => {
-      db.sync = { ...db.sync, phase: "analyzing", emailsInBatch: recentEmailCount(db.emails, now()) };
-    }, 1400);
-    setTimeout(() => {
-      db.sync = { ...db.sync, phase: "completed", lastSyncedAt: new Date().toISOString() };
-    }, 3600);
-    return { ...db.sync };
-  }, 150, { gmail: false });
+  return request<SyncStatus>("/sync", { method: "POST", gmail: false });
 }

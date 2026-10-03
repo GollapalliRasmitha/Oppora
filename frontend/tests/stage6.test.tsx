@@ -44,6 +44,12 @@ describe("LoadError", () => {
     expect(screen.getByRole("link", { name: "Reconnect Gmail" })).toHaveAttribute("href", "/settings#gmail");
   });
 
+  it("offers Sign in again when the session expired", () => {
+    render(<LoadError title="Couldn't load" error={new ApiError("Your session has expired. Sign in again to continue.", "auth")} onRetry={() => {}} />);
+    expect(screen.getByRole("heading", { name: "You've been signed out" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign in again" })).toHaveAttribute("href", "/");
+  });
+
   it("offers a retry for other errors", async () => {
     const onRetry = vi.fn();
     render(<LoadError title="Couldn't load your inbox" error={new ApiError("Network down")} onRetry={onRetry} />);

@@ -1,6 +1,6 @@
 import { parseISODate } from "./dates";
 import { addDays, deadlineKind, toISODate } from "./deadlines";
-import type { CalendarItem, CalendarKind, ISODate, Interview, Opportunity } from "./types";
+import type { CalendarItem, CalendarKind, ISODate, Opportunity } from "./types";
 
 export const CALENDAR_KIND_LABEL: Record<CalendarKind, string> = {
   application: "Application deadline",
@@ -9,9 +9,6 @@ export const CALENDAR_KIND_LABEL: Record<CalendarKind, string> = {
   interview: "Interview",
   reminder: "Reminder",
 };
-
-/** Reminders fire at 09:00 the day before the deadline (or on the day if that's already past). */
-export const REMINDER_HOUR = 9;
 
 /** A deadline as an all-day calendar item. */
 export function deadlineItem(o: Opportunity): CalendarItem {
@@ -30,52 +27,6 @@ export function deadlineItem(o: Opportunity): CalendarItem {
 
 export function deadlineItems(opps: Opportunity[]): CalendarItem[] {
   return opps.filter((o) => !o.dismissed && o.deadline).map(deadlineItem);
-}
-
-/**
- * Every calendar item: deadlines (all-day), interviews (timed) and reminders
- * for opportunities where the user turned a reminder on.
- */
-export function buildCalendarItems(opps: Opportunity[], interviews: Interview[], now: Date): CalendarItem[] {
-  const active = opps.filter((o) => !o.dismissed);
-  const byId = new Map(active.map((o) => [o.id, o]));
-  const today = toISODate(now);
-  const items = deadlineItems(active);
-
-  for (const iv of interviews) {
-    const opp = byId.get(iv.opportunityId);
-    if (!opp) continue;
-    items.push({
-      id: iv.id,
-      kind: "interview",
-      title: iv.title,
-      date: toISODate(new Date(iv.start)),
-      start: iv.start,
-      end: iv.end,
-      location: iv.location,
-      opportunityId: opp.id,
-      organization: opp.organization,
-    });
-  }
-
-  for (const o of active) {
-    if (!o.reminderSet || !o.deadline || o.deadline < today) continue;
-    const dayBefore = addDays(o.deadline, -1);
-    const date = dayBefore < today ? o.deadline : dayBefore;
-    const d = parseISODate(date);
-    items.push({
-      id: `reminder_${o.id}`,
-      kind: "reminder",
-      title: o.title,
-      date,
-      start: new Date(d.getFullYear(), d.getMonth(), d.getDate(), REMINDER_HOUR).toISOString(),
-      end: null,
-      location: null,
-      opportunityId: o.id,
-      organization: o.organization,
-    });
-  }
-  return items;
 }
 
 /** All-day first, then by start time, then title. */

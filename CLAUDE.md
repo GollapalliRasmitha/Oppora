@@ -11,8 +11,9 @@ Personal AI agent that reads a user's Gmail, finds opportunities, extracts deadl
 - Stage 3 — Deadlines + Inbox: done.
 - Stage 4 — AI Insights + Calendar: done.
 - Stage 5 — Settings + Notifications + AI assistant: done.
-- **Stage 6 — UX review pass: done** (awaiting "continue").
-- Next: Stage 7 — Backend (Django models, APIs, tests, seed loader; switch lib/api to the API).
+- Stage 6 — UX review pass: done.
+- **Stage 7 — Backend + frontend switched to the API: done** (awaiting "continue").
+- Next: Stage 8 — Google OAuth + Gmail sync + AI pipeline.
 - Profile skills: keep the demo skills for now (user decision, Stage 3 review).
 
 ## Working rules (from PROMPT.md §0)
@@ -26,7 +27,7 @@ Personal AI agent that reads a user's Gmail, finds opportunities, extracts deadl
 
 ```
 /frontend     Next.js 16 (App Router) + TS + Tailwind v4 + Radix (shadcn-style) + Lucide
-/backend      Django + DRF (Stage 7 — placeholder for now)
+/backend      Django 5.2 + DRF on Python 3.14 (venv: backend/.venv) — see backend/README.md
 /design       visual reference
 docker-compose.yml   Postgres 16 + Redis 7 for local dev
 .env.example         every environment variable
@@ -56,14 +57,31 @@ lib/domain/               types.ts, dates.ts (days left, urgency), stats.ts (all
                           deadlines.ts (grouping, month grid, deadline kinds), inbox.ts (filters/counts/search),
                           calendar.ts (calendar items, week/day helpers), insights.ts (all insight numbers),
                           assistant.ts (grounded mock answers for Oppora AI)
-lib/mock/seed.ts          THE seed file: createSeed(today) (later loaded into the DB); store.ts = in-memory mock DB
-lib/api/*                 typed service functions — the ONLY data entry point for components
+lib/mock/seed.ts          THE seed file: createSeed(today); loaded into Postgres by `manage.py seed_demo` via scripts/export-seed.ts
+lib/api/*                 typed service functions — the ONLY data entry point for components; client.ts = HTTP client
 lib/hooks/                useResource (loading/error/retry/optimistic), useOpportunityActions, useEmailActions,
                           useUrlParams (page state in the query string), useScanGmail, useNow
 tests/                    Vitest + Testing Library
 ```
 
 Scripts (in `/frontend`): `npm run dev | build | lint | typecheck | test | check` (`check` = lint + typecheck + tests).
+Backend checks (in `/backend`): `.venv/Scripts/ruff check . && .venv/Scripts/ruff format --check .`, `manage.py makemigrations --check --dry-run`, `.venv/Scripts/python -m pytest`.
+Local dev: `docker compose up -d` → `manage.py migrate` → `manage.py seed_demo` → `manage.py runserver 127.0.0.1:8000` + `npm run dev` (or the `backend` / `frontend` entries in `.claude/launch.json`).
+
+### Backend structure (Stage 7)
+
+```
+config/          settings (secrets only from ../.env), urls (/api/*; unknown paths → JSON 404)
+core/            api.py (Pagination, exception handler → {"error": {code, message, fields?}}, GmailAccessError 409),
+                 clock.py (now(); user_now(request) = user's zone from X-Timezone header, else profile),
+                 data.py (per-user dicts in API shape), seed.py (export_seed → node, load_seed), views.py
+                 (dashboard, insights, sync, assistant), domain/ (pure logic: dates, match, stats, insights, calendar, assistant)
+accounts/        User (UUID pk, email login, interests/skills/experience_level/timezone), UserPreference, GmailConnection (+ sync state)
+mail/            Email (message id, sender, subject, date, snippet — never bodies), EmailClassification (category, relevance)
+opportunities/   Opportunity, Deadline (1:1), Application (1:1), SavedItem (opportunity XOR email), Interview
+notifications/   Notification (derived, upserted by `key`)
+tests/           pytest-django against Postgres
+```
 
 ## Design tokens (source: `frontend/app/globals.css`)
 
@@ -99,10 +117,23 @@ All brief components exist; later stages connect them to the real API.
 
 ## Decisions
 
-- **Data layer:** components never `fetch`. They call `lib/api/*`, which return typed mock data via `mock()` (latency + dev switches). Stage 7 swaps the bodies for real API calls; signatures stay.
-- **Dev state switches:** append `?mock=error`, `?mock=empty`, `?mock=slow` or `?mock=gmail` to any app URL to preview error / empty / loading / Gmail-disconnected states. `?mock=gmail` = expired Gmail access: Gmail-backed data fails with the Gmail error, while account, preferences and sync status (`mock(…, { gmail: false })`) still load and show "Needs reconnect" / "Sync failed", so Settings can reconnect.
+- **Data layer:** components never `fetch`. They call `lib/api/*`, which call `request()` / `listAll()` in `lib/api/client.ts`. Requests go to `/api/*` on the Next.js origin; `next.config.ts` rewrites them to Django (`BACKEND_ORIGIN`, adding Django's trailing slash), so cookies are first-party and there is no CORS. Signatures and return types are unchanged from the mock era; no UI component changed for the switch.
+- **The server owns computed logic:** dashboard stats, recommendation, insights, calendar items, notifications, match explanation and the assistant live in `backend/core/domain/` (ported from TS; the TS copies were deleted and their tests moved to pytest). TS keeps UI helpers (dates/urgency, filters/sort, inbox filters, deadline grouping, calendar view helpers, `matchChecklist`/`matchSentence`, `strongMatches` for the assistant greeting). `explainMatch` exists in both (TS for the seed, Python for profile edits/extraction); `test_domain.py` asserts they agree on every seed opportunity.
+- **Auth (Stage 7):** session cookie (httpOnly, SameSite=Lax, Secure when not DEBUG) + CSRF (`X-CSRFToken` from the `csrftoken` cookie, fetched via `/api/auth/csrf/` if missing; `FRONTEND_ORIGIN` is a trusted origin). Until Google OAuth (Stage 8) the client calls `POST /api/auth/dev-login/` once on a 401 and retries; the server only allows it when DEBUG and `DJANGO_DEV_LOGIN` are on, so a production build can't sign in until Stage 8. Expected in dev: the first page load logs a few 401s in the console before the automatic sign-in.
+- **Every queryset is filtered by `request.user`**; related ids in bodies (`opportunityId`, `emailId`) must belong to the user (else 400 "does not exist"). `test_isolation.py` loads the full seed for two users and tries every endpoint with the other user's ids.
+- **IDs are UUIDs** (not enumerable). Seed ids (`opp_…`, `em_…`) only exist in seed.ts; emails keep theirs as `gmail_message_id` (the pipeline's idempotency key, unique per user).
+- `sourceEmailIds` = emails linked to the opportunity (`Email.opportunity` FK); the seed's lists matched exactly, so there is no M2M.
+- **"Today"** is computed in the user's zone: the browser sends `X-Timezone`, falling back to `User.timezone` (default `Asia/Kolkata`). Stored timestamps are UTC.
+- **Sync (Stage 7):** `POST /api/sync/` (409 `gmail_access` unless connected) starts a simulated scan whose phase is derived from elapsed time (scanning <1.4s, analyzing <3.6s, then completed). Stage 9 replaces it with the Celery job; the response shape stays.
+- **Gmail connect (Stage 7)** marks the connection connected (dev only); Stage 8 turns it into the OAuth flow.
+- **Notifications** are derived on each GET and upserted by a stable key (`new:<opp>`, `deadline:<opp>`, `ai_recommendation`), so read/cleared state survives text changes ("closes in 2 days" → "1 day").
+- Ties in assistant/list ordering follow seed order: the loader creates rows one by one and snapshots order by `created_at`.
+- Percentages use JS-style rounding (`js_round`, half up), not Python's banker's rounding.
+- **Dev state switches** (dev builds only): `?mock=error | empty | slow | gmail` are handled in `request()` without touching the network (`empty` returns each call's `empty()` value). `?mock=gmail`: Gmail-backed calls fail with the Gmail error; account/preferences/sync (`gmail: false`) still load, with the connection shown as "Needs reconnect" and sync as "Sync failed".
+- `LoadError` also handles an expired session ("You've been signed out" → Sign in again).
+- **Seed loading:** `manage.py seed_demo [--date] [--tz] [--email]` runs `frontend/scripts/export-seed.ts` with Node (`tsx`, TZ set to the user's zone) and replaces that user's data. Dates are relative to the load day, so re-run it to refresh the demo. Backend tests use the same export (Node + `npm install` in /frontend required).
+- **Python 3.14:** every dependency through Stage 10 (Celery, redis, openai, google-auth, cryptography) has 3.14 wheels (checked with `pip install --dry-run`), so no Python 3.12 is needed.
 - **Seed is relative to today:** `createSeed(today)` expresses every date as an offset, so targets and days-left hold on any demo date (tests run it across several dates incl. midnight and month/year boundaries). Past timestamps use offsets ≤ -1 day so nothing is ever in the future.
-- The mock store resets on a full page reload (client-side navigation keeps changes).
 - **Match reasons are stored** on each opportunity (`matchReasons`: skills / interests / experience as met | unmet | unknown, plus matched skills/interests), computed by `explainMatch()` — the Stage 8 pipeline stores the same shape. The deadline check is computed live. Unmet/unknown checks show as warnings, never hidden.
 - Demo profile has `skills` and `experienceLevel: "Undergraduate student"` (needed for the checklist; editable in Settings, Stage 5). Experience is only "met" when the email explicitly targets students.
 - Opportunities list: search, type chip and sort live in the URL (`?q=&type=&sort=`) via `history.replaceState`; the header search routes to `/opportunities?q=`. Chip counts reflect the current search.
@@ -131,10 +162,10 @@ All brief components exist; later stages connect them to the real API.
 - Application status: `null` (not started) | `in_progress` | `applied`. Saved is a separate flag, so Applied 8 + In progress 3 + Saved 7 can all be true with 12 opportunities.
 - "Not interested" hides an opportunity everywhere (`dismissed`), with Undo in the toast.
 - Time-of-day text uses `useNow()` (null during SSR) to avoid hydration mismatches.
-- Landing "Sign in with Google" and "Get Started" link to `/dashboard` until OAuth lands in Stage 8.
+- Landing "Sign in with Google" and "Get Started" link to `/dashboard` until OAuth lands in Stage 8 (the dev sign-in does the rest).
 - **AI assistant** (`lib/domain/assistant.ts`, mock until Stage 8): answers only from the user's stored opportunities, emails and interviews; every answer lists the opportunities/emails it used as links (clicking closes the panel); when the data doesn't contain the answer it says so and offers prompts. The 5 brief prompts are always visible (list before the first question, chip row above the input after). "Why is this opportunity relevant?" uses the opportunity page you're on, otherwise asks which. Conversation persists while navigating; Clear resets it.
 - Notifications are derived from data and filtered by settings (New opportunities, Deadline reminders, AI recommendations); the bell refreshes each time it opens.
-- **Preferences** (`Preferences`, `GmailConnection` types; in the mock store): toggles save instantly with a toast and roll back on failure. AI recommendations off → Home/Insights show RecommendationsOffCard and the AI notification is hidden. Minimum match, preferred locations, personalization and categories are stored for the Stage 8 ranking (not applied to existing lists). Theme is dark-only; language English-only.
+- **Preferences** (`Preferences`, `GmailConnection` types; UserPreference + GmailConnection models): toggles save instantly with a toast and roll back on failure. AI recommendations off → Home/Insights show RecommendationsOffCard and the AI notification is hidden. Minimum match, preferred locations, personalization and categories are stored for the Stage 8 ranking (not applied to existing lists). Theme is dark-only; language English-only.
 - Profile save (name, interests, skills, experience level) re-runs `explainMatch` on every opportunity so AI Summaries stay truthful.
 - Gmail: Manage (scopes, read-only, 60-day first scan, reconnect), Disconnect (confirm; revokes + deletes tokens; opportunities stay). Scans need a connected Gmail — otherwise the Gmail-error toast with "Reconnect Gmail" (`useScanGmail`, shared by every Scan Gmail button and the sync button).
 - Delete my data (confirm): deletes opportunities, emails, interviews, notification state, disconnects Gmail, resets sync to "Not synced yet". Account and preferences remain.
@@ -144,7 +175,7 @@ All brief components exist; later stages connect them to the real API.
 - Next.js dev indicator is off (`devIndicators: false`).
 - Seed has 7 follow-up emails (application received, team reminders, practice rounds, info sessions…) linked to existing opportunities, spread across the last 30 days. They add no opportunities, so the dashboard targets are unchanged (inbox: 27 emails, 5 unread).
 
-## Seed targets (verified by `tests/seed-targets.test.ts` on several dates)
+## Seed targets (verified through the API by `backend/tests/test_seed_targets.py` on 5 dates incl. midnight, New Year and 29 Feb)
 
 Total 12 (+2 this week) · Deadlines this week 4 (2 urgent) · Applied 8 (+1) · In progress 3 (+1) · Saved 7. AI recommendation: "I found 3 opportunities that strongly match your interests. Two have deadlines coming up soon."
 

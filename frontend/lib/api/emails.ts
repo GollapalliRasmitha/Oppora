@@ -1,91 +1,37 @@
-import { explainMatch } from "@/lib/domain/match";
-import { isOpportunityCategory } from "@/lib/domain/inbox";
-import type { Email, Opportunity, Priority } from "@/lib/domain/types";
-import { db } from "@/lib/mock/store";
-import { ApiError, isEmptyMode, mock } from "./client";
+import type { Email, Opportunity } from "@/lib/domain/types";
+import { listAll, request } from "./client";
 
-const newestFirst = (a: Email, b: Email) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime();
+const url = (id: string) => `/emails/${encodeURIComponent(id)}`;
 
-function find(id: string): Email {
-  const e = db.emails.find((x) => x.id === id);
-  if (!e) throw new ApiError("This email no longer exists.", "not_found");
-  return e;
-}
-
-/** Stage 7: GET /api/emails/ (archived emails included; the UI filters). */
+/** GET /api/emails/ — newest first, archived included (the UI filters). */
 export function listEmails(): Promise<Email[]> {
-  return mock(() => (isEmptyMode() ? [] : structuredClone([...db.emails].sort(newestFirst))));
+  return listAll<Email>("/emails");
 }
 
-/** Stage 7: GET /api/emails/?opportunity=<id> — newest first. */
+/** GET /api/emails/?opportunity=<id> — newest first. */
 export function listEmailsForOpportunity(opportunityId: string): Promise<Email[]> {
-  return mock(() => structuredClone(db.emails.filter((e) => e.opportunityId === opportunityId).sort(newestFirst)));
+  return listAll<Email>("/emails", { opportunity: opportunityId });
 }
 
-export function setEmailRead(id: string, read: boolean): Promise<void> {
-  return mock(() => {
-    find(id).read = read;
-  }, 150);
+export async function setEmailRead(id: string, read: boolean): Promise<void> {
+  await request(url(id), { method: "PATCH", body: { read } });
 }
 
-export function setEmailSaved(id: string, saved: boolean): Promise<void> {
-  return mock(() => {
-    find(id).saved = saved;
-  }, 150);
+/** POST /api/saved/ or DELETE /api/saved/?emailId= */
+export async function setEmailSaved(id: string, saved: boolean): Promise<void> {
+  if (saved) await request("/saved", { method: "POST", body: { emailId: id } });
+  else await request("/saved", { method: "DELETE", query: { emailId: id } });
 }
 
-export function setEmailArchived(id: string, archived: boolean): Promise<void> {
-  return mock(() => {
-    find(id).archived = archived;
-  }, 150);
-}
-
-const SUBJECT_PREFIX = /^(invitation|reminder|new role for you|fwd?|re)\s*:\s*/i;
-
-function priorityFor(relevance: number): Priority {
-  return relevance >= 85 ? "High" : relevance >= 70 ? "Medium" : "Low";
+export async function setEmailArchived(id: string, archived: boolean): Promise<void> {
+  await request(url(id), { method: "PATCH", body: { archived } });
 }
 
 /**
- * Stage 8: POST /api/emails/<id>/extract/ runs the AI extractor.
- * The mock only uses what the email itself contains — everything else is
- * null — and returns `null` when the email isn't an opportunity.
+ * POST /api/emails/<id>/extract/ — `null` when the email isn't an opportunity.
+ * Stage 8 runs the AI extractor behind the same endpoint.
  */
-export function extractOpportunity(emailId: string): Promise<Opportunity | null> {
-  return mock(() => {
-    const email = find(emailId);
-    if (email.opportunityId) return structuredClone(db.opportunities.find((o) => o.id === email.opportunityId) ?? null);
-    if (!isOpportunityCategory(email.category)) return null;
-
-    const base = {
-      title: email.subject.replace(SUBJECT_PREFIX, "").trim(),
-      type: email.category,
-      skills: [] as string[],
-      eligibility: null,
-    };
-    const opp: Opportunity = {
-      id: `opp_from_${email.id}`,
-      organization: email.sender,
-      deadline: null,
-      priority: priorityFor(email.relevance),
-      matchScore: email.relevance,
-      discoveredAt: new Date().toISOString(),
-      summary: email.snippet,
-      location: null,
-      duration: null,
-      requirements: [],
-      benefits: [],
-      applicationLink: null,
-      matchReasons: explainMatch(base, db.user),
-      sourceEmailIds: [email.id],
-      saved: false,
-      application: null,
-      reminderSet: false,
-      dismissed: false,
-      ...base,
-    };
-    db.opportunities.push(opp);
-    email.opportunityId = opp.id;
-    return structuredClone(opp);
-  }, 1200);
+export async function extractOpportunity(emailId: string): Promise<Opportunity | null> {
+  const res = await request<{ opportunity: Opportunity | null }>(`${url(emailId)}/extract`, { method: "POST" });
+  return res.opportunity;
 }

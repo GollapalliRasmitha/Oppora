@@ -1,55 +1,42 @@
 import type { Opportunity } from "@/lib/domain/types";
-import { db } from "@/lib/mock/store";
-import { ApiError, isEmptyMode, mock } from "./client";
+import { listAll, request } from "./client";
 
-const clone = <T,>(v: T): T => structuredClone(v);
+const url = (id: string) => `/opportunities/${encodeURIComponent(id)}`;
 
-function find(id: string): Opportunity {
-  const opp = db.opportunities.find((o) => o.id === id);
-  if (!opp) throw new ApiError("This opportunity no longer exists.", "not_found");
-  return opp;
-}
-
+/** GET /api/opportunities/ — "Not interested" ones are excluded by the server. */
 export function listOpportunities(): Promise<Opportunity[]> {
-  return mock(() => (isEmptyMode() ? [] : clone(db.opportunities.filter((o) => !o.dismissed))));
+  return listAll<Opportunity>("/opportunities");
 }
 
 export function getOpportunity(id: string): Promise<Opportunity> {
-  return mock(() => clone(find(id)));
+  return request<Opportunity>(url(id));
 }
 
-export function setSaved(id: string, saved: boolean): Promise<Opportunity> {
-  return mock(() => {
-    find(id).saved = saved;
-    return clone(find(id));
-  }, 200);
+/** POST /api/saved/ or DELETE /api/saved/?opportunityId= */
+export async function setSaved(id: string, saved: boolean): Promise<Opportunity> {
+  if (saved) await request("/saved", { method: "POST", body: { opportunityId: id } });
+  else await request("/saved", { method: "DELETE", query: { opportunityId: id } });
+  return getOpportunity(id);
 }
 
-export function markApplied(id: string): Promise<Opportunity> {
-  return mock(() => {
-    const opp = find(id);
-    const ts = new Date().toISOString();
-    opp.application = { status: "applied", startedAt: opp.application?.startedAt ?? ts, appliedAt: ts };
-    return clone(opp);
-  }, 200);
+/** POST /api/applications/ — idempotent; returns the updated opportunity. */
+export async function markApplied(id: string): Promise<Opportunity> {
+  const res = await request<{ opportunity: Opportunity }>("/applications", {
+    method: "POST",
+    body: { opportunityId: id, status: "applied" },
+  });
+  return res.opportunity;
 }
 
 export function setReminder(id: string, on: boolean): Promise<Opportunity> {
-  return mock(() => {
-    find(id).reminderSet = on;
-    return clone(find(id));
-  }, 200);
+  return request<Opportunity>(url(id), { method: "PATCH", body: { reminderSet: on } });
 }
 
 /** "Not interested" — hides the opportunity everywhere. Reversible via restore. */
-export function dismissOpportunity(id: string): Promise<void> {
-  return mock(() => {
-    find(id).dismissed = true;
-  }, 200);
+export async function dismissOpportunity(id: string): Promise<void> {
+  await request(url(id), { method: "PATCH", body: { dismissed: true } });
 }
 
-export function restoreOpportunity(id: string): Promise<void> {
-  return mock(() => {
-    find(id).dismissed = false;
-  }, 200);
+export async function restoreOpportunity(id: string): Promise<void> {
+  await request(url(id), { method: "PATCH", body: { dismissed: false } });
 }

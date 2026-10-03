@@ -4,16 +4,8 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { CalendarEvent } from "@/components/oppora/calendar-event";
 import { BarChart, DonutChart } from "@/components/oppora/charts";
-import {
-  buildCalendarItems,
-  itemsByDay,
-  parseDateParam,
-  parseView,
-  shiftDate,
-  timeLabel,
-  weekOf,
-} from "@/lib/domain/calendar";
-import { computeInsights } from "@/lib/domain/insights";
+import { itemsByDay, parseDateParam, parseView, shiftDate, timeLabel, weekOf } from "@/lib/domain/calendar";
+import type { CalendarItem } from "@/lib/domain/types";
 import { createSeed } from "@/lib/mock/seed";
 
 vi.mock("next/link", () => ({
@@ -27,69 +19,21 @@ vi.mock("next/link", () => ({
 const NOW = new Date(2026, 9, 2, 9, 30); // Friday
 const seed = createSeed(NOW);
 
-describe("insights", () => {
-  const ins = computeInsights(seed.opportunities, seed.emails, NOW);
-
-  it("computes the highlight cards from the data", () => {
-    expect(ins.mostCommonCategory).toEqual({ type: "Internship", count: 4, percent: 33, tied: false });
-    expect(ins.topCompany).toEqual({ name: "Google", count: 2, tied: false });
-    expect(ins.bestDay?.count).toBeGreaterThan(0);
+// Calendar items are built by the server (backend tests); these are the UI helpers.
+describe("calendar day lists", () => {
+  const base = { location: null, end: null, opportunityId: "o", organization: "Org", date: "2026-10-04" };
+  it("sorts all-day items first, then by start time", () => {
+    const items: CalendarItem[] = [
+      { ...base, id: "r", kind: "reminder", title: "Reminder", start: new Date(2026, 9, 4, 9).toISOString() },
+      { ...base, id: "d", kind: "hackathon", title: "TCS CodeVita 2026", start: null },
+    ];
+    expect(itemsByDay(items).get("2026-10-04")!.map((i) => i.id)).toEqual(["d", "r"]);
   });
-
-  it("counts opportunity emails found per day over the range, ending today", () => {
-    expect(ins.trend).toHaveLength(7);
-    expect(ins.trend.at(-1)!.date).toBe("2026-10-02");
-    // Oldest → today: bars on 6 of 7 days (nothing has arrived yet today).
-    expect(ins.trend.map((p) => p.count)).toEqual([1, 1, 1, 2, 2, 3, 0]);
-    expect(ins.trendTotal).toBe(10);
-    const month = computeInsights(seed.opportunities, seed.emails, NOW, 30);
-    expect(month.trend).toHaveLength(30);
-    expect(month.trendTotal).toBe(19);
-    // Non-opportunity emails (newsletter, college, promotion) are not counted.
-    expect(month.trendTotal).toBeLessThan(seed.emails.filter((e) => new Date(e.receivedAt) > new Date(2026, 8, 3)).length);
-  });
-
-  it("splits progress into disjoint groups (applied ÷ all tracked)", () => {
-    expect(ins.progress).toEqual({ applied: 8, inProgress: 3, saved: 1, other: 0, total: 12, appliedPercent: 67 });
-  });
-
-  it("writes the recommendation from the data", () => {
-    expect(ins.recommendation).toBe("Based on your profile, you have 3 opportunities worth reviewing this week.");
-    expect(computeInsights([], [], NOW).recommendation).toMatch(/Nothing new/);
-  });
-
-  it("reports ties instead of hiding them", () => {
-    const tied = seed.opportunities.filter((o) => o.type === "Hackathon" || o.type === "Job");
-    expect(computeInsights(tied, [], NOW).mostCommonCategory?.tied).toBe(true);
-  });
-});
-
-describe("calendar items", () => {
-  const items = buildCalendarItems(seed.opportunities, seed.interviews, NOW);
-  const byDay = itemsByDay(items);
-
-  it("includes every event type", () => {
-    expect(new Set(items.map((i) => i.kind))).toEqual(new Set(["application", "hackathon", "scholarship", "interview", "reminder"]));
-  });
-
-  it("places reminders 09:00 the day before the deadline", () => {
-    const r = items.find((i) => i.id === "reminder_opp_tcs_codevita_2026")!;
-    expect(r.date).toBe("2026-10-03");
-    expect(new Date(r.start!).getHours()).toBe(9);
-  });
-
-  it("schedules interviews from the seed and sorts all-day first", () => {
-    const day = byDay.get("2026-10-07")!;
-    expect(day.map((i) => i.kind)).toEqual(["interview"]);
-    expect(timeLabel(day[0])).toBe("14:00–14:45");
-    const sunday = byDay.get("2026-10-04")!;
-    expect(sunday[0].start).toBeNull(); // TCS deadline (all day) before the MS reminder
-  });
-
-  it("drops reminders for closed deadlines and items for dismissed opportunities", () => {
-    const opps = seed.opportunities.map((o) => (o.id === "opp_atlassian_swe_intern" ? { ...o, dismissed: true } : o));
-    const list = buildCalendarItems(opps, seed.interviews, NOW);
-    expect(list.some((i) => i.opportunityId === "opp_atlassian_swe_intern")).toBe(false);
+  it("labels times, with an end only when the email gave one", () => {
+    const start = new Date(2026, 9, 7, 14).toISOString();
+    expect(timeLabel({ ...base, id: "i", kind: "interview", title: "x", start, end: new Date(2026, 9, 7, 14, 45).toISOString() })).toBe("14:00–14:45");
+    expect(timeLabel({ ...base, id: "i", kind: "interview", title: "x", start })).toBe("14:00");
+    expect(timeLabel({ ...base, id: "d", kind: "application", title: "x", start: null })).toBe("All day");
   });
 });
 
@@ -122,8 +66,19 @@ describe("calendar navigation", () => {
 
 describe("CalendarEvent", () => {
   it("links to the opportunity and names the type and time", () => {
-    const iv = buildCalendarItems(seed.opportunities, seed.interviews, NOW).find((i) => i.kind === "interview")!;
-    render(<CalendarEvent item={iv} now={NOW} colorBy="kind" />);
+    const iv = seed.interviews.find((i) => i.id === "iv_atlassian")!;
+    const item: CalendarItem = {
+      id: iv.id,
+      kind: "interview",
+      title: iv.title,
+      date: "2026-10-07",
+      start: iv.start,
+      end: iv.end,
+      location: iv.location,
+      opportunityId: iv.opportunityId,
+      organization: "Atlassian",
+    };
+    render(<CalendarEvent item={item} now={NOW} colorBy="kind" />);
     const link = screen.getByRole("link", { name: "Technical interview — Atlassian, Interview, 14:00–14:45" });
     expect(link).toHaveAttribute("href", "/opportunities/opp_atlassian_swe_intern");
   });

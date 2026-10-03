@@ -1,15 +1,6 @@
-import { now as clockNow } from "@/lib/clock";
-import {
-  buildRecommendation,
-  computeDashboardStats,
-  latestOpportunities,
-  upcomingDeadlines,
-  type DashboardStats,
-  type Recommendation,
-} from "@/lib/domain/stats";
+import type { DashboardStats, Recommendation } from "@/lib/domain/stats";
 import type { Opportunity } from "@/lib/domain/types";
-import { db } from "@/lib/mock/store";
-import { isEmptyMode, mock } from "./client";
+import { request } from "./client";
 
 export interface DashboardData {
   stats: DashboardStats;
@@ -19,15 +10,15 @@ export interface DashboardData {
   recommendation: Recommendation | null;
 }
 
-/** Stage 7: GET /api/insights/dashboard/ */
-export function getDashboard(now: Date = clockNow()): Promise<DashboardData> {
-  return mock(() => {
-    const opps = isEmptyMode() ? [] : structuredClone(db.opportunities);
-    return {
-      stats: computeDashboardStats(opps, now),
-      latest: latestOpportunities(opps),
-      upcoming: upcomingDeadlines(opps, now),
-      recommendation: db.preferences.ai.recommendations ? buildRecommendation(opps, now) : null,
-    };
-  });
+const zero = { value: 0, trend: 0, trendLabel: "+0 this week" };
+const EMPTY: DashboardData = {
+  stats: { total: zero, deadlinesThisWeek: { ...zero, urgent: 0, trendLabel: "0 urgent" }, applied: zero, inProgress: zero, saved: 0 },
+  latest: [],
+  upcoming: [],
+  recommendation: null,
+};
+
+/** GET /api/insights/dashboard/ — every number is computed by the server from the user's data. */
+export function getDashboard(): Promise<DashboardData> {
+  return request<DashboardData>("/insights/dashboard", { empty: () => EMPTY });
 }

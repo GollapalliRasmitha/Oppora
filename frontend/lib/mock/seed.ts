@@ -1,5 +1,6 @@
 /**
- * Oppora seed data — the single mock source until Stage 7 loads it into the DB.
+ * Oppora seed data — the one shared seed. `manage.py seed_demo` loads it into
+ * the database (via scripts/export-seed.ts); frontend unit tests use it directly.
  *
  * Rules:
  *  - Every date is an offset from "today" (`createSeed(today)`), so days left,

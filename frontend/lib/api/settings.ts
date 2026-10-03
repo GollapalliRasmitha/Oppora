@@ -1,9 +1,7 @@
-import { explainMatch } from "@/lib/domain/match";
 import type { GmailConnection, Preferences, User } from "@/lib/domain/types";
-import { db } from "@/lib/mock/store";
-import { mock } from "./client";
+import { mockMode, request } from "./client";
 
-const NO_GMAIL = { gmail: false };
+const NO_GMAIL = { gmail: false } as const;
 
 export interface Settings {
   user: User;
@@ -11,9 +9,15 @@ export interface Settings {
   gmail: GmailConnection;
 }
 
-/** Stage 7: GET /api/preferences/ + /api/auth/me/ + /api/auth/gmail/status/ */
-export function getSettings(): Promise<Settings> {
-  return mock(() => structuredClone({ user: db.user, preferences: db.preferences, gmail: db.gmail }), 350, NO_GMAIL);
+/** GET /api/auth/me/ + /api/preferences/ + /api/auth/gmail/ */
+export async function getSettings(): Promise<Settings> {
+  const [user, preferences, gmail] = await Promise.all([
+    request<User>("/auth/me", NO_GMAIL),
+    request<Preferences>("/preferences", NO_GMAIL),
+    request<GmailConnection>("/auth/gmail", NO_GMAIL),
+  ]);
+  // ?mock=gmail previews an expired Gmail connection.
+  return { user, preferences, gmail: mockMode() === "gmail" ? { ...gmail, status: "needs_reconnect" } : gmail };
 }
 
 type PrefPatch = Partial<Omit<Preferences, "notifications" | "ai">> & {
@@ -21,63 +25,32 @@ type PrefPatch = Partial<Omit<Preferences, "notifications" | "ai">> & {
   ai?: Partial<Preferences["ai"]>;
 };
 
-/** Stage 7: PATCH /api/preferences/ */
+/** PATCH /api/preferences/ — nested groups are merged by the server. */
 export function updatePreferences(patch: PrefPatch): Promise<Preferences> {
-  return mock(() => {
-    db.preferences = {
-      ...db.preferences,
-      ...patch,
-      notifications: { ...db.preferences.notifications, ...patch.notifications },
-      ai: { ...db.preferences.ai, ...patch.ai },
-    };
-    return structuredClone(db.preferences);
-  }, 200, NO_GMAIL);
+  return request<Preferences>("/preferences", { method: "PATCH", body: patch, ...NO_GMAIL });
 }
 
 export type ProfilePatch = Partial<Pick<User, "name" | "interests" | "skills" | "experienceLevel">>;
 
-/**
- * Stage 7: PATCH /api/auth/me/. Changing interests, skills or level
- * re-explains every match so the AI Summary stays truthful.
- */
+/** PATCH /api/auth/me/ — interests/skills/level changes re-explain every match on the server. */
 export function updateProfile(patch: ProfilePatch): Promise<User> {
-  return mock(() => {
-    db.user = { ...db.user, ...patch };
-    for (const o of db.opportunities) o.matchReasons = explainMatch(o, db.user);
-    return structuredClone(db.user);
-  }, 300, NO_GMAIL);
+  return request<User>("/auth/me", { method: "PATCH", body: patch, ...NO_GMAIL });
 }
 
-/** Stage 8: starts Google OAuth. The mock just reconnects. */
+/** POST /api/auth/gmail/connect/ — Stage 8 turns this into the Google OAuth flow. */
 export function connectGmail(): Promise<GmailConnection> {
-  return mock(() => {
-    db.gmail = { ...db.gmail, email: db.user.email, status: "connected", connectedAt: new Date().toISOString() };
-    if (db.sync.phase === "error") db.sync = { ...db.sync, phase: db.sync.lastSyncedAt ? "completed" : "idle" };
-    return structuredClone(db.gmail);
-  }, 600, NO_GMAIL);
+  return request<GmailConnection>("/auth/gmail/connect", { method: "POST", ...NO_GMAIL });
 }
 
-/** Stage 8: POST /api/auth/gmail/disconnect/ — revokes the token and deletes stored tokens. */
+/** POST /api/auth/gmail/disconnect/ — Stage 8 also revokes the token and deletes stored tokens. */
 export function disconnectGmail(): Promise<GmailConnection> {
-  return mock(() => {
-    db.gmail = { ...db.gmail, status: "disconnected", connectedAt: null };
-    return structuredClone(db.gmail);
-  }, 500, NO_GMAIL);
+  return request<GmailConnection>("/auth/gmail/disconnect", { method: "POST", ...NO_GMAIL });
 }
 
 /**
- * Stage 7: DELETE /api/auth/me/data/ — deletes every opportunity, email,
- * interview and notification Oppora stored, and disconnects Gmail.
- * The account itself (name, sign-in) remains.
+ * DELETE /api/auth/me/data/ — deletes every opportunity, email, interview and
+ * notification Oppora stored, and disconnects Gmail. The account remains.
  */
-export function deleteMyData(): Promise<void> {
-  return mock(() => {
-    db.opportunities.length = 0;
-    db.emails.length = 0;
-    db.interviews.length = 0;
-    db.readNotificationIds.clear();
-    db.clearedNotificationIds.clear();
-    db.gmail = { ...db.gmail, status: "disconnected", connectedAt: null };
-    db.sync = { phase: "idle", emailsInBatch: 0, lastSyncedAt: null };
-  }, 800, NO_GMAIL);
+export async function deleteMyData(): Promise<void> {
+  await request("/auth/me/data", { method: "DELETE", ...NO_GMAIL });
 }
