@@ -43,6 +43,7 @@ import type { Opportunity } from "@/lib/domain/types";
 import { useNow } from "@/lib/hooks/use-now";
 import { useOpportunityActions } from "@/lib/hooks/use-opportunity-actions";
 import { useResource } from "@/lib/hooks/use-resource";
+import { safeExternalUrl } from "@/lib/safe-url";
 
 type Tab = "overview" | "requirements" | "benefits" | "emails";
 
@@ -210,8 +211,8 @@ function Detail({
                 <InfoItem icon={GraduationCap} label="Eligibility">{opp.eligibility}</InfoItem>
                 <InfoItem icon={CalendarClock} label="Deadline">{opp.deadline ? formatDate(opp.deadline) : null}</InfoItem>
                 <InfoItem icon={Link2} label="Application link" className="sm:col-span-2">
-                  {opp.applicationLink && (
-                    <a href={opp.applicationLink} target="_blank" rel="noopener noreferrer" className="rounded-sm text-violet [overflow-wrap:anywhere] focus-ring hover:text-ink">
+                  {safeExternalUrl(opp.applicationLink) && (
+                    <a href={safeExternalUrl(opp.applicationLink)!} target="_blank" rel="noopener noreferrer" className="rounded-sm text-violet [overflow-wrap:anywhere] focus-ring hover:text-ink">
                       {opp.applicationLink} <ExternalLink aria-hidden className="inline size-3.5 align-[-2px]" />
                     </a>
                   )}
@@ -385,9 +386,9 @@ function ApplyModal({
           The deadline for this opportunity has passed.
         </p>
       )}
-      {opp.applicationLink ? (
+      {safeExternalUrl(opp.applicationLink) ? (
         <Button asChild variant="secondary" className="w-full">
-          <a href={opp.applicationLink} target="_blank" rel="noopener noreferrer">
+          <a href={safeExternalUrl(opp.applicationLink)!} target="_blank" rel="noopener noreferrer">
             Open application link <ExternalLink aria-hidden />
           </a>
         </Button>

@@ -9,6 +9,7 @@ const MESSAGES: Record<string, string> = {
   not_configured: "Google sign-in isn't set up on this server yet. See the README for the Google Cloud steps.",
   email_unverified: "Your Google account's email address isn't verified.",
   expired: "That sign-in took too long. Please try again.",
+  rate_limited: "Too many sign-in attempts. Please wait a minute and try again.",
 };
 const FALLBACK = "We couldn't sign you in with Google. Please try again.";
 

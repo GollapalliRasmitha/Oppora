@@ -39,6 +39,11 @@ def _test_settings(settings):
     settings.GOOGLE_CLIENT_SECRET = ""
     settings.GOOGLE_OAUTH_ENABLED = False
     settings.DEV_LOGIN_ENABLED = True
+    # Rate-limit counters in memory, fresh for every test (no Redis needed).
+    settings.THROTTLE_CACHE = "local"
+    from django.core.cache import caches
+
+    caches["local"].clear()
     _fernet.cache_clear()
     client.set_provider(None)
     yield

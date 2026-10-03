@@ -74,3 +74,11 @@ cd frontend; npm run check                  # lint + type-check + tests
 cd ..\backend; .venv\Scripts\python -m pytest
 .venv\Scripts\ruff check .
 ```
+
+## Security
+
+- **Secrets** live only in `.env`, which is never committed, and are read on the server. The frontend bundle contains no keys (checked in Stage 10), and there are no `NEXT_PUBLIC_` secrets.
+- **Gmail access** is read-only (`gmail.readonly`). Oppora never sees your Google password. OAuth tokens are encrypted at rest and never sent to the browser. Disconnecting revokes access at Google.
+- **Sessions** use an httpOnly, SameSite cookie, every change needs a CSRF token, and every query is limited to your own data.
+- **Rate limits** apply to sign-in, starting a scan, the assistant, and everything else. **Security headers** (CSP, no framing, nosniff, no-store on the API) are set on every page.
+- To rotate the token encryption key: put a new key first in `TOKEN_ENCRYPTION_KEY=<new>,<old>`, run `backend\.venv\Scripts\python backend\manage.py rotate_token_key`, then remove the old key.

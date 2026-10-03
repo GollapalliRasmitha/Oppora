@@ -13,7 +13,7 @@
  *                  still load and show "Needs reconnect"
  */
 
-export type ApiErrorCode = "network" | "gmail" | "ai" | "auth" | "not_found" | "validation" | "server";
+export type ApiErrorCode = "network" | "gmail" | "ai" | "auth" | "not_found" | "validation" | "server" | "rate_limited";
 
 export class ApiError extends Error {
   constructor(
@@ -121,6 +121,7 @@ async function toError(res: Response): Promise<ApiError> {
   if (res.status === 401) return new ApiError(message || "Your session has expired. Sign in again to continue.", "auth");
   if (res.status === 404) return new ApiError(message || "This no longer exists.", "not_found");
   if (res.status === 400) return new ApiError(message || "Some fields are invalid.", "validation", fields);
+  if (res.status === 429) return new ApiError(message || "Too many requests. Please wait a moment and try again.", "rate_limited");
   if (res.status >= 500) return new ApiError(SERVER_ERROR, "server");
   return new ApiError(message || NETWORK_ERROR, "network");
 }

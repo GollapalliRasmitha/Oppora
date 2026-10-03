@@ -14,8 +14,10 @@ Personal AI agent that reads a user's Gmail, finds opportunities, extracts deadl
 - Stage 6 — UX review pass: done.
 - Stage 7 — Backend + frontend switched to the API: done.
 - Stage 8 — Google sign-in + Gmail sync + AI pipeline (Gemini free tier): done; verified with the user's real Gmail (51 opportunities found).
-- **Stage 9 — Celery + Redis background jobs (+ real-data feedback: type chips, fees, hide sender): done** (awaiting "continue").
-- Next: Stage 10 — Security hardening.
+- Stage 9 — Celery + Redis background jobs (+ real-data feedback: type chips, fees, hide sender): done.
+- **Stage 10 — Security hardening: done** (awaiting "continue").
+- Next: Stage 11 — Performance + accessibility audit (Lighthouse 90+ on Landing and Dashboard, keyboard-only and screen-reader checks).
+- Profile check (4 Oct 2026): the user's Google account has 6 interests, 1 skill and a level set; the demo account is unchanged. Suggest adding more skills (worth up to 30 match points).
 - Profile skills: keep the demo skills for now (user decision, Stage 3 review).
 
 ## Working rules (from PROMPT.md §0)
@@ -249,3 +251,18 @@ All seed dates are offsets from today, so these hold on every date (offsets repr
 - **Scheduled notifications** use date-stamped keys (`reminder:<opp>:<date>`, `briefing:<date>`), so re-runs never duplicate. `refresh_notifications` lists them with the derived ones, filtered by the same settings (reminders → Deadline reminders; briefing → AI recommendations). The briefing is built only from the user's data and is skipped when there's nothing to say. Email notifications (`notify_email`) still need an email provider (not set up; would be a paid/added service: ask first).
 - The start script runs **four windows** (backend, worker, beat, frontend) and restarts worker/beat when `.env` or any backend `.py` file is newer than they are.
 - `MailConfig.ready`'s resume-on-start only runs with `JOBS_BACKEND=thread`; with Celery, beat's `resume_queued` does it.
+
+## Stage 10 decisions (security hardening)
+
+- **Rate limits** (core/throttling.py, DRF throttles on a cache): general `user` 600/min (the sync status is polled about once a second during a scan) and `anon` 60/min; `auth` 20/min per IP (dev-login, logout, and the Google login/callback redirects via `auth_rate_limited` → `/?auth_error=rate_limited`); `sync` 20/hour (POST only: polling isn't limited by it); `assistant` 20/min. All overridable with `RATE_*` env vars. 429 → `{"error": {"code": "rate_limited", "message": "… wait N seconds …"}}` + `Retry-After`; the client maps it to `ApiError("rate_limited")`. Counters live in `CACHES["default"]` (Redis db 1); **fail open** if the cache is down (logged), so a cache outage can't take the API down. Tests use `THROTTLE_CACHE="local"` (locmem, cleared per test) and patch `SimpleRateThrottle.THROTTLE_RATES` (DRF binds rates at import time).
+- Client IP = X-Forwarded-For with `NUM_PROXIES=1` (the Next.js proxy adds it; REMOTE_ADDR is always the proxy).
+- **Input limits:** `DATA_UPLOAD_MAX_MEMORY_SIZE` 256 KB, max 200 fields; `?q=` ≤ 200 characters and ≤ 8 terms (`BoundedSearchFilter`); every body goes through a serializer (types, lengths, choices, user-scoped ids); filters reject unknown choices; `ordering` is a whitelist; path ids are UUIDs; `X-Timezone` is validated.
+- **Headers.** Django: nosniff, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, COOP same-origin; on `/api/*` (`core.middleware.SecurityHeadersMiddleware`) also `Cache-Control: no-store`, `CSP: default-src 'none'; frame-ancestors 'none'`, CORP same-origin and Permissions-Policy. Production (`DEBUG=false`): HSTS 1 year + subdomains, HTTPS redirect, secure cookies; `SECURE_HSTS_PRELOAD` and `TRUST_X_FORWARDED_PROTO` are explicit opt-ins. `manage.py check --deploy` passes apart from preload (deliberately opt-in).
+- **Next.js headers** (next.config.ts): CSP "without nonces" per the Next 16 docs (`script-src 'self' 'unsafe-inline'`; nonces would force dynamic rendering for every page); everything else is 'self' only (fonts self-hosted by next/font, no third-party scripts/images), `object-src 'none'`, `frame-ancestors 'none'`, `form-action 'self'`, `upgrade-insecure-requests` in production; dev adds `'unsafe-eval'` + the HMR websocket. Also nosniff, X-Frame-Options DENY, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy, COOP, HSTS in production; `poweredByHeader: false`. Verified in the browser: no CSP violations. The app never uses dangerouslySetInnerHTML/eval.
+- **CORS:** none, on purpose. The browser only talks to the Next.js origin; Django sends no Access-Control-* headers, and cross-origin writes fail the CSRF Origin check (tested).
+- **Links from data:** `lib/safe-url.ts`: external links (application links from emails) render only if http(s) (no `javascript:`/`data:`); assistant links render only if internal (`/…`, not `//host` or `/\host`).
+- **Tokens:** Fernet at rest since Stage 8; `manage.py rotate_token_key` re-encrypts with the first key of `TOKEN_ENCRYPTION_KEY=new,old` (MultiFernet). Tokens never appear in any API response (tested).
+- **Jobs:** `core.tasks.run_job` only runs allowlisted functions (Stage 9).
+- **Secrets:** a production-build scan found none of the `.env` secrets in any of the 423 build files and no key-shaped strings in the browser bundle; `NEXT_PUBLIC_API_URL` (unused since Stage 7) was removed from `.env`.
+- **Dependencies:** `pip-audit -r requirements.txt` → no known vulnerabilities; `npm audit --omit=dev` → 0. Accepted, dev-only: `braces` (GHSA-vfj7-8cjw-p6xm, via ESLint's fast-glob), with no patched version; npm's "fix" downgrades eslint-config-next to 14. Re-check later.
+- Before a public deployment: change the default Postgres password, set `DJANGO_DEBUG=false`, serve over HTTPS, and go through Google's restricted-scope verification (see the Gmail notes above).

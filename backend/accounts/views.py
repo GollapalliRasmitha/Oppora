@@ -17,6 +17,7 @@ from rest_framework.views import APIView
 
 from core import clock
 from core.seed import clear_user_data
+from core.throttling import AuthIPThrottle, auth_rate_limited
 
 from . import google
 from .models import GmailConnection, User
@@ -43,6 +44,8 @@ class DevLoginView(APIView):
     the seeded demo user. Only exists while DEBUG and DJANGO_DEV_LOGIN are on.
     """
 
+    throttle_classes = [AuthIPThrottle]
+
     permission_classes = [AllowAny]
     authentication_classes: list = []
 
@@ -60,6 +63,8 @@ class DevLoginView(APIView):
 
 
 class LogoutView(APIView):
+    throttle_classes = [AuthIPThrottle]
+
     def post(self, request):
         logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -182,6 +187,8 @@ def google_login(request):
     browser to Google's consent screen. Without Google credentials (local
     development) it signs in the seeded demo user instead.
     """
+    if auth_rate_limited(request):
+        return _to_frontend("/?auth_error=rate_limited")
     next_path = google.safe_next(request.GET.get("next"))
     if not settings.GOOGLE_OAUTH_ENABLED:
         if settings.DEV_LOGIN_ENABLED:
@@ -198,6 +205,8 @@ def google_login(request):
 @require_GET
 def google_callback(request):
     """GET /api/auth/google/callback/ — Google redirects here after consent."""
+    if auth_rate_limited(request):
+        return _to_frontend("/?auth_error=rate_limited")
     try:
         info = google.finish(
             request.session, state=request.GET.get("state"), code=request.GET.get("code"), error=request.GET.get("error")

@@ -78,6 +78,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "core.middleware.SecurityHeadersMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -123,9 +124,38 @@ CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_TRUSTED_ORIGINS = [FRONTEND_ORIGIN]
 
+# --- Security headers + HTTPS (PROMPT.md §10) ---
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "same-origin"
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+# Production only (behind HTTPS): HSTS, redirect to HTTPS, trust the proxy's X-Forwarded-Proto.
+SECURE_HSTS_SECONDS = 0 if DEBUG else int(os.environ.get("SECURE_HSTS_SECONDS", "31536000"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+# Browser preload lists are a long-term commitment for a real domain: opt in deliberately.
+SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", False)
+SECURE_SSL_REDIRECT = not DEBUG and env_bool("SECURE_SSL_REDIRECT", True)
+if env_bool("TRUST_X_FORWARDED_PROTO"):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Every payload Oppora accepts is small JSON; refuse anything bigger.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 256 * 1024
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 200
+# No CORS: the browser only talks to the Next.js origin (same-origin via its /api proxy), so
+# Django sends no Access-Control-* headers and browsers block cross-origin reads.
+
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+
+# --- Cache (rate-limit counters) ---
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": os.environ.get("CACHE_URL", REDIS_URL.rsplit("/", 1)[0] + "/1"),
+        "OPTIONS": {"socket_connect_timeout": 2, "socket_timeout": 2},
+        "KEY_PREFIX": "oppora",
+    },
+    "local": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "oppora-local"},
+}
+THROTTLE_CACHE = os.environ.get("THROTTLE_CACHE", "default")
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
@@ -135,11 +165,23 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "core.api.Pagination",
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
-        "rest_framework.filters.SearchFilter",
+        "core.api.BoundedSearchFilter",
         "rest_framework.filters.OrderingFilter",
     ],
     "SEARCH_PARAM": "q",
     "EXCEPTION_HANDLER": "core.api.exception_handler",
+    "DEFAULT_THROTTLE_CLASSES": ["core.throttling.UserThrottle", "core.throttling.AnonThrottle"],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": os.environ.get("RATE_ANON", "60/min"),
+        # The UI polls /api/sync/ about once a second while a scan runs, so this is generous.
+        "user": os.environ.get("RATE_USER", "600/min"),
+        "auth": os.environ.get("RATE_AUTH", "20/min"),  # sign-in endpoints, per IP
+        "sync": os.environ.get("RATE_SYNC", "20/hour"),  # starting a scan
+        "assistant": os.environ.get("RATE_ASSISTANT", "20/min"),
+    },
+    # Requests reach Django through the Next.js proxy, which adds the client's IP to
+    # X-Forwarded-For; trust exactly that one hop when identifying anonymous clients.
+    "NUM_PROXIES": int(os.environ.get("NUM_PROXIES", "1")),
 }
 
 # --- Google sign-in + Gmail (Stage 8) ---
@@ -189,7 +231,6 @@ AI_MAX_BODY_CHARS = int(os.environ.get("AI_MAX_BODY_CHARS", "4000"))
 # needed; restarts interrupt them). Tests set JOBS_EAGER=True to run jobs inline.
 JOBS_BACKEND = os.environ.get("JOBS_BACKEND", "celery").strip().lower()
 JOBS_EAGER = env_bool("JOBS_EAGER", False)
-REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
 from celery.schedules import crontab  # noqa: E402
 

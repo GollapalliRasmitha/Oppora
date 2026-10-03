@@ -13,6 +13,7 @@ import { now } from "@/lib/clock";
 import { SUGGESTED_PROMPTS, type AssistantAnswer } from "@/lib/domain/assistant";
 import { strongMatches } from "@/lib/domain/stats";
 import { useResource } from "@/lib/hooks/use-resource";
+import { isInternalHref } from "@/lib/safe-url";
 import { cn } from "@/lib/utils";
 import { AIOrb } from "./ai-orb";
 import { isFullScreenOnMobile } from "./nav";
@@ -84,7 +85,7 @@ function AnswerView({ answer, onAsk, onNavigate }: { answer: AssistantAnswer; on
       <p className="whitespace-pre-line">{answer.text}</p>
       {answer.links.length > 0 && (
         <ul className="space-y-1.5" aria-label="Sources">
-          {answer.links.map((l) => (
+          {answer.links.filter((l) => isInternalHref(l.href)).map((l) => (
             <li key={l.href + l.title}>
               <Link
                 href={l.href}

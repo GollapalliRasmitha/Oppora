@@ -48,6 +48,7 @@ describe("request()", () => {
       [json(404, { error: { code: "not_found", message: "Not found." } }), "not_found"],
       [json(400, { error: { code: "validation_error", message: "Bad", fields: { name: ["Required"] } } }), "validation"],
       [json(502, undefined), "server"],
+      [json(429, { error: { code: "rate_limited", message: "Too many requests. Please wait 30 seconds and try again." } }), "rate_limited"],
     ];
     for (const [res, code] of cases) {
       responses.push(res);
@@ -117,5 +118,19 @@ describe("services", () => {
     responses.push(json(201, { status: "applied", opportunity: { id: "o1", application: { status: "applied" } } }));
     await expect(markApplied("o1")).resolves.toMatchObject({ application: { status: "applied" } });
     expect(JSON.parse(calls[0].init.body as string)).toEqual({ opportunityId: "o1", status: "applied" });
+  });
+});
+
+describe("safe links", () => {
+  it("only http(s) external links and in-app assistant links are rendered", async () => {
+    const { safeExternalUrl, isInternalHref } = await import("@/lib/safe-url");
+    expect(safeExternalUrl("https://acme.example/apply")).toBe("https://acme.example/apply");
+    expect(safeExternalUrl("javascript:alert(1)")).toBeNull();
+    expect(safeExternalUrl("data:text/html,<script>")).toBeNull();
+    expect(safeExternalUrl("not a url")).toBeNull();
+    expect(isInternalHref("/opportunities/abc")).toBe(true);
+    expect(isInternalHref("//evil.example")).toBe(false);
+    expect(isInternalHref("/\\evil.example")).toBe(false);
+    expect(isInternalHref("https://evil.example")).toBe(false);
   });
 });

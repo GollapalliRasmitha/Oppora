@@ -17,6 +17,7 @@ from .domain.stats import (
     recent_email_count,
     upcoming_deadlines,
 )
+from .throttling import ScopedThrottle, SyncStartThrottle, UserThrottle
 
 
 class DashboardView(APIView):
@@ -66,6 +67,8 @@ class SyncView(APIView):
     POST /api/sync/ — start a scan in the background (409 gmail_access unless Gmail is connected).
     """
 
+    throttle_classes = [UserThrottle, SyncStartThrottle]
+
     def get(self, request):
         g = request.user.gmail
         sync.advance_demo(g, clock.now())
@@ -90,6 +93,9 @@ class AssistantView(APIView):
     POST /api/assistant/ {question, opportunityId?} — answers only from the
     user's own stored opportunities, emails and interviews.
     """
+
+    throttle_classes = [UserThrottle, ScopedThrottle]
+    throttle_scope = "assistant"
 
     def post(self, request):
         q = AssistantQuery(data=request.data)
