@@ -8,6 +8,7 @@ import {
   Clock,
   ExternalLink,
   GraduationCap,
+  BadgeAlert,
   Link2,
   MailX,
   MapPin,
@@ -17,7 +18,7 @@ import {
 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { AICard } from "@/components/oppora/ai-card";
-import { DeadlineIndicator, MatchRing, PriorityBadge } from "@/components/oppora/badges";
+import { DeadlineIndicator, FeeBadge, MatchRing, PriorityBadge, formatFee } from "@/components/oppora/badges";
 import { EmailCard } from "@/components/oppora/email-card";
 import { InfoItem, NotMentioned } from "@/components/oppora/info-item";
 import { MatchChecklist } from "@/components/oppora/match-checklist";
@@ -153,6 +154,7 @@ function Detail({
               <Badge tone="purple">{opp.type}</Badge>
               <PriorityBadge priority={opp.priority} />
               <StatusBadge opp={opp} />
+              <FeeBadge fee={opp.fee} />
             </div>
           </div>
           <div className="rounded-md border border-line bg-white/[.04] px-4 py-3 md:min-w-44">
@@ -190,6 +192,18 @@ function Detail({
             <TabsContent value="overview" className="p-3 sm:p-4 focus-ring rounded-md">
               <h2 className="text-base font-bold text-ink">About the opportunity</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-ink-2">{opp.summary ?? <NotMentioned />}</p>
+              {opp.fee && (
+                <div role="note" className="mt-5 flex gap-3 rounded-md border border-urgent/35 bg-urgent/[.07] p-4">
+                  <BadgeAlert aria-hidden className="mt-0.5 size-5 shrink-0 text-urgent" />
+                  <div className="text-sm text-ink-2">
+                    <p className="font-semibold text-ink">
+                      {formatFee(opp.fee) ? `This email asks you to pay ${formatFee(opp.fee)}.` : "This email asks you to pay a fee."} Check
+                      carefully before paying anything.
+                    </p>
+                    <p className="mt-1">From the email: &ldquo;{opp.fee.text}&rdquo;</p>
+                  </div>
+                </div>
+              )}
               <dl className="mt-5 grid gap-4 sm:grid-cols-2">
                 <InfoItem icon={MapPin} label="Location">{opp.location}</InfoItem>
                 <InfoItem icon={Clock} label="Duration">{opp.duration}</InfoItem>

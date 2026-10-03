@@ -13,7 +13,6 @@ The seeded demo account has no mailbox; its scans are simulated.
 """
 
 import logging
-import threading
 from datetime import timedelta
 
 from django.conf import settings
@@ -23,7 +22,9 @@ from accounts.models import GmailConnection
 from ai.providers.base import DailyLimitReached, NotConfigured, TransientAIError
 from core import clock, jobs
 from core.api import GmailAccessError
+from core.locks import locks
 
+from .fees import recheck_fees
 from .gmail import GmailAuthError, GmailClient, HistoryExpired
 from .models import ProcessedMessage
 from .pipeline import process_message
@@ -41,20 +42,21 @@ DEMO_SCANNING_FOR = timedelta(seconds=1.4)
 DEMO_COMPLETES_AFTER = timedelta(seconds=3.6)
 
 
-#: Users whose sync job is running in this process. A sync marked running that isn't here was
-#: interrupted (the dev server restarted, killing its thread) and can start again right away.
-#: Stage 9 replaces this with Celery task state.
-_active: set = set()
-_active_lock = threading.Lock()
+#: A sync that was just queued gets this long for a worker to pick it up before it counts as interrupted.
+PICKUP_GRACE = timedelta(seconds=60)
+
+
+def _lock_key(user_id) -> str:
+    return f"sync:{user_id}"
 
 
 def _running(g: GmailConnection, now) -> bool:
-    if g.sync_phase not in RUNNING or not g.sync_started_at or now - g.sync_started_at >= STALE_AFTER:
+    """A real sync runs while its lock is held (core.locks; it expires by itself if a worker dies)."""
+    if g.sync_phase not in RUNNING or not g.sync_started_at:
         return False
     if g.is_demo:
-        return True
-    with _active_lock:
-        return g.user_id in _active
+        return now - g.sync_started_at < STALE_AFTER
+    return locks().held(_lock_key(g.user_id)) or now - g.sync_started_at < PICKUP_GRACE
 
 
 def advance_demo(g: GmailConnection, now) -> None:
@@ -79,9 +81,8 @@ def resume_if_interrupted(g: GmailConnection) -> bool:
     """
     if g.is_demo or g.sync_phase not in RUNNING or g.status != GmailConnection.Status.CONNECTED:
         return False
-    with _active_lock:
-        if g.user_id in _active:
-            return False
+    if _running(g, clock.now()):
+        return False
     with transaction.atomic():
         fresh = GmailConnection.objects.select_for_update().get(pk=g.pk)
         if fresh.sync_phase not in RUNNING:
@@ -181,20 +182,19 @@ def process_queue(user, client: GmailClient, g: GmailConnection) -> int:
         pm.save()
         remaining -= 1
         _save(g, sync_emails_in_batch=remaining)
+        locks().refresh(_lock_key(user.pk))
     return ProcessedMessage.objects.filter(user=user, status=ProcessedMessage.Status.QUEUED).count()
 
 
 def run_sync(user_id) -> None:
-    """The background job behind POST /api/sync/."""
-    with _active_lock:
-        if user_id in _active:
-            return  # already running in this process
-        _active.add(user_id)
+    """The background job behind POST /api/sync/ (one at a time per user, across all processes)."""
+    key = _lock_key(user_id)
+    if not locks().acquire(key):
+        return  # already running (another worker, or a duplicate message)
     try:
         _run_sync(user_id)
     finally:
-        with _active_lock:
-            _active.discard(user_id)
+        locks().release(key)
 
 
 def _run_sync(user_id) -> None:
@@ -205,6 +205,11 @@ def _run_sync(user_id) -> None:
         head = _queue_new_ids(user, client, g)
         _save(g, history_id=head)
         left = process_queue(user, client, g)
+        if not left:
+            try:  # stored opportunities not yet checked for a fee (cheap: rules first)
+                recheck_fees(user, client)
+            except (DailyLimitReached, NotConfigured, TransientAIError):
+                pass  # checked on a later sync
         _save(
             g,
             sync_phase=GmailConnection.Phase.COMPLETED,

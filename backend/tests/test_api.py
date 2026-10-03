@@ -42,6 +42,7 @@ def test_opportunity_shape_matches_the_frontend_type(api, ids):
         "application",
         "reminderSet",
         "dismissed",
+        "fee",
     }
     assert o["deadline"] == "2026-10-09"
     assert o["eligibility"] is None  # not in the email → null, never guessed

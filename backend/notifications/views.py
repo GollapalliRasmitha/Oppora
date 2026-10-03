@@ -58,6 +58,11 @@ def refresh_notifications(user, now) -> list[Notification]:
             n.save(update_fields=["title", "body"])
         if not n.cleared and enabled[n.kind]:
             out.append(n)
+    # Created by the scheduled jobs (notifications.tasks): reminders and the daily briefing.
+    scheduled = Notification.objects.filter(user=user, cleared=False, key__regex=r"^(reminder|briefing):").order_by(
+        "-created_at"
+    )[:20]
+    out += [n for n in scheduled if enabled[n.kind]]
     return out
 
 

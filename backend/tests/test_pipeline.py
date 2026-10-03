@@ -21,7 +21,7 @@ from mail.prefilter import prefilter
 from opportunities.models import Deadline, Interview, Opportunity
 
 from .conftest import KOLKATA, make_client
-from .gmail_fakes import FakeGmail, message
+from .gmail_fakes import message
 
 NOW = datetime(2026, 10, 2, 9, 30, tzinfo=KOLKATA)
 
@@ -56,55 +56,10 @@ def extraction(**over) -> dict:
         "application_link": "https://acme.example/careers/frontend-intern",
         "action_required": "Apply by 20 October 2026.",
         "interview": None,
+        "fee": None,
         "confidence": 0.95,
     }
     return {**out, **over}
-
-
-@pytest.fixture
-def no_wait(monkeypatch):
-    """The rate limiter and backoff use a fake clock: tests never sleep, but waits are recorded."""
-    clock = {"t": 1000.0}
-    waits: list[float] = []
-
-    def fake_sleep(s):
-        waits.append(round(s, 2))
-        clock["t"] += s
-
-    monkeypatch.setattr(ai_client, "sleep", fake_sleep)
-    monkeypatch.setattr(ai_client, "monotonic", lambda: clock["t"])
-    return waits
-
-
-@pytest.fixture
-def fake_ai(no_wait):
-    p = FakeProvider()
-    ai_client.set_provider(p)
-    return p
-
-
-@pytest.fixture
-def real_user(db, freeze):
-    """A Google-connected (non-demo) account."""
-    freeze(NOW)
-    user = User.objects.create_user("me@gmail.example", name="Rasmitha")
-    user.interests = ["frontend development", "software engineering", "hackathons"]
-    user.skills = ["React", "TypeScript", "CSS"]
-    user.experience_level = "Undergraduate student"
-    user.timezone = "Asia/Kolkata"
-    user.save()
-    g = user.gmail
-    g.status, g.email = GmailConnection.Status.CONNECTED, "me@gmail.example"
-    g.set_tokens(refresh_token="1//refresh-secret", access_token="ya29.access", expiry=datetime(2030, 1, 1, tzinfo=UTC))
-    g.save()
-    return user
-
-
-@pytest.fixture
-def gmail(monkeypatch):
-    fake = FakeGmail()
-    monkeypatch.setattr(sync.GmailClient, "for_connection", classmethod(lambda cls, g: fake))
-    return fake
 
 
 # --- Content -----------------------------------------------------------------------

@@ -13,6 +13,7 @@ import {
   searchOpportunities,
   sortOpportunities,
   typeCounts,
+  chipTypes,
 } from "@/lib/domain/opportunities";
 import { createSeed } from "@/lib/mock/seed";
 import { MapPin } from "lucide-react";
@@ -41,7 +42,10 @@ describe("search + filters", () => {
   });
 
   it("counts chips from the data", () => {
-    expect(typeCounts(opps)).toEqual({ All: 12, Internship: 4, Hackathon: 3, Job: 3, Scholarship: 2 });
+    expect(typeCounts(opps)).toEqual({ All: 12, Internship: 4, Hackathon: 3, Job: 3, Scholarship: 2, Competition: 0, Fellowship: 0, Event: 0 });
+    // Only types the user has get a chip; a selected empty type stays so it can be cleared.
+    expect(chipTypes(opps, "All")).toEqual(["All", "Internship", "Hackathon", "Job", "Scholarship"]);
+    expect(chipTypes(opps, "Event")).toEqual(["All", "Internship", "Hackathon", "Job", "Scholarship", "Event"]);
     expect(filterByType(opps, "Hackathon")).toHaveLength(3);
   });
 

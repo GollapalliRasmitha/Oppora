@@ -1,7 +1,9 @@
 import django_filters
 from django.db import IntegrityError, transaction
 from django.db.models import Q
-from rest_framework import mixins, status, viewsets
+from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.exceptions import ValidationError
+from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -9,13 +11,15 @@ from core import clock
 from core.data import interview_dicts, opportunity_dicts
 from core.domain.calendar import build_calendar_items
 from core.domain.constants import OPPORTUNITY_TYPES
+from mail.models import Email
 
-from .models import Application, Deadline, SavedItem
+from .models import Application, Deadline, HiddenSender, Opportunity, SavedItem
 from .serializers import (
     ApplicationSerializer,
     DeadlineSerializer,
     OpportunitySerializer,
     SavedItemSerializer,
+    UserScopedPK,
     opportunities_for,
 )
 
@@ -153,3 +157,66 @@ class SavedView(APIView):
         target = {k: v for k, v in s.validated_data.items() if v is not None}
         SavedItem.objects.filter(Q(user=request.user), **target).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class HiddenSenderSerializer(serializers.ModelSerializer):
+    senderEmail = serializers.EmailField(source="sender_email", read_only=True)
+    senderName = serializers.CharField(source="sender_name", read_only=True)
+    hiddenOpportunityIds = serializers.JSONField(source="hidden_opportunity_ids", read_only=True)
+    createdAt = serializers.DateTimeField(source="created_at", read_only=True)
+
+    class Meta:
+        model = HiddenSender
+        fields = ["id", "senderEmail", "senderName", "hiddenOpportunityIds", "createdAt"]
+
+
+class HideSenderRequest(serializers.Serializer):
+    opportunityId = UserScopedPK(source="opportunity", queryset=Opportunity.objects.all())
+
+
+class HiddenSenderListView(APIView):
+    """
+    GET /api/hidden-senders/ — senders the user chose to hide.
+    POST {opportunityId} — "Hide all from this sender": hides every opportunity that came from the
+    sender of that opportunity's first email, and skips their future emails.
+    """
+
+    def get(self, request):
+        return Response(HiddenSenderSerializer(HiddenSender.objects.filter(user=request.user), many=True).data)
+
+    def post(self, request):
+        s = HideSenderRequest(data=request.data, context={"request": request})
+        s.is_valid(raise_exception=True)
+        opp = s.validated_data["opportunity"]
+        first = Email.objects.filter(user=request.user, opportunity=opp).order_by("received_at").first()
+        if not first:
+            raise ValidationError({"opportunityId": "This opportunity has no source email."})
+        with transaction.atomic():
+            ids = list(
+                Opportunity.objects.filter(user=request.user, dismissed=False, emails__sender_email=first.sender_email)
+                .distinct()
+                .values_list("id", flat=True)
+            )
+            Opportunity.objects.filter(id__in=ids).update(dismissed=True)
+            rule, created = HiddenSender.objects.get_or_create(
+                user=request.user, sender_email=first.sender_email, defaults={"sender_name": first.sender}
+            )
+            rule.hidden_opportunity_ids = list(dict.fromkeys([*rule.hidden_opportunity_ids, *map(str, ids)]))
+            rule.save(update_fields=["hidden_opportunity_ids"])
+        return Response(HiddenSenderSerializer(rule).data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+
+class HiddenSenderDetailView(APIView):
+    """DELETE /api/hidden-senders/<id>/ — "Show again": restores what the rule hid and stops skipping the sender."""
+
+    def delete(self, request, pk):
+        rule = get_object_or_404(HiddenSender, pk=pk, user=request.user)
+        with transaction.atomic():
+            restored = list(
+                Opportunity.objects.filter(user=request.user, id__in=rule.hidden_opportunity_ids, dismissed=True).values_list(
+                    "id", flat=True
+                )
+            )
+            Opportunity.objects.filter(id__in=restored).update(dismissed=False)
+            rule.delete()
+        return Response({"restoredOpportunityIds": [str(i) for i in restored]})

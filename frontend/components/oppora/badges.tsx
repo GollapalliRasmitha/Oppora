@@ -1,8 +1,8 @@
-import { CalendarClock, Flame } from "lucide-react";
+import { BadgeAlert, CalendarClock, Flame } from "lucide-react";
 import { useId } from "react";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { daysLeftLabel, formatDate, urgencyFor } from "@/lib/domain/dates";
-import type { ISODate, Priority } from "@/lib/domain/types";
+import type { Fee, ISODate, Priority } from "@/lib/domain/types";
 import { cn } from "@/lib/utils";
 
 const PRIORITY_TONE: Record<Priority, BadgeTone> = { High: "pink", Medium: "purple", Low: "neutral" };
@@ -49,11 +49,20 @@ export function DeadlineIndicator({
       </Badge>
     );
   }
+  if (!deadline) {
+    // One line, not "No deadline" + "No deadline mentioned".
+    return (
+      <div className={cn("flex items-center gap-2", className)}>
+        <CalendarClock aria-hidden className="size-4 shrink-0 text-ink-3" />
+        <span className="text-sm font-medium text-ink-3">{daysLeftLabel(null)}</span>
+      </div>
+    );
+  }
   return (
     <div className={cn("flex items-start gap-2", className)}>
       <CalendarClock aria-hidden className={cn("mt-0.5 size-4 shrink-0", URGENCY_TEXT[urgency])} />
       <div className="leading-tight">
-        <div className="text-sm font-semibold text-ink">{deadline ? formatDate(deadline) : "No deadline"}</div>
+        <div className="text-sm font-semibold text-ink">{formatDate(deadline)}</div>
         <div className={cn("text-meta font-medium", URGENCY_TEXT[urgency])}>{daysLeftLabel(days)}</div>
       </div>
     </div>
@@ -122,5 +131,27 @@ export function MatchRing({ value, size = 96, className }: { value: number; size
         <span className="mt-1 block text-xs font-semibold uppercase tracking-wide text-ink-3">Match</span>
       </span>
     </div>
+  );
+}
+
+const CURRENCY_SYMBOL: Record<string, string> = { INR: "₹", USD: "$", EUR: "€", GBP: "£" };
+
+/** "₹500", "$20", "INR 1,499" — or "" when the email gave no amount. */
+export function formatFee(fee: Fee): string {
+  if (fee.amount === null) return "";
+  const n = new Intl.NumberFormat(fee.currency === "INR" ? "en-IN" : "en-GB", { maximumFractionDigits: 2 }).format(fee.amount);
+  const symbol = fee.currency ? CURRENCY_SYMBOL[fee.currency] : undefined;
+  return symbol ? `${symbol}${n}` : fee.currency ? `${fee.currency} ${n}` : n;
+}
+
+/** Warning shown wherever an opportunity is listed when its email asks for money. */
+export function FeeBadge({ fee, className }: { fee: Fee | null; className?: string }) {
+  if (!fee) return null;
+  const amount = formatFee(fee);
+  return (
+    <Badge tone="urgent" className={className} title={`From the email: “${fee.text}”`}>
+      <BadgeAlert aria-hidden />
+      {amount ? `Asks for a fee: ${amount}` : "Asks for a fee"}
+    </Badge>
   );
 }

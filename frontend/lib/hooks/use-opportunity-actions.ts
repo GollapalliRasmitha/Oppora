@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { toast } from "@/components/ui/toast";
-import { dismissOpportunity, markApplied, restoreOpportunity, setReminder, setSaved } from "@/lib/api";
+import { dismissOpportunity, hideSender as hideSenderApi, markApplied, restoreOpportunity, setReminder, setSaved, showSender } from "@/lib/api";
 import type { Opportunity } from "@/lib/domain/types";
 
 type Updater = (id: string, fn: (o: Opportunity) => Opportunity) => void;
@@ -16,6 +16,7 @@ export function useOpportunityActions({
   remove,
   reinsert,
   onChanged,
+  refresh,
 }: {
   update: Updater;
   /** Only needed by lists that support "Not interested". */
@@ -23,6 +24,8 @@ export function useOpportunityActions({
   reinsert?: (opp: Opportunity) => void;
   /** Called after the server confirms a change (e.g. to refresh stats). */
   onChanged?: () => void;
+  /** Reloads the list (after "Show again" brings several opportunities back). */
+  refresh?: () => void;
 }) {
   const toggleSave = useCallback(
     async (opp: Opportunity) => {
@@ -107,5 +110,33 @@ export function useOpportunityActions({
     [remove, reinsert, onChanged],
   );
 
-  return { toggleSave, apply, remind, dismiss };
+  const hideSender = useCallback(
+    async (opp: Opportunity) => {
+      try {
+        const rule = await hideSenderApi(opp.id);
+        rule.hiddenOpportunityIds.forEach((id) => remove?.(id));
+        onChanged?.();
+        const n = rule.hiddenOpportunityIds.length;
+        toast.info(`Hid ${n} ${n === 1 ? "opportunity" : "opportunities"} from ${rule.senderName || rule.senderEmail}`, {
+          description: `New emails from ${rule.senderEmail} will be skipped. Undo, or show them again from Settings.`,
+          action: {
+            label: "Undo",
+            onClick: () => {
+              showSender(rule.id)
+                .then(() => {
+                  (refresh ?? onChanged)?.();
+                  toast.success("Showing this sender again", { description: rule.senderEmail });
+                })
+                .catch(() => toast.error("Couldn't undo. Please try again from Settings."));
+            },
+          },
+        });
+      } catch {
+        toast.error("Couldn't hide this sender. Please try again.");
+      }
+    },
+    [remove, onChanged, refresh],
+  );
+
+  return { toggleSave, apply, remind, dismiss, hideSender };
 }

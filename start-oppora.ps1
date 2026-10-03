@@ -1,12 +1,14 @@
 <#
 .SYNOPSIS
   Starts Oppora locally: Docker (Postgres + Redis), database migrations, the
-  Django backend and the Next.js frontend, then opens http://localhost:3000.
+  Django backend, the Celery worker and beat (background sync + schedules) and
+  the Next.js frontend, then opens http://localhost:3000.
 
 .DESCRIPTION
   Safe to run again at any time: servers that are already running are left
   alone, except the backend is restarted when .env changed after it started
-  (so new keys apply). On the first run it also creates .env, the Python
+  (so new keys apply), and the Celery worker and beat are restarted when .env or
+  backend code changed after they started (Celery has no auto-reload). On the first run it also creates .env, the Python
   virtual environment and node_modules.
 
 .PARAMETER RefreshDemo
@@ -17,7 +19,7 @@
   Don't open the browser at the end.
 
 .PARAMETER Restart
-  Stops Oppora's backend and frontend servers if they're running and starts
+  Stops Oppora's backend, worker, beat and frontend if they're running and starts
   them again (only Oppora's own processes; anything else on ports 8000/3000 is
   left alone).
 
@@ -80,6 +82,25 @@ function Close-IdleWindows {
     $children = @($all | Where-Object { $_.ParentProcessId -eq $h.ProcessId -and $_.Name -ne "conhost.exe" })
     if ($children.Count -eq 0) { Stop-Process -Id $h.ProcessId -Force -ErrorAction SilentlyContinue }
   }
+}
+
+# Oppora's Celery processes ("worker" or "beat"), started from this repo's venv.
+function Get-CeleryProcesses([string]$Kind) {
+  return @(Get-CimInstance Win32_Process -Filter "Name='python.exe'" | Where-Object {
+      $_.CommandLine -and $_.CommandLine -like "*$Backend\.venv*" -and $_.CommandLine -like "*celery*-A config $Kind*"
+    })
+}
+
+# Newest change to backend code (Celery has no auto-reload, so it's restarted after edits).
+function Get-NewestBackendChange {
+  $dirs = Get-ChildItem $Backend -Directory | Where-Object { $_.Name -notin @(".venv", ".celery", "__pycache__", ".pytest_cache", ".ruff_cache") }
+  $files = @($dirs | ForEach-Object { Get-ChildItem $_.FullName -Recurse -Filter *.py -File }) + @(Get-Item $EnvFile)
+  return ($files | Sort-Object LastWriteTime -Descending | Select-Object -First 1).LastWriteTime
+}
+
+function Start-Window([string]$Title, [string]$Directory, [string]$Command) {
+  $cmd = "`$Host.UI.RawUI.WindowTitle = '$Title'; $Command"
+  Start-Process powershell -WorkingDirectory $Directory -ArgumentList "-NoExit", "-Command", $cmd
 }
 
 function Invoke-Checked([string]$What, [scriptblock]$Command) {
@@ -186,6 +207,33 @@ if ($frontendProcs -and $Restart) {
 
 Close-IdleWindows
 
+# Celery worker + beat: restart after .env or code changes (or -Restart).
+$newest = Get-NewestBackendChange
+New-Item -ItemType Directory -Force (Join-Path $Backend ".celery") | Out-Null
+foreach ($kind in @("worker", "beat")) {
+  $procs = Get-CeleryProcesses $kind
+  if ($procs.Count -gt 0) {
+    $started = ($procs | Sort-Object CreationDate | Select-Object -First 1).CreationDate
+    if ($Restart -or $newest -gt $started) {
+      Step "Restarting the Celery $kind ($(if ($Restart) { '-Restart' } else { 'code or .env changed' }))"
+      Stop-Processes $procs
+      $procs = @()
+    } else {
+      Step "Celery $kind already running"
+    }
+  }
+  if ($procs.Count -eq 0) {
+    if ($kind -eq "worker") {
+      Step "Starting the Celery worker in a new window (background Gmail sync + AI)"
+      # solo pool: one process, the way Celery runs on Windows; it also keeps the AI rate limit in one place.
+      Start-Window "Oppora worker" $Backend "& '$Python' -m celery -A config worker --pool=solo --loglevel=info"
+    } else {
+      Step "Starting Celery beat in a new window (resume queued emails, scans, reminders, briefing)"
+      Start-Window "Oppora beat" $Backend "& '$Python' -m celery -A config beat --loglevel=info --schedule .celery\beat-schedule"
+    }
+  }
+}
+
 if (Test-Port 8000) {
   Step "Backend already running on port 8000"
 } else {
@@ -211,5 +259,5 @@ while (-not (Test-Port 3000)) {
 if (-not $NoBrowser) { Start-Process "http://localhost:3000" }
 Write-Host ""
 Write-Host "Oppora is running at http://localhost:3000" -ForegroundColor Green
-Write-Host "To stop it, close the 'Oppora backend' and 'Oppora frontend' windows. 'docker compose stop' stops the database."
+Write-Host "To stop it, close the 'Oppora backend', 'Oppora worker', 'Oppora beat' and 'Oppora frontend' windows. 'docker compose stop' stops the database."
 Write-Host "Changed .env? The backend restarts by itself; or run this script again (add -Restart to restart both servers)."

@@ -7,8 +7,9 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { daysLeft } from "@/lib/domain/dates";
 import type { Opportunity } from "@/lib/domain/types";
-import { DeadlineIndicator, MatchMeter, PriorityBadge } from "./badges";
+import { DeadlineIndicator, FeeBadge, MatchMeter, PriorityBadge } from "./badges";
 import { Monogram } from "./monogram";
+import { OpportunityMenu, type OpportunityActions } from "./opportunity-menu";
 import { StatusBadge } from "./opportunity-row";
 import { SaveToggle } from "./save-toggle";
 
@@ -16,10 +17,13 @@ export function OpportunityCard({
   opp,
   now,
   onToggleSave,
+  actions,
 }: {
   opp: Opportunity;
   now: Date;
   onToggleSave: (o: Opportunity) => void;
+  /** Adds the ⋯ menu (mark applied, reminder, not interested, hide sender). */
+  actions?: OpportunityActions;
 }) {
   const href = `/opportunities/${opp.id}`;
   return (
@@ -36,12 +40,16 @@ export function OpportunityCard({
             {opp.organization} · {opp.type}
           </p>
         </div>
-        <SaveToggle compact saved={opp.saved} title={opp.title} onToggle={() => onToggleSave(opp)} className="-mr-2 -mt-2" />
+        <div className="-mr-2 -mt-2 flex">
+          <SaveToggle compact saved={opp.saved} title={opp.title} onToggle={() => onToggleSave(opp)} />
+          {actions && <OpportunityMenu opp={opp} now={now} actions={actions} />}
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
         <PriorityBadge priority={opp.priority} />
         <StatusBadge opp={opp} />
+        <FeeBadge fee={opp.fee} />
       </div>
 
       <DeadlineIndicator className="mt-4" deadline={opp.deadline} days={daysLeft(opp.deadline, now)} />

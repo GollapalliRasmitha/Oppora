@@ -184,8 +184,35 @@ AI_REQUESTS_PER_DAY = int(os.environ.get("AI_REQUESTS_PER_DAY", "200"))
 #: Characters of cleaned email text sent to the AI (subject + sender + trimmed body; never attachments).
 AI_MAX_BODY_CHARS = int(os.environ.get("AI_MAX_BODY_CHARS", "4000"))
 
-# Background jobs: a thread per sync until Celery arrives in Stage 9. Tests run them inline.
+# --- Background jobs (Stage 9: Celery + Redis) ---
+# "celery" (default): syncs run in the Celery worker. "thread": in the web process (no worker
+# needed; restarts interrupt them). Tests set JOBS_EAGER=True to run jobs inline.
+JOBS_BACKEND = os.environ.get("JOBS_BACKEND", "celery").strip().lower()
 JOBS_EAGER = env_bool("JOBS_EAGER", False)
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+
+from celery.schedules import crontab  # noqa: E402
+
+CELERY_BROKER_URL = REDIS_URL
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_ACKS_LATE = True  # a task the worker dies on is delivered again
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 4 * 3600}  # longer than the longest sync
+CELERY_TIMEZONE = "UTC"
+CELERY_BEAT_SCHEDULE = {
+    # Queued emails (e.g. after the AI's daily limit) and interrupted syncs pick up again by
+    # themselves: this sees a new quota day within 10 minutes of the reset.
+    "resume-queued-emails": {"task": "mail.tasks.resume_queued", "schedule": crontab(minute="*/10")},
+    # New mail for every connected account (incremental: Gmail history since the last scan).
+    "sync-all-accounts": {"task": "mail.tasks.sync_all", "schedule": crontab(minute="5,35")},
+    # Reminders and the daily briefing, at the right local hour for each user.
+    "deadline-reminders": {"task": "notifications.tasks.deadline_reminders", "schedule": crontab(minute=2)},
+    "daily-briefing": {"task": "notifications.tasks.daily_briefing", "schedule": crontab(minute=7)},
+}
+REMINDER_LOCAL_HOUR = 9  # reminders the day before a deadline, 09:00 in the user's zone
+BRIEFING_LOCAL_HOUR = 8
 
 LOGGING = {
     "version": 1,

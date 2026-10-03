@@ -1,6 +1,6 @@
 # Oppora backend
 
-Django 5.2 + Django REST Framework on Python 3.14, PostgreSQL 16. Google sign-in, read-only Gmail sync and the AI pipeline (Gemini free tier) are in; Stage 9 adds Celery + Redis. See `../PROMPT.md` and `../CLAUDE.md`.
+Django 5.2 + Django REST Framework on Python 3.14, PostgreSQL 16. Google sign-in, read-only Gmail sync and the AI pipeline (Gemini free tier), run in the background by Celery + Redis. See `../PROMPT.md` and `../CLAUDE.md`.
 
 ## Setup (Windows, Git Bash or PowerShell)
 
@@ -14,7 +14,12 @@ py -3.14 -m venv .venv
 .venv/Scripts/python manage.py migrate
 .venv/Scripts/python manage.py seed_demo   # needs Node + `npm install` in /frontend
 .venv/Scripts/python manage.py runserver 127.0.0.1:8000
+# in two more terminals (Windows: the solo pool is how Celery runs here)
+.venv/Scripts/python -m celery -A config worker --pool=solo --loglevel=info
+.venv/Scripts/python -m celery -A config beat --loglevel=info --schedule .celery/beat-schedule
 ```
+
+`recheck_fees` re-checks stored opportunities for a fee their emails state (the sync also does this).
 
 Then run `npm run dev` in `/frontend` and open http://localhost:3000, or just use `start-oppora.ps1` from the repo root. Next.js proxies `/api/*` to Django. Without Google credentials, *Sign in with Google* opens the seeded demo account; with them (see `../docs/google-cloud-setup.md`) it's real Google sign-in.
 
@@ -63,6 +68,7 @@ All endpoints need a session (401 otherwise), and unsafe methods need `X-CSRFTok
 | `GET /api/deadlines/`, `GET /api/deadlines/calendar/` | `?start=&end=&kind=` |
 | `GET, POST /api/applications/` | POST upserts `{opportunityId, status}` |
 | `GET, POST, DELETE /api/saved/` | `{opportunityId}` or `{emailId}` |
+| `GET, POST /api/hidden-senders/`, `DELETE …/<id>/` | "Hide all from this sender" `{opportunityId}` / show again |
 | `GET /api/notifications/`, `POST …/<id>/read/`, `POST …/clear/` | |
 | `GET /api/insights/?range=7\|30`, `GET /api/insights/dashboard/` | |
 | `GET, POST /api/sync/` | POST starts a background scan; 409 `gmail_access` when Gmail isn't connected; GET includes `queued` |

@@ -11,6 +11,8 @@ import copy
 
 from core.domain.constants import EMAIL_CATEGORIES, PRIORITIES
 
+from .fees import FEE_SCHEMA
+
 
 def _s(desc: str, nullable: bool = True, **extra) -> dict:
     return {"type": "string", "description": desc, "nullable": nullable, **extra}
@@ -54,12 +56,13 @@ EXTRACTION_SCHEMA: dict = {
             },
             "required": ["start", "end", "location"],
         },
+        "fee": FEE_SCHEMA,
         "confidence": {"type": "number", "description": "0-1: how sure you are about the extraction."},
     },
     "required": [
         "category", "is_opportunity", "relevance", "priority", "summary", "organization", "opportunity_name",
         "deadline", "eligibility", "location", "duration", "skills", "requirements", "benefits",
-        "application_link", "action_required", "interview", "confidence",
+        "application_link", "action_required", "interview", "fee", "confidence",
     ],
 }  # fmt: skip
 

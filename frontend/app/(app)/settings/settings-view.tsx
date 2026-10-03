@@ -6,6 +6,7 @@ import {
   CalendarClock,
   CircleCheck,
   CreditCard,
+  Eye,
   Lock,
   LogOut,
   Mail,
@@ -35,6 +36,8 @@ import {
   connectGmail,
   deleteMyData,
   disconnectGmail,
+  listHiddenSenders,
+  showSender,
   signOut,
   getSettings,
   updatePreferences,
@@ -43,7 +46,7 @@ import {
 } from "@/lib/api";
 import { formatDate } from "@/lib/domain/dates";
 import { OPPORTUNITY_CATEGORIES } from "@/lib/domain/inbox";
-import type { GmailConnection, OpportunityType, PersonalizationLevel, Preferences, User } from "@/lib/domain/types";
+import type { GmailConnection, HiddenSender, OpportunityType, PersonalizationLevel, Preferences, User } from "@/lib/domain/types";
 import { useResource } from "@/lib/hooks/use-resource";
 
 const SECTIONS = [
@@ -63,6 +66,49 @@ function Section({ id, title, description, children }: { id: string; title: stri
       {description && <p className="mt-0.5 text-meta text-ink-3">{description}</p>}
       <div className="mt-4">{children}</div>
     </GlassCard>
+  );
+}
+
+/** Senders hidden with "Hide all from this sender", with "Show again". */
+function HiddenSenders() {
+  const res = useResource(listHiddenSenders);
+  const { mutate } = res;
+  const show = async (rule: HiddenSender) => {
+    mutate((list) => list.filter((r) => r.id !== rule.id));
+    try {
+      const restored = await showSender(rule.id);
+      toast.success("Showing this sender again", {
+        description: `${restored.length} ${restored.length === 1 ? "opportunity" : "opportunities"} restored from ${rule.senderEmail}.`,
+      });
+    } catch {
+      mutate((list) => [rule, ...list]);
+      toast.error("Couldn't show this sender again. Please try again.");
+    }
+  };
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-ink">Hidden senders</h3>
+      <p className="mt-0.5 text-meta text-ink-3">Their opportunities are hidden and new emails from them are skipped.</p>
+      {res.status === "success" && res.data.length === 0 && (
+        <p className="mt-2 text-sm text-ink-2">None. Use &ldquo;Hide all from this sender&rdquo; in an opportunity&apos;s ⋯ menu.</p>
+      )}
+      {res.status === "error" && <p className="mt-2 text-sm text-urgent">Couldn&apos;t load hidden senders.</p>}
+      {res.status === "success" && res.data.length > 0 && (
+        <ul className="mt-2 divide-y divide-line rounded-md border border-line">
+          {res.data.map((r) => (
+            <li key={r.id} className="flex items-center gap-3 px-3 py-2">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-ink">{r.senderName || r.senderEmail}</p>
+                <p className="truncate text-meta text-ink-3">{r.senderEmail}</p>
+              </div>
+              <Button size="sm" variant="secondary" onClick={() => show(r)}>
+                <Eye aria-hidden /> Show again
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -225,6 +271,7 @@ function SettingsContent({ data, mutate }: { data: Settings; mutate: (fn: (s: Se
                 onChange={(v) => savePrefs({ preferredLocations: v }, "Preferred locations updated")}
                 placeholder="Add a location"
               />
+              <HiddenSenders />
             </div>
           </Section>
 

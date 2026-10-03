@@ -88,7 +88,7 @@ export function createSeed(today: Date = new Date()): Seed {
     appliedAt: null,
   });
 
-  type Draft = Omit<Opportunity, "reminderSet" | "dismissed" | "matchReasons" | "requirements" | "benefits"> &
+  type Draft = Omit<Opportunity, "reminderSet" | "dismissed" | "matchReasons" | "requirements" | "benefits" | "fee"> &
     Partial<Pick<Opportunity, "requirements" | "benefits">>;
 
   const drafts: Draft[] = [
@@ -338,6 +338,8 @@ export function createSeed(today: Date = new Date()): Seed {
     matchReasons: explainMatch(o, seedUser),
     reminderSet: withReminder.has(o.id),
     dismissed: false,
+    // None of the demo emails asks for a fee.
+    fee: null,
   }));
 
   // Interviews for two applications, each backed by an invitation email below.

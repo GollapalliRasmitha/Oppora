@@ -1,8 +1,23 @@
 import { daysLeft } from "./dates";
 import type { Opportunity, OpportunityType, Priority } from "./types";
 
-export const FILTER_TYPES = ["Internship", "Hackathon", "Job", "Scholarship"] as const satisfies readonly OpportunityType[];
+/** Every opportunity type, most common first. Chips are only shown for types the user has. */
+export const FILTER_TYPES = [
+  "Internship",
+  "Hackathon",
+  "Job",
+  "Scholarship",
+  "Competition",
+  "Fellowship",
+  "Event",
+] as const satisfies readonly OpportunityType[];
 export type TypeFilter = "All" | (typeof FILTER_TYPES)[number];
+
+/** Type chips to show: types present in the user's opportunities, plus the selected one (so it can be cleared). */
+export function chipTypes(opps: Opportunity[], selected: TypeFilter): TypeFilter[] {
+  const present = new Set(opps.map((o) => o.type));
+  return ["All", ...FILTER_TYPES.filter((t) => present.has(t) || t === selected)];
+}
 
 export const SORTS = ["relevance", "deadline", "priority"] as const;
 export type SortKey = (typeof SORTS)[number];

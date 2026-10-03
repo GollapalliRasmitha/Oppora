@@ -1,11 +1,17 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
 import pytest
 from rest_framework.test import APIClient
 
+from accounts.models import GmailConnection, User
+from ai import client as ai_client
+from ai.providers.fake import FakeProvider
 from core import clock
 from core.seed import export_seed, load_seed
+from mail import sync
+
+from .gmail_fakes import FakeGmail
 
 TZ = "Asia/Kolkata"
 KOLKATA = ZoneInfo(TZ)
@@ -85,3 +91,54 @@ def ids(seeded):
 @pytest.fixture
 def api(user):
     return make_client(user)
+
+
+# --- Shared by the pipeline tests (fake clock, fake AI, a Google-connected account, fake Gmail) ---
+
+PIPELINE_NOW = datetime(2026, 10, 2, 9, 30, tzinfo=KOLKATA)
+
+
+@pytest.fixture
+def no_wait(monkeypatch):
+    """The rate limiter and backoff use a fake clock: tests never sleep, but waits are recorded."""
+    clock = {"t": 1000.0}
+    waits: list[float] = []
+
+    def fake_sleep(s):
+        waits.append(round(s, 2))
+        clock["t"] += s
+
+    monkeypatch.setattr(ai_client, "sleep", fake_sleep)
+    monkeypatch.setattr(ai_client, "monotonic", lambda: clock["t"])
+    return waits
+
+
+@pytest.fixture
+def fake_ai(no_wait):
+    p = FakeProvider()
+    ai_client.set_provider(p)
+    return p
+
+
+@pytest.fixture
+def real_user(db, freeze):
+    """A Google-connected (non-demo) account."""
+    freeze(PIPELINE_NOW)
+    user = User.objects.create_user("me@gmail.example", name="Rasmitha")
+    user.interests = ["frontend development", "software engineering", "hackathons"]
+    user.skills = ["React", "TypeScript", "CSS"]
+    user.experience_level = "Undergraduate student"
+    user.timezone = "Asia/Kolkata"
+    user.save()
+    g = user.gmail
+    g.status, g.email = GmailConnection.Status.CONNECTED, "me@gmail.example"
+    g.set_tokens(refresh_token="1//refresh-secret", access_token="ya29.access", expiry=datetime(2030, 1, 1, tzinfo=UTC))
+    g.save()
+    return user
+
+
+@pytest.fixture
+def gmail(monkeypatch):
+    fake = FakeGmail()
+    monkeypatch.setattr(sync.GmailClient, "for_connection", classmethod(lambda cls, g: fake))
+    return fake

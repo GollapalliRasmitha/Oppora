@@ -11,12 +11,13 @@ from django.conf import settings
 from django.db import transaction
 
 from ai.extract import Extraction, extract
+from ai.fees import FEE_PENALTY
 from ai.providers.base import InvalidOutput
 from core import clock
 from core.domain.constants import OPPORTUNITY_TYPES, deadline_kind
 from core.domain.dates import days_left
 from core.domain.match import explain_match
-from opportunities.models import Deadline, Interview, Opportunity
+from opportunities.models import Deadline, HiddenSender, Interview, Opportunity
 
 from .content import MessageContent, parse_message
 from .models import Email, EmailClassification, ProcessedMessage
@@ -54,17 +55,31 @@ def profile_score(reasons: dict, opp_skills: list[str], deadline, now) -> int:
     return score
 
 
-def blend(relevance: int, reasons: dict, skills: list[str], deadline, location: str | None, prefs, now) -> int:
-    """AI relevance blended with the profile checks; personalization sets the blend."""
+def blend(
+    relevance: int, reasons: dict, skills: list[str], deadline, location: str | None, prefs, now, asks_fee: bool = False
+) -> int:
+    """AI relevance blended with the profile checks; personalization sets the blend. Asking for a fee ranks lower."""
     w = PROFILE_WEIGHT.get(prefs.personalization, 0.5)
     score = (1 - w) * relevance + w * profile_score(reasons, skills, deadline, now)
     if location and any(loc.lower() in location.lower() for loc in prefs.preferred_locations):
         score += 5
+    if asks_fee:
+        score -= FEE_PENALTY
     return max(0, min(100, round(score)))
 
 
 def match_score(x: Extraction, reasons: dict, prefs, now) -> int:
-    return blend(x.relevance, reasons, x.skills, x.deadline, x.location, prefs, now)
+    return blend(x.relevance, reasons, x.skills, x.deadline, x.location, prefs, now, asks_fee=bool(x.fee))
+
+
+def set_fee(o: Opportunity, fee: dict | None, now) -> list[str]:
+    """Stores a detected fee on the opportunity (never removes one an email stated). Returns changed fields."""
+    o.fee_checked_at = now
+    if not fee or o.fee_text:
+        return ["fee_checked_at"]
+    o.fee_amount, o.fee_currency, o.fee_text = fee["amount"], fee["currency"], fee["text"]
+    o.priority = "Low"
+    return ["fee_amount", "fee_currency", "fee_text", "priority", "fee_checked_at"]
 
 
 def rescore(user, now) -> int:
@@ -90,7 +105,7 @@ def rescore(user, now) -> int:
         if c is None or c.model_name == "seed":
             continue
         deadline = o.deadline.due_date if hasattr(o, "deadline") else None
-        score = blend(c.relevance, o.match_reasons, o.skills, deadline, o.location, prefs, now)
+        score = blend(c.relevance, o.match_reasons, o.skills, deadline, o.location, prefs, now, asks_fee=bool(o.fee_text))
         if score != o.match_score:
             o.match_score = score
             changed += 1
@@ -99,7 +114,9 @@ def rescore(user, now) -> int:
 
 
 def priority_for(x: Extraction, score: int, now) -> str:
-    """The AI's priority when it gave one; a close deadline on a good match always makes it High."""
+    """The AI's priority when it gave one; a close deadline on a good match always makes it High. Fees → Low."""
+    if x.fee:
+        return "Low"
     d = days_left(x.deadline, now) if x.deadline else None
     if d is not None and 0 <= d <= 3 and score >= 70:
         return "High"
@@ -191,8 +208,12 @@ def store(user, m: MessageContent, x: Extraction) -> Outcome:
     opp = find_existing(user, m, x)
     if opp:
         changed = _fill_missing(opp, x)
+        if x.fee and not opp.fee_text:
+            changed += set_fee(opp, x.fee, now)
+            opp.match_score = max(0, opp.match_score - FEE_PENALTY)
+            changed.append("match_score")
         if changed:
-            opp.save(update_fields=changed)
+            opp.save(update_fields=list(dict.fromkeys(changed)))
         outcome = "linked"
     else:
         if x.category not in prefs.categories:
@@ -220,6 +241,10 @@ def store(user, m: MessageContent, x: Extraction) -> Outcome:
             benefits=x.benefits,
             application_link=x.application_link,
             match_reasons=reasons,
+            fee_amount=x.fee["amount"] if x.fee else None,
+            fee_currency=x.fee["currency"] if x.fee else "",
+            fee_text=x.fee["text"] if x.fee else "",
+            fee_checked_at=now,
         )
         outcome = "stored"
 
@@ -252,6 +277,8 @@ def process_message(user, client, gmail_message_id: str) -> Outcome:
     m = parse_message(raw, settings.AI_MAX_BODY_CHARS)
     if reason := prefilter(m, own_email=user.gmail.email):
         return Outcome(ProcessedMessage.Status.SKIPPED, reason)
+    if HiddenSender.objects.filter(user=user, sender_email=m.sender_email).exists():
+        return Outcome(ProcessedMessage.Status.SKIPPED, "hidden_sender")
     if m.message_id != gmail_message_id or Email.objects.filter(user=user, gmail_message_id=m.message_id).exists():
         return Outcome(ProcessedMessage.Status.SKIPPED, "duplicate")
     tz = clock.zone(user.timezone) or clock.zone(settings.DEFAULT_USER_TIMEZONE)

@@ -35,6 +35,12 @@ class Opportunity(models.Model):
     reminder_set = models.BooleanField(default=False)
     #: "Not interested": hidden everywhere, reversible.
     dismissed = models.BooleanField(default=False)
+    #: Set only when the email itself states a fee/registration charge (quoted in fee_text).
+    fee_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    fee_currency = models.CharField(max_length=8, blank=True)
+    fee_text = models.CharField(max_length=300, blank=True)
+    #: When the source emails were last checked for a fee (None = not checked yet).
+    fee_checked_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -131,3 +137,19 @@ class Interview(models.Model):
     class Meta:
         indexes = [models.Index(fields=["user", "start"], name="interview_user_start")]
         ordering = ["start"]
+
+
+class HiddenSender(models.Model):
+    """ "Hide all from this sender": their opportunities are hidden and their future emails skipped."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="hidden_senders")
+    sender_email = models.EmailField()
+    sender_name = models.CharField(max_length=200, blank=True)
+    #: Opportunities this rule hid, so "Show again" restores exactly those.
+    hidden_opportunity_ids = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["user", "sender_email"], name="uniq_hidden_sender")]
+        ordering = ["-created_at"]

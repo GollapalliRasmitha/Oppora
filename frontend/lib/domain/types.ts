@@ -46,6 +46,14 @@ export interface MatchReasons {
   matchedInterests: string[];
 }
 
+/** A fee the email itself asks for ("Asks for a fee: ₹500"). `text` is the email's own sentence. */
+export interface Fee {
+  amount: number | null;
+  /** ISO 4217, e.g. "INR". */
+  currency: string | null;
+  text: string;
+}
+
 export interface Opportunity {
   id: string;
   title: string;
@@ -72,6 +80,8 @@ export interface Opportunity {
   application: Application | null;
   reminderSet: boolean;
   dismissed: boolean;
+  /** Only when the email states a fee or registration charge; never guessed. */
+  fee: Fee | null;
 }
 
 export interface Email {
@@ -188,3 +198,12 @@ export interface GmailConnection {
 }
 
 export type Urgency = "urgent" | "soon" | "later" | "passed" | "none";
+
+/** "Hide all from this sender": their opportunities are hidden and future emails skipped. */
+export interface HiddenSender {
+  id: string;
+  senderEmail: string;
+  senderName: string;
+  hiddenOpportunityIds: string[];
+  createdAt: ISODateTime;
+}

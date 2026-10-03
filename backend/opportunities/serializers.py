@@ -37,6 +37,7 @@ class OpportunitySerializer(serializers.ModelSerializer):
     saved = serializers.SerializerMethodField()
     application = serializers.SerializerMethodField()
     reminderSet = serializers.BooleanField(source="reminder_set", required=False)
+    fee = serializers.SerializerMethodField()
 
     class Meta:
         model = Opportunity
@@ -63,6 +64,7 @@ class OpportunitySerializer(serializers.ModelSerializer):
             "application",
             "reminderSet",
             "dismissed",
+            "fee",
         ]
         read_only_fields = [
             "id",
@@ -82,6 +84,16 @@ class OpportunitySerializer(serializers.ModelSerializer):
     def get_deadline(self, obj):
         d = obj.deadline if _has(obj, "deadline") else None
         return d.due_date.isoformat() if d else None
+
+    def get_fee(self, obj):
+        """Only when the email stated a fee: {amount, currency, text} (text = the email's own sentence)."""
+        if not obj.fee_text:
+            return None
+        return {
+            "amount": float(obj.fee_amount) if obj.fee_amount is not None else None,
+            "currency": obj.fee_currency or None,
+            "text": obj.fee_text,
+        }
 
     def get_sourceEmailIds(self, obj):
         return [str(e.id) for e in obj.emails.all()]

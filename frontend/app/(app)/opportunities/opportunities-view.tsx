@@ -14,11 +14,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select } from "@/components/ui/select";
 import { listOpportunities } from "@/lib/api";
 import {
-  FILTER_TYPES,
   SORTS,
   SORT_LABELS,
   VIEWS,
   VIEW_LABELS,
+  chipTypes,
   filterByType,
   filterByView,
   parseSort,
@@ -97,7 +97,13 @@ export function OpportunitiesView() {
     (id: string, fn: (o: Opportunity) => Opportunity) => mutate((list) => list.map((o) => (o.id === id ? fn(o) : o))),
     [mutate],
   );
-  const { toggleSave } = useOpportunityActions({ update });
+  const remove = useCallback((id: string) => mutate((list) => list.filter((o) => o.id !== id)), [mutate]);
+  const reinsert = useCallback((opp: Opportunity) => mutate((list) => (list.some((o) => o.id === opp.id) ? list : [...list, opp])), [mutate]);
+  const { toggleSave, apply, remind, dismiss, hideSender } = useOpportunityActions({ update, remove, reinsert, refresh: res.revalidate });
+  const cardActions = useMemo(
+    () => ({ onToggleSave: toggleSave, onApply: apply, onRemind: remind, onDismiss: dismiss, onHideSender: hideSender }),
+    [toggleSave, apply, remind, dismiss, hideSender],
+  );
 
   const view = useMemo(() => {
     if (res.status !== "success" || !now) return null;
@@ -105,6 +111,8 @@ export function OpportunitiesView() {
     return {
       total: res.data.length,
       counts: typeCounts(searched),
+      // From everything the user has (not the search), so chips don't jump around while typing.
+      chips: chipTypes(res.data, type),
       items: sortOpportunities(filterByType(searched, type), sort, now),
     };
   }, [res.status, res.data, q, type, sort, show, now]);
@@ -150,7 +158,7 @@ export function OpportunitiesView() {
             label="Filter by type"
             value={type}
             onValueChange={(v) => set({ type: v })}
-            options={(["All", ...FILTER_TYPES] as TypeFilter[]).map((t) => ({
+            options={(view?.chips ?? (["All"] as TypeFilter[])).map((t) => ({
               value: t,
               label: t,
               count: view?.counts[t],
@@ -225,7 +233,7 @@ export function OpportunitiesView() {
             <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {view.items.map((o) => (
                 <li key={o.id} className="min-w-0">
-                  <OpportunityCard opp={o} now={now!} onToggleSave={toggleSave} />
+                  <OpportunityCard opp={o} now={now!} onToggleSave={toggleSave} actions={cardActions} />
                 </li>
               ))}
             </ul>

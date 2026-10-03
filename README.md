@@ -29,10 +29,14 @@ The script:
 4. runs `npm install` (first run, or when `package-lock.json` changes)
 5. starts Postgres and Redis (`docker compose up -d --wait`)
 6. applies database migrations
-7. opens two windows: **Oppora backend** (Django, port 8000) and **Oppora frontend** (Next.js, port 3000)
+7. opens four windows:
+   - **Oppora backend**: Django, port 8000
+   - **Oppora worker**: Celery. It runs the Gmail sync and the AI in the background.
+   - **Oppora beat**: Celery Beat, the scheduler. Every 10 minutes it continues queued emails (so they resume by themselves after the AI's daily limit resets); twice an hour it checks for new mail; it also creates deadline reminders (09:00) and the daily briefing (08:00), in your time zone.
+   - **Oppora frontend**: Next.js, port 3000
 8. opens <http://localhost:3000> in your browser
 
-It's safe to run again: anything already running is left alone, except that the backend is restarted when `.env` changed after it started. `-ExecutionPolicy Bypass` applies only to this one run. It doesn't change your system's PowerShell settings.
+It's safe to run again: anything already running is left alone. Two exceptions: the backend is restarted when `.env` changed after it started, and the worker and beat are restarted when `.env` or backend code changed (Celery doesn't reload code by itself). `-ExecutionPolicy Bypass` applies only to this one run. It doesn't change your system's PowerShell settings.
 
 ### Refresh the demo data
 The demo account's dates are relative to the day the data was loaded. To reload it for today:
@@ -53,7 +57,7 @@ powershell -ExecutionPolicy Bypass -File .\start-oppora.ps1 -Restart
 `-Restart` only stops Oppora's own servers. If another program is using port 8000 or 3000, the script stops and tells you.
 
 ### Stop
-Close the *Oppora backend* and *Oppora frontend* windows. To stop the database too:
+Close the *Oppora backend*, *Oppora worker*, *Oppora beat* and *Oppora frontend* windows. To stop the database too:
 
 ```powershell
 docker compose stop

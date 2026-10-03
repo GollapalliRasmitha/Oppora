@@ -24,3 +24,7 @@ __pycache__/
 # --- OS ---
 .DS_Store
 Thumbs.db
+
+# Celery Beat schedule state
+backend/.celery/
+celerybeat-schedule*

@@ -49,7 +49,7 @@ export function DashboardView() {
     (id: string) => mutate((d) => ({ ...d, latest: d.latest.filter((o) => o.id !== id) })),
     [mutate],
   );
-  const actions = useOpportunityActions({ update, remove, reinsert: revalidate, onChanged: revalidate });
+  const actions = useOpportunityActions({ update, remove, reinsert: revalidate, onChanged: revalidate, refresh: revalidate });
 
   return (
     <div className="space-y-6">
@@ -175,7 +175,13 @@ function DashboardContent({
                   key={o.id}
                   opp={o}
                   now={now}
-                  actions={{ onToggleSave: actions.toggleSave, onApply: actions.apply, onRemind: actions.remind, onDismiss: actions.dismiss }}
+                  actions={{
+                    onToggleSave: actions.toggleSave,
+                    onApply: actions.apply,
+                    onRemind: actions.remind,
+                    onDismiss: actions.dismiss,
+                    onHideSender: actions.hideSender,
+                  }}
                 />
               ))}
             </ul>

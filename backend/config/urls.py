@@ -33,6 +33,8 @@ api = [
     path("preferences/", accounts.PreferencesView.as_view()),
     path("deadlines/calendar/", opportunities.CalendarView.as_view()),
     path("saved/", opportunities.SavedView.as_view()),
+    path("hidden-senders/", opportunities.HiddenSenderListView.as_view()),
+    path("hidden-senders/<uuid:pk>/", opportunities.HiddenSenderDetailView.as_view()),
     path("notifications/", notifications.NotificationListView.as_view()),
     path("notifications/clear/", notifications.NotificationClearView.as_view()),
     path("notifications/<uuid:pk>/read/", notifications.NotificationReadView.as_view()),

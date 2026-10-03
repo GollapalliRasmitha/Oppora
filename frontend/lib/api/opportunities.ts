@@ -1,4 +1,4 @@
-import type { Opportunity } from "@/lib/domain/types";
+import type { HiddenSender, Opportunity } from "@/lib/domain/types";
 import { listAll, request } from "./client";
 
 const url = (id: string) => `/opportunities/${encodeURIComponent(id)}`;
@@ -39,4 +39,20 @@ export async function dismissOpportunity(id: string): Promise<void> {
 
 export async function restoreOpportunity(id: string): Promise<void> {
   await request(url(id), { method: "PATCH", body: { dismissed: false } });
+}
+
+/** POST /api/hidden-senders/ — hides every opportunity from this opportunity's sender and skips their future emails. */
+export function hideSender(opportunityId: string): Promise<HiddenSender> {
+  return request<HiddenSender>("/hidden-senders", { method: "POST", body: { opportunityId } });
+}
+
+/** DELETE /api/hidden-senders/<id>/ — "Show again": restores what the rule hid. */
+export async function showSender(id: string): Promise<string[]> {
+  const res = await request<{ restoredOpportunityIds: string[] }>(`/hidden-senders/${encodeURIComponent(id)}`, { method: "DELETE" });
+  return res.restoredOpportunityIds;
+}
+
+/** GET /api/hidden-senders/ */
+export function listHiddenSenders(): Promise<HiddenSender[]> {
+  return request<HiddenSender[]>("/hidden-senders", { empty: () => [], gmail: false });
 }

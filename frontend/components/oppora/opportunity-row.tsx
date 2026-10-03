@@ -1,23 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, BellOff, Bookmark, BookmarkCheck, CircleCheck, Ellipsis, ThumbsDown } from "lucide-react";
+import { CircleCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dropdown, DropdownContent, DropdownItem, DropdownSeparator, DropdownTrigger } from "@/components/ui/dropdown";
 import { Skeleton } from "@/components/ui/skeleton";
 import { daysLeft } from "@/lib/domain/dates";
 import type { Opportunity } from "@/lib/domain/types";
 import { cn } from "@/lib/utils";
-import { DeadlineIndicator, PriorityBadge } from "./badges";
+import { DeadlineIndicator, FeeBadge, PriorityBadge } from "./badges";
 import { Monogram } from "./monogram";
+import { OpportunityMenu, type OpportunityActions } from "./opportunity-menu";
 
-export type OpportunityActions = {
-  onToggleSave: (o: Opportunity) => void;
-  onApply: (o: Opportunity) => void;
-  onRemind: (o: Opportunity) => void;
-  onDismiss: (o: Opportunity) => void;
-};
+export type { OpportunityActions } from "./opportunity-menu";
 
 export function StatusBadge({ opp }: { opp: Opportunity }) {
   if (opp.application?.status === "applied")
@@ -46,6 +41,7 @@ export function OpportunityRow({ opp, now, actions }: { opp: Opportunity; now: D
             {opp.title}
           </Link>
           <StatusBadge opp={opp} />
+          <FeeBadge fee={opp.fee} className="hidden @3xl:inline-flex" />
         </div>
         <div className="mt-0.5 truncate text-meta font-medium text-ink-3">
           {opp.organization} · {opp.type}
@@ -56,6 +52,7 @@ export function OpportunityRow({ opp, now, actions }: { opp: Opportunity; now: D
       <div className="col-span-2 col-start-2 row-start-2 flex flex-wrap items-center gap-2 @3xl:hidden">
         <DeadlineIndicator deadline={opp.deadline} days={days} variant="pill" />
         {opp.priority === "High" && <PriorityBadge priority={opp.priority} />}
+        <FeeBadge fee={opp.fee} />
       </div>
 
       <DeadlineIndicator deadline={opp.deadline} days={days} className="hidden @3xl:col-start-3 @3xl:row-start-1 @3xl:flex" />
@@ -67,36 +64,13 @@ export function OpportunityRow({ opp, now, actions }: { opp: Opportunity; now: D
         <Link href={href}>View Details</Link>
       </Button>
 
-      <Dropdown>
-        <DropdownTrigger
-          aria-label={`More actions for ${opp.title}`}
-          className="col-start-3 row-start-1 inline-flex size-11 items-center justify-center rounded-md text-ink-3 focus-ring hover:bg-white/[.06] hover:text-ink @md:col-start-4 @3xl:col-start-6"
-        >
-          <Ellipsis aria-hidden className="size-5" />
-        </DropdownTrigger>
-        <DropdownContent align="end">
-          <DropdownItem asChild className="sm:hidden">
-            <Link href={href}>View details</Link>
-          </DropdownItem>
-          <DropdownItem onSelect={() => actions.onToggleSave(opp)}>
-            {opp.saved ? <BookmarkCheck aria-hidden /> : <Bookmark aria-hidden />}
-            {opp.saved ? "Remove from saved" : "Save"}
-          </DropdownItem>
-          <DropdownItem disabled={applied} onSelect={() => actions.onApply(opp)}>
-            <CircleCheck aria-hidden />
-            {applied ? "Already applied" : "Mark as applied"}
-          </DropdownItem>
-          <DropdownItem disabled={days !== null && days < 0} onSelect={() => actions.onRemind(opp)}>
-            {opp.reminderSet ? <BellOff aria-hidden /> : <Bell aria-hidden />}
-            {opp.reminderSet ? "Remove reminder" : "Set reminder"}
-          </DropdownItem>
-          <DropdownSeparator />
-          <DropdownItem tone="danger" onSelect={() => actions.onDismiss(opp)}>
-            <ThumbsDown aria-hidden />
-            Not interested
-          </DropdownItem>
-        </DropdownContent>
-      </Dropdown>
+      <OpportunityMenu
+        opp={opp}
+        now={now}
+        actions={actions}
+        viewDetailsItem="sm:hidden"
+        className="col-start-3 row-start-1 @md:col-start-4 @3xl:col-start-6"
+      />
     </li>
   );
 }
