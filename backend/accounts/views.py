@@ -16,9 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core import clock
-from core.domain.match import explain_match
 from core.seed import clear_user_data
-from opportunities.models import Opportunity
 
 from . import google
 from .models import GmailConnection, User
@@ -79,13 +77,9 @@ class MeView(APIView):
         s.is_valid(raise_exception=True)
         user = s.save()
         if {"interests", "skills", "experienceLevel"} & set(request.data):
-            profile = {"interests": user.interests, "skills": user.skills, "experienceLevel": user.experience_level}
-            opps = list(Opportunity.objects.filter(user=user))
-            for o in opps:
-                o.match_reasons = explain_match(
-                    {"title": o.title, "type": o.type, "skills": o.skills, "eligibility": o.eligibility}, profile
-                )
-            Opportunity.objects.bulk_update(opps, ["match_reasons"])
+            from mail.pipeline import rescore
+
+            rescore(user, clock.user_now(request))
         return Response(UserSerializer(user).data)
 
 
@@ -120,7 +114,12 @@ class PreferencesView(APIView):
     def patch(self, request):
         s = PreferencesSerializer(request.user.preferences, data=request.data, partial=True)
         s.is_valid(raise_exception=True)
-        return Response(PreferencesSerializer(s.save()).data)
+        prefs = s.save()
+        if "preferredLocations" in request.data or "personalization" in (request.data.get("ai") or {}):
+            from mail.pipeline import rescore
+
+            rescore(request.user, clock.user_now(request))
+        return Response(PreferencesSerializer(prefs).data)
 
 
 class GmailStatusView(APIView):

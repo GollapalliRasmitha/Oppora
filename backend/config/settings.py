@@ -173,6 +173,8 @@ DEMO_USER_EMAIL = os.environ.get("DEMO_USER_EMAIL", "rasmitha@example.com")
 AI_PROVIDER = os.environ.get("AI_PROVIDER", "gemini").strip().lower()
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip()
+# Used when the main model reports overload (503 "high demand"); also free tier. Empty = no fallback.
+GEMINI_FALLBACK_MODEL = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-3.5-flash-lite").strip()
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "").strip()
 # Free-tier limits (check yours at https://aistudio.google.com/rate-limit). The

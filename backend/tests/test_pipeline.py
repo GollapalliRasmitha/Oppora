@@ -473,3 +473,106 @@ def test_stale_sync_can_restart(real_user, gmail, fake_ai, freeze):
     sync.start_sync(real_user)
     g.refresh_from_db()
     assert g.sync_phase == "completed"
+
+
+def test_overloaded_model_falls_back_to_the_lighter_flash_model(no_wait, db):
+    main = FakeProvider([TransientAIError("Gemini 503: high demand", overloaded=True)])
+    lite = FakeProvider([{"ok": "lite"}, {"ok": "lite again"}])
+    lite.model = "gemini-3.5-flash-lite"
+    ai_client.set_provider(main, fallback=lite)
+    out, model = ai_client.generate_json("s", "p", {})
+    assert out == {"ok": "lite"} and model == "gemini-3.5-flash-lite"
+    assert no_wait == []  # retried immediately, no backoff
+    # Within the next few minutes the fallback is used directly (no wasted request on the busy model).
+    assert ai_client.generate_json("s", "p", {})[0] == {"ok": "lite again"} and len(main.calls) == 1
+    assert AIUsage.objects.get(provider="fake").requests == 3  # every attempt counts against the budget
+
+
+def test_gemini_503_is_reported_as_overloaded():
+    busy = {"error": {"code": 503, "status": "UNAVAILABLE", "message": "This model is currently experiencing high demand."}}
+    with pytest.raises(TransientAIError) as e:
+        GeminiProvider("k", "m", session=FakeHTTP(503, busy)).generate_json("s", "p", {})
+    assert e.value.overloaded is True
+    with pytest.raises(TransientAIError) as e:
+        GeminiProvider("k", "m", session=FakeHTTP(500, {})).generate_json("s", "p", {})
+    assert e.value.overloaded is False
+
+
+def test_a_sync_interrupted_by_a_restart_can_start_again(real_user, gmail, fake_ai):
+    g = real_user.gmail
+    g.sync_phase, g.sync_started_at = "analyzing", NOW - timedelta(minutes=2)  # its thread died with the old process
+    g.save()
+    gmail.messages = {"m1": INTERNSHIP}
+    fake_ai.push(extraction())
+    sync.start_sync(real_user)
+    g.refresh_from_db()
+    assert g.sync_phase == "completed" and Opportunity.objects.filter(user=real_user).count() == 1
+
+
+def test_demo_connection_is_flagged_by_migration(db):
+    from importlib import import_module
+
+    from django.apps import apps
+
+    user = User.objects.create_user("rasmitha@example.com", name="Demo")
+    GmailConnection.objects.filter(user=user).update(is_demo=False)
+    import_module("accounts.migrations.0003_mark_demo_connection").mark_demo(apps, None)
+    assert GmailConnection.objects.get(user=user).is_demo is True
+
+
+def test_status_poll_resumes_a_sync_interrupted_by_a_restart(real_user, gmail, fake_ai):
+    """The UI disables the sync button while a sync shows as running, so the server must resume it."""
+    g = real_user.gmail
+    g.sync_phase, g.sync_started_at, g.sync_emails_in_batch = "analyzing", NOW - timedelta(minutes=3), 1
+    g.save()
+    ProcessedMessage.objects.create(user=real_user, gmail_message_id="m1")  # queued before the restart
+    gmail.messages = {"m1": INTERNSHIP}
+    fake_ai.push(extraction())
+    status = make_client(real_user).get("/api/sync/").json()
+    assert status["phase"] == "completed" and status["queued"] == 0
+    assert Opportunity.objects.filter(user=real_user).count() == 1
+    assert ProcessedMessage.objects.get(gmail_message_id="m1").outcome == "stored"
+
+
+def test_follow_up_with_a_different_type_links_instead_of_duplicating(real_user, gmail, fake_ai):
+    gmail.messages = {"m1": INTERNSHIP}
+    fake_ai.push(extraction(category="Hackathon", opportunity_name="Amazon ML Challenge 2026", organization="Amazon",
+                            skills=[], application_link=None))  # fmt: skip
+    sync.start_sync(real_user)
+    gmail.add(message("m9", subject="Amazon ML Challenge: round 2", text="Round 2 of the challenge opens soon. Register now."))
+    fake_ai.push(extraction(category="Competition", opportunity_name="Amazon ML Challenge 2026", organization="Amazon",
+                            skills=[], application_link=None, deadline=None))  # fmt: skip
+    sync.start_sync(real_user)
+    assert Opportunity.objects.filter(user=real_user).count() == 1
+    assert ProcessedMessage.objects.get(gmail_message_id="m9").outcome == "linked"
+
+
+def test_profile_changes_rescore_ai_found_opportunities_but_not_the_seed(real_user, gmail, fake_ai, user):
+    real_user.interests, real_user.skills = [], []
+    real_user.save()
+    gmail.messages = {"m1": INTERNSHIP}
+    fake_ai.push(extraction(relevance=60))
+    sync.start_sync(real_user)
+    before = Opportunity.objects.get(user=real_user).match_score
+    r = make_client(real_user).patch("/api/auth/me/", {"interests": ["frontend development"], "skills": ["React"]}, format="json")
+    assert r.status_code == 200
+    after = Opportunity.objects.get(user=real_user)
+    assert after.match_reasons["interests"] == "met" and after.match_score > before
+
+    # The seeded demo keeps its designed scores (the brief's targets depend on them).
+    seed_scores = sorted(Opportunity.objects.filter(user=user).values_list("match_score", flat=True))
+    make_client(user).patch("/api/auth/me/", {"skills": ["Python"]}, format="json")
+    assert sorted(Opportunity.objects.filter(user=user).values_list("match_score", flat=True)) == seed_scores
+
+
+def test_server_start_resumes_interrupted_syncs(real_user, gmail, fake_ai):
+    g = real_user.gmail
+    g.sync_phase, g.sync_started_at = "analyzing", NOW - timedelta(minutes=1)
+    g.save()
+    ProcessedMessage.objects.create(user=real_user, gmail_message_id="m1")
+    gmail.messages = {"m1": INTERNSHIP}
+    fake_ai.push(extraction())
+    assert sync.resume_all_interrupted() == 1
+    g.refresh_from_db()
+    assert g.sync_phase == "completed" and Opportunity.objects.filter(user=real_user).count() == 1
+    assert sync.resume_all_interrupted() == 0  # nothing left to resume

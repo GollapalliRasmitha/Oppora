@@ -75,7 +75,8 @@ class GeminiProvider:
         if r.status_code in (401, 403):
             raise NotConfigured(f"Gemini rejected the API key ({r.status_code}).")
         if r.status_code >= 500:
-            raise TransientAIError(f"Gemini {r.status_code}: {msg}")
+            overloaded = r.status_code == 503 or err.get("status") == "UNAVAILABLE"
+            raise TransientAIError(f"Gemini {r.status_code}: {msg}", overloaded=overloaded)
         raise AIError(f"Gemini {r.status_code}: {msg}")
 
     @staticmethod

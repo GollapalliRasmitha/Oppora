@@ -26,6 +26,8 @@ from .providers.base import AIProvider, DailyLimitReached, NotConfigured, RateLi
 QUOTA_ZONE = ZoneInfo("America/Los_Angeles")  # Gemini's daily quota resets at midnight Pacific
 MAX_ATTEMPTS = 5
 BACKOFF = [10, 20, 40, 80, 120]  # seconds
+#: After the main model reports overload, use the fallback model for this long before trying it again.
+FALLBACK_FOR = 300  # seconds
 
 # Indirection so tests can run without waiting.
 sleep = time.sleep
@@ -62,6 +64,8 @@ class RateLimiter:
 
 
 _provider: AIProvider | None = None
+_fallback: AIProvider | None = None
+_use_fallback_until = 0.0
 _limiter: RateLimiter | None = None
 _setup_lock = threading.Lock()
 
@@ -78,21 +82,34 @@ def build_provider() -> AIProvider:
     raise NotConfigured(f"Unknown AI_PROVIDER {settings.AI_PROVIDER!r} (use gemini or openai).")
 
 
+def build_fallback() -> AIProvider | None:
+    """A lighter model of the same provider for when the main one is overloaded (Gemini only)."""
+    model = settings.GEMINI_FALLBACK_MODEL
+    if settings.AI_PROVIDER != "gemini" or not model or model == settings.GEMINI_MODEL:
+        return None
+    from .providers.gemini import GeminiProvider
+
+    return GeminiProvider(settings.GEMINI_API_KEY, model)
+
+
 def get_provider() -> AIProvider:
-    global _provider, _limiter
+    global _provider, _fallback, _limiter
     with _setup_lock:
         if _provider is None:
             _provider = build_provider()
+            _fallback = build_fallback()
         if _limiter is None:
             _limiter = RateLimiter(settings.AI_REQUESTS_PER_MINUTE)
     return _provider
 
 
-def set_provider(provider: AIProvider | None, per_minute: int | None = None) -> None:
+def set_provider(provider: AIProvider | None, per_minute: int | None = None, fallback: AIProvider | None = None) -> None:
     """Swap the provider (tests, or after changing settings). None = rebuild from settings."""
-    global _provider, _limiter
+    global _provider, _fallback, _limiter, _use_fallback_until
     with _setup_lock:
         _provider = provider
+        _fallback = fallback
+        _use_fallback_until = 0.0
         _limiter = RateLimiter(per_minute or settings.AI_REQUESTS_PER_MINUTE)
 
 
@@ -119,9 +136,15 @@ def generate_json(system: str, prompt: str, schema: dict) -> tuple[dict, str]:
     One logical request with waiting and retries. Returns (result, model id).
     Raises DailyLimitReached / NotConfigured (stop the queue for now) or
     TransientAIError (leave this email queued) — never RateLimited.
+
+    When the main model reports overload, the retry goes straight to the
+    fallback model (same limiter and daily budget), which stays in use for
+    FALLBACK_FOR seconds before the main model is tried again.
     """
-    provider = get_provider()
+    global _use_fallback_until
+    primary = get_provider()
     for attempt in range(MAX_ATTEMPTS):
+        provider = _fallback if _fallback and monotonic() < _use_fallback_until else primary
         _limiter.acquire()
         _reserve(provider.name)
         try:
@@ -129,6 +152,9 @@ def generate_json(system: str, prompt: str, schema: dict) -> tuple[dict, str]:
         except RateLimited as e:
             delay = e.retry_after if e.retry_after is not None else BACKOFF[attempt]
             _limiter.pause(min(delay, 300))
-        except TransientAIError:
+        except TransientAIError as e:
+            if e.overloaded and _fallback and provider is primary:
+                _use_fallback_until = monotonic() + FALLBACK_FOR
+                continue  # retry right away on the fallback model
             sleep(BACKOFF[attempt])
     raise TransientAIError(f"Still rate limited or unavailable after {MAX_ATTEMPTS} attempts.")

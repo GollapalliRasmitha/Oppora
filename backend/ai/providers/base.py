@@ -29,6 +29,11 @@ class DailyLimitReached(AIError):
 class TransientAIError(AIError):
     """Timeouts and 5xx responses: worth retrying later."""
 
+    def __init__(self, message: str = "Temporarily unavailable", overloaded: bool = False):
+        super().__init__(message)
+        #: The model itself is overloaded (e.g. Gemini 503 "high demand"): a fallback model may work now.
+        self.overloaded = overloaded
+
 
 class InvalidOutput(AIError):
     """The response wasn't JSON matching the schema (or was blocked). Retried once, then "needs review"."""

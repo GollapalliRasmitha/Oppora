@@ -13,6 +13,7 @@ The seeded demo account has no mailbox; its scans are simulated.
 """
 
 import logging
+import threading
 from datetime import timedelta
 
 from django.conf import settings
@@ -40,8 +41,20 @@ DEMO_SCANNING_FOR = timedelta(seconds=1.4)
 DEMO_COMPLETES_AFTER = timedelta(seconds=3.6)
 
 
+#: Users whose sync job is running in this process. A sync marked running that isn't here was
+#: interrupted (the dev server restarted, killing its thread) and can start again right away.
+#: Stage 9 replaces this with Celery task state.
+_active: set = set()
+_active_lock = threading.Lock()
+
+
 def _running(g: GmailConnection, now) -> bool:
-    return g.sync_phase in RUNNING and bool(g.sync_started_at) and now - g.sync_started_at < STALE_AFTER
+    if g.sync_phase not in RUNNING or not g.sync_started_at or now - g.sync_started_at >= STALE_AFTER:
+        return False
+    if g.is_demo:
+        return True
+    with _active_lock:
+        return g.user_id in _active
 
 
 def advance_demo(g: GmailConnection, now) -> None:
@@ -55,6 +68,38 @@ def advance_demo(g: GmailConnection, now) -> None:
     else:
         return
     g.save(update_fields=["sync_phase", "last_synced_at"])
+
+
+def resume_if_interrupted(g: GmailConnection) -> bool:
+    """
+    A sync marked running with no worker in this process was interrupted (the
+    server restarted mid-scan). Picks the queue up again; the queue is
+    idempotent, so nothing is processed twice. Called from GET /api/sync/,
+    which the UI polls while a sync shows as running.
+    """
+    if g.is_demo or g.sync_phase not in RUNNING or g.status != GmailConnection.Status.CONNECTED:
+        return False
+    with _active_lock:
+        if g.user_id in _active:
+            return False
+    with transaction.atomic():
+        fresh = GmailConnection.objects.select_for_update().get(pk=g.pk)
+        if fresh.sync_phase not in RUNNING:
+            return False
+        fresh.sync_started_at = clock.now()
+        fresh.save(update_fields=["sync_started_at"])
+    log.info("Resuming an interrupted sync for user %s", g.user_id)
+    jobs.enqueue(run_sync, g.user_id)
+    g.refresh_from_db()
+    return True
+
+
+def resume_all_interrupted() -> int:
+    """At server start: picks up every sync a restart interrupted. Returns how many resumed."""
+    resumed = 0
+    for g in GmailConnection.objects.filter(sync_phase__in=RUNNING, is_demo=False, status=GmailConnection.Status.CONNECTED):
+        resumed += resume_if_interrupted(g)
+    return resumed
 
 
 def start_sync(user, demo_batch: int = 0) -> GmailConnection:
@@ -141,6 +186,18 @@ def process_queue(user, client: GmailClient, g: GmailConnection) -> int:
 
 def run_sync(user_id) -> None:
     """The background job behind POST /api/sync/."""
+    with _active_lock:
+        if user_id in _active:
+            return  # already running in this process
+        _active.add(user_id)
+    try:
+        _run_sync(user_id)
+    finally:
+        with _active_lock:
+            _active.discard(user_id)
+
+
+def _run_sync(user_id) -> None:
     g = GmailConnection.objects.select_related("user").get(user_id=user_id)
     user = g.user
     try:

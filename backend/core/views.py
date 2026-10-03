@@ -69,6 +69,7 @@ class SyncView(APIView):
     def get(self, request):
         g = request.user.gmail
         sync.advance_demo(g, clock.now())
+        sync.resume_if_interrupted(g)
         return Response(_sync_payload(g))
 
     def post(self, request):

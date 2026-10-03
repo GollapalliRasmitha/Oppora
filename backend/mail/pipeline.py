@@ -54,13 +54,48 @@ def profile_score(reasons: dict, opp_skills: list[str], deadline, now) -> int:
     return score
 
 
-def match_score(x: Extraction, reasons: dict, prefs, now) -> int:
+def blend(relevance: int, reasons: dict, skills: list[str], deadline, location: str | None, prefs, now) -> int:
     """AI relevance blended with the profile checks; personalization sets the blend."""
     w = PROFILE_WEIGHT.get(prefs.personalization, 0.5)
-    score = (1 - w) * x.relevance + w * profile_score(reasons, x.skills, x.deadline, now)
-    if x.location and any(loc.lower() in x.location.lower() for loc in prefs.preferred_locations):
+    score = (1 - w) * relevance + w * profile_score(reasons, skills, deadline, now)
+    if location and any(loc.lower() in location.lower() for loc in prefs.preferred_locations):
         score += 5
     return max(0, min(100, round(score)))
+
+
+def match_score(x: Extraction, reasons: dict, prefs, now) -> int:
+    return blend(x.relevance, reasons, x.skills, x.deadline, x.location, prefs, now)
+
+
+def rescore(user, now) -> int:
+    """
+    After a profile or preference change: re-explain every match, and recompute
+    the match % of opportunities the AI found, reusing the relevance it stored
+    (no new AI requests). Seeded demo scores stay as designed. Returns how many
+    scores changed.
+    """
+    profile = {"interests": user.interests, "skills": user.skills, "experienceLevel": user.experience_level}
+    prefs = user.preferences
+    opps = list(Opportunity.objects.filter(user=user).select_related("deadline"))
+    first_email = {}
+    for e in Email.objects.filter(user=user, opportunity__isnull=False).select_related("classification").order_by("received_at"):
+        first_email.setdefault(e.opportunity_id, e)
+    changed = 0
+    for o in opps:
+        o.match_reasons = explain_match(
+            {"title": o.title, "type": o.type, "skills": o.skills, "eligibility": o.eligibility}, profile
+        )
+        e = first_email.get(o.id)
+        c = getattr(e, "classification", None) if e else None
+        if c is None or c.model_name == "seed":
+            continue
+        deadline = o.deadline.due_date if hasattr(o, "deadline") else None
+        score = blend(c.relevance, o.match_reasons, o.skills, deadline, o.location, prefs, now)
+        if score != o.match_score:
+            o.match_score = score
+            changed += 1
+    Opportunity.objects.bulk_update(opps, ["match_reasons", "match_score"])
+    return changed
 
 
 def priority_for(x: Extraction, score: int, now) -> str:
@@ -91,7 +126,8 @@ def find_existing(user, m: MessageContent, x: Extraction) -> Opportunity | None:
     name, org = _key(x.opportunity_name), _key(x.organization)
     if not name:
         return None
-    for o in Opportunity.objects.filter(user=user, type=x.category):
+    # Any type: the same programme can be read as a Hackathon in one email and a Competition in another.
+    for o in Opportunity.objects.filter(user=user):
         t = _key(o.title)
         if (name == t or (len(name) > 6 and (name in t or t in name))) and (
             not org or org in _key(o.organization) or _key(o.organization) in org
