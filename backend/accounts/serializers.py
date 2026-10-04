@@ -67,6 +67,7 @@ class PreferencesSerializer(serializers.Serializer):
 
     notifications = NotificationPrefs(source="*", required=False)
     language = serializers.ChoiceField(choices=["en"], required=False)
+    theme = serializers.ChoiceField(choices=["dark", "light", "system"], required=False)
     minimumMatch = serializers.ChoiceField(source="minimum_match", choices=[0, 50, 70, 85], required=False)
     preferredLocations = serializers.ListField(source="preferred_locations", child=tag(), max_length=20, required=False)
     ai = AIPrefs(source="*", required=False)

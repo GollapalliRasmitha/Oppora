@@ -10,6 +10,11 @@
   --surface: #0f1336;
   --glass: rgba(255, 255, 255, 0.04);
   --glass-strong: rgba(255, 255, 255, 0.06);
+  /* Overlay colour for hovers, wells and tracks: used as tint/[.04] etc. (white on dark, navy on light) */
+  --tint: #ffffff;
+  /* Opaque panels (sidebar, bottom nav, sticky bars) and the unread-email surface */
+  --chrome: rgba(8, 11, 31, 0.9);
+  --unread: #141a45;
 
   /* Borders */
   --line: rgba(165, 160, 255, 0.14);
@@ -42,6 +47,33 @@
   --shadow-card: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset, 0 12px 32px -12px rgba(0, 0, 0, 0.6);
   --glow-brand: 0 0 0 1px rgba(167, 139, 250, 0.35), 0 8px 28px -6px rgba(124, 58, 237, 0.55);
   --glow-soft: 0 0 24px -4px rgba(124, 58, 237, 0.45);
+  --shadow-pop: 0 18px 48px -12px rgba(0, 0, 0, 0.7); /* menus, toasts, drawers, tooltips */
+  --shadow-chrome: 24px 0 64px -24px rgba(0, 0, 0, 0.8); /* expanded sidebar */
+  --glass-strong-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035));
+  --skeleton-shine: rgba(255, 255, 255, 0.04);
+  --selection: rgba(124, 58, 237, 0.45);
+  --selection-ink: #ffffff;
+  --scrollbar: rgba(170, 160, 255, 0.25);
+  --ambient-1: rgba(124, 58, 237, 0.18);
+  --ambient-2: rgba(37, 99, 235, 0.14);
+  --ambient-3: rgba(244, 114, 182, 0.06);
+  /* Accent washes behind hero / AI cards: wash-strength multiplies their alpha */
+  --wash: 1;
+  /* Glows (purple halos around active items); weaker on light */
+  --glow-purple: rgba(124, 58, 237, 0.8);
+
+  /* Logo sparkles (the orbit gradient stays the same in both themes) */
+  --logo-star: #ffffff;
+  --logo-star-2: #c4b5fd;
+
+  /* Data viz (validated on #0F1336 with the dataviz palette checker) */
+  --viz-bar: #a78bfa;
+  --viz-bar-hover: #c4b5fd;
+  --viz-1: #ede9fe; /* most prominent step: Applied */
+  --viz-2: #c4b5fd;
+  --viz-3: #8b5cf6;
+  --viz-4: #5b21b6;
+  --viz-track: rgba(255, 255, 255, 0.06);
 
   /* Layout */
   --sidebar-w: 230px;
@@ -56,11 +88,79 @@
   color-scheme: dark;
 }
 
+/*
+ * Light theme: the same tokens with light values. Set by <html data-theme="light">
+ * (an inline script in app/layout.tsx applies it before first paint).
+ * Every text/icon colour measures >= 4.5:1 on bg, surface, glass and tint wells.
+ */
+:root[data-theme="light"] {
+  --bg: #f4f5fb;
+  --surface: #ffffff;
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-strong: rgba(255, 255, 255, 0.9);
+  --tint: #1e1b4b;
+  --chrome: rgba(255, 255, 255, 0.92);
+  --unread: #eef0ff;
+
+  --line: rgba(79, 70, 229, 0.14);
+  --line-strong: rgba(79, 70, 229, 0.3);
+
+  --ink: #0f1336;
+  --ink-2: #3d4370;
+  --ink-3: #5b628f;
+
+  --purple: #7c3aed;
+  --violet: #6d28d9;
+  --blue: #1d4ed8;
+  --pink: #be185d;
+  --indigo: #4f46e5;
+  --success: #065f46;
+
+  --urgent: #b91c1c;
+  --soon: #9a3412;
+  --later: #1d4ed8;
+
+  --grad-headline: linear-gradient(90deg, #6d28d9 0%, #1d4ed8 55%, #be185d 100%);
+
+  --shadow-card: 0 1px 2px rgba(15, 19, 54, 0.06), 0 12px 32px -16px rgba(15, 19, 54, 0.18);
+  --glow-brand: 0 0 0 1px rgba(109, 40, 217, 0.25), 0 8px 24px -8px rgba(124, 58, 237, 0.4);
+  --glow-soft: 0 0 20px -6px rgba(124, 58, 237, 0.3);
+  --shadow-pop: 0 18px 48px -16px rgba(15, 19, 54, 0.22), 0 2px 6px rgba(15, 19, 54, 0.06);
+  --shadow-chrome: 24px 0 64px -32px rgba(15, 19, 54, 0.22);
+  --glass-strong-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.86));
+  --skeleton-shine: rgba(30, 27, 75, 0.05);
+  --selection: rgba(124, 58, 237, 0.22);
+  --selection-ink: #0f1336;
+  --scrollbar: rgba(79, 70, 229, 0.3);
+  --ambient-1: rgba(124, 58, 237, 0.1);
+  --ambient-2: rgba(37, 99, 235, 0.08);
+  --ambient-3: rgba(244, 114, 182, 0.06);
+  --wash: 0.5;
+  --glow-purple: rgba(124, 58, 237, 0.35);
+
+  --logo-star: #6d28d9;
+  --logo-star-2: #8b5cf6;
+
+  /* Validated on #FFFFFF: Applied (first) is the darkest, most prominent step */
+  --viz-bar: #7c3aed;
+  --viz-bar-hover: #5b21b6;
+  --viz-1: #2e1065;
+  --viz-2: #5b21b6;
+  --viz-3: #8b5cf6;
+  --viz-4: #a78bfa;
+  --viz-track: rgba(30, 27, 75, 0.08);
+
+  color-scheme: light;
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-glass: var(--glass);
   --color-glass-strong: var(--glass-strong);
+  --color-tint: var(--tint);
+  --color-chrome: var(--chrome);
+  --color-unread: var(--unread);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
   --color-ink: var(--ink);
@@ -133,11 +233,35 @@
 }
 
 @utility glass-strong {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035));
+  background: var(--glass-strong-bg);
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow-card);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+}
+
+/* Purple→blue(→pink) wash behind hero and AI cards; half strength on light. */
+@utility bg-wash {
+  background-image: linear-gradient(
+    120deg,
+    rgb(124 58 237 / calc(0.26 * var(--wash))),
+    rgb(79 70 229 / calc(0.14 * var(--wash))) 45%,
+    rgb(37 99 235 / calc(0.09 * var(--wash)))
+  );
+}
+
+@utility bg-wash-ai {
+  background-image: linear-gradient(
+    135deg,
+    rgb(124 58 237 / calc(0.16 * var(--wash))),
+    rgb(37 99 235 / calc(0.08 * var(--wash))) 55%,
+    rgb(244 114 182 / calc(0.06 * var(--wash)))
+  );
+}
+
+@utility skeleton-shimmer {
+  background-image: linear-gradient(90deg, var(--skeleton-shine) 25%, rgb(167 139 250 / 0.1) 50%, var(--skeleton-shine) 75%);
+  background-size: 200% 100%;
 }
 
 @utility bg-brand {
@@ -199,8 +323,8 @@
     min-height: 100dvh;
   }
   ::selection {
-    background: rgba(124, 58, 237, 0.45);
-    color: #fff;
+    background: var(--selection);
+    color: var(--selection-ink);
   }
   :focus-visible {
     outline: 2px solid var(--violet);
@@ -209,16 +333,16 @@
   /* Thin themed scrollbars */
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(170, 160, 255, 0.25) transparent;
+    scrollbar-color: var(--scrollbar) transparent;
   }
 }
 
 /* Ambient purple/blue light behind every page */
 .ambient {
   background:
-    radial-gradient(60rem 36rem at 85% -10%, rgba(124, 58, 237, 0.18), transparent 60%),
-    radial-gradient(48rem 30rem at -10% 20%, rgba(37, 99, 235, 0.14), transparent 60%),
-    radial-gradient(40rem 30rem at 50% 110%, rgba(244, 114, 182, 0.06), transparent 60%),
+    radial-gradient(60rem 36rem at 85% -10%, var(--ambient-1), transparent 60%),
+    radial-gradient(48rem 30rem at -10% 20%, var(--ambient-2), transparent 60%),
+    radial-gradient(40rem 30rem at 50% 110%, var(--ambient-3), transparent 60%),
     var(--bg);
 }
 

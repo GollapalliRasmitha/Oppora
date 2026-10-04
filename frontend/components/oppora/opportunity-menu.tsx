@@ -38,7 +38,7 @@ export function OpportunityMenu({
       <DropdownTrigger
         aria-label={`More actions for ${opp.title}`}
         className={cn(
-          "inline-flex size-11 items-center justify-center rounded-md text-ink-3 focus-ring hover:bg-white/[.06] hover:text-ink",
+          "inline-flex size-11 items-center justify-center rounded-md text-ink-3 focus-ring hover:bg-tint/[.06] hover:text-ink",
           className,
         )}
       >

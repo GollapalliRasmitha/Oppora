@@ -20,7 +20,7 @@ export function AICard({ title = "AI Recommendation", children, actions, orb, cl
     <section
       aria-label={title}
       className={cn(
-        "ai-border relative overflow-hidden rounded-card bg-[linear-gradient(135deg,rgba(124,58,237,.16),rgba(37,99,235,.08)_55%,rgba(244,114,182,.06))] p-5 shadow-[0_0_40px_-12px_rgba(124,58,237,.55)]",
+        "ai-border relative overflow-hidden rounded-card bg-wash-ai p-5 shadow-[0_0_40px_-12px_rgba(124,58,237,.55)]",
         className,
       )}
     >

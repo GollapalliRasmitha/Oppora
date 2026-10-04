@@ -15,8 +15,9 @@ Personal AI agent that reads a user's Gmail, finds opportunities, extracts deadl
 - Stage 7 — Backend + frontend switched to the API: done.
 - Stage 8 — Google sign-in + Gmail sync + AI pipeline (Gemini free tier): done; verified with the user's real Gmail (51 opportunities found).
 - Stage 9 — Celery + Redis background jobs (+ real-data feedback: type chips, fees, hide sender): done.
-- **Stage 10 — Security hardening: done** (awaiting "continue").
-- Next: Stage 11 — Performance + accessibility audit (Lighthouse 90+ on Landing and Dashboard, keyboard-only and screen-reader checks).
+- Stage 10 — Security hardening: done.
+- Pre-Stage-11 fixes (A skills matching + score breakdown, B weekly digest, C light theme): done.
+- Stage 11 — Performance + accessibility audit (Lighthouse 90+ on Landing and Dashboard, keyboard-only and screen-reader checks).
 - Profile check (4 Oct 2026): the user's Google account has 6 interests, 1 skill and a level set; the demo account is unchanged. Suggest adding more skills (worth up to 30 match points).
 - Profile skills: keep the demo skills for now (user decision, Stage 3 review).
 
@@ -94,19 +95,28 @@ tests/           pytest-django against Postgres
 
 ## Design tokens (source: `frontend/app/globals.css`)
 
-| Token | Value | Tailwind |
-|---|---|---|
-| Background | `#070A1A` | `bg-bg` |
-| Raised surface | `#0F1336` | `bg-surface` |
-| Glass / glass strong | `rgba(255,255,255,.04)` / `.06` | `bg-glass`, `glass`, `glass-strong` utilities |
-| Border / strong | `rgba(165,160,255,.14)` / `rgba(170,160,255,.30)` | `border-line`, `border-line-strong` |
-| Text / secondary / muted | `#EEF0FF` / `#B0B6DA` / `#8189B5` | `text-ink`, `text-ink-2`, `text-ink-3` |
-| Purple / violet / blue / pink | `#7C3AED` / `#A78BFA` / `#60A5FA` / `#F472B6` | `purple`, `violet`, `blue`, `pink` |
-| Indigo (gradient mid) | `#4F46E5` | `indigo` |
-| Success | `#34D399` | `success` |
-| Urgency | red `#F87171` ≤3d · orange `#FB923C` 4–10d · blue `#60A5FA` >10d | `urgent`, `soon`, `later` |
-| Brand gradient | `#7C3AED → #4F46E5 → #2563EB` (135°) | `bg-brand` |
-| Headline gradient | violet → blue → pink | `text-gradient` |
+Two themes, one token set: `:root` holds the dark values, `:root[data-theme="light"]` overrides every colour token with its light value (a test enforces that both blocks define the same tokens). Components only use tokens, never per-theme classes.
+
+| Token | Dark | Light | Tailwind |
+|---|---|---|---|
+| Background | `#070A1A` | `#F4F5FB` | `bg-bg` |
+| Raised surface | `#0F1336` | `#FFFFFF` | `bg-surface` |
+| Glass / glass strong | `rgba(255,255,255,.04)` / `.06` | `rgba(255,255,255,.72)` / `.90` | `bg-glass`, `glass`, `glass-strong` utilities |
+| Tint (hover/well/track overlay) | `#FFFFFF` | `#1E1B4B` | `bg-tint/[.04]` etc. (never `white/…`) |
+| Chrome (sidebar, bottom nav, sticky bars) | `rgba(8,11,31,.9)` | `rgba(255,255,255,.92)` | `bg-chrome` |
+| Unread email surface | `#141A45` | `#EEF0FF` | `bg-unread` |
+| Border / strong | `rgba(165,160,255,.14)` / `rgba(170,160,255,.30)` | `rgba(79,70,229,.14)` / `.30` | `border-line`, `border-line-strong` |
+| Text / secondary / muted | `#EEF0FF` / `#B0B6DA` / `#8189B5` | `#0F1336` / `#3D4370` / `#5B628F` | `text-ink`, `text-ink-2`, `text-ink-3` |
+| Purple / violet / blue / pink | `#7C3AED` / `#A78BFA` / `#60A5FA` / `#F472B6` | `#7C3AED` / `#6D28D9` / `#1D4ED8` / `#BE185D` | `purple`, `violet`, `blue`, `pink` |
+| Indigo (gradient mid) | `#4F46E5` | `#4F46E5` | `indigo` |
+| Success | `#34D399` | `#065F46` | `success` |
+| Urgency ≤3d · 4–10d · >10d | `#F87171` · `#FB923C` · `#60A5FA` | `#B91C1C` · `#9A3412` · `#1D4ED8` | `urgent`, `soon`, `later` |
+| Shadows | `--shadow-card`, `--shadow-pop` (menus, toasts, drawers, tooltips), `--shadow-chrome` (sidebar), `--glow-*`, `--glow-purple` | softer navy-tinted values | `shadow-[var(--shadow-pop)]` |
+| Accent washes | full strength | half (`--wash: .5`) | `bg-wash` (hero cards), `bg-wash-ai` (AI cards) |
+| Chart colours | bar `#A78BFA` (hover `#C4B5FD`); progress ramp `#EDE9FE → #C4B5FD → #8B5CF6 → #5B21B6` | bar `#7C3AED` (hover `#5B21B6`); ramp `#2E1065 → #5B21B6 → #8B5CF6 → #A78BFA` | `--viz-bar`, `--viz-bar-hover`, `--viz-1…4`, `--viz-track` |
+| Logo sparkles | `#FFFFFF` / `#C4B5FD` | `#6D28D9` / `#8B5CF6` | `--logo-star`, `--logo-star-2` |
+| Brand gradient | `#7C3AED → #4F46E5 → #2563EB` (135°) | same | `bg-brand` |
+| Headline gradient | violet → blue → pink | `#6D28D9 → #1D4ED8 → #BE185D` | `text-gradient` |
 | AI border gradient | purple → blue → pink | `ai-border` (needs `relative`) |
 | Radius | 8 / 12 / 20 / pill | `rounded-sm` / `rounded-md` / `rounded-card` / `rounded-full` |
 | Type | hero 40→70px/800, section 32→46px/800, card 16–20/700, body 15–18/400, meta 13/500 | `text-hero`, `text-section`, `text-meta` |
@@ -114,7 +124,7 @@ tests/           pytest-django against Postgres
 | Motion | 150–300ms; `animate-float`, `animate-pulse-orb`, `animate-fade-up`, `animate-drawer-in`, `animate-shimmer` | all disabled under `prefers-reduced-motion` |
 | Layout | sidebar 230px (desktop) / 72px rail (tablet) | `--sidebar-w`, `--sidebar-w-collapsed` |
 
-Brand-gradient end is `#2563EB` (not `#3B82F6`) so white button text keeps ≥4.5:1 contrast. Muted text `#8189B5` measures ≈5.3:1 on the surface.
+Brand-gradient end is `#2563EB` (not `#3B82F6`) so white button text keeps ≥4.5:1 contrast (5.2–5.7:1, both themes). Muted text `#8189B5` measures ≈5.3:1 on the dark surface; light muted `#5B628F` ≥5.6:1 on bg, surface, glass and tint wells. Every text/icon token was checked ≥4.5:1 in both themes, and every page was scanned in the browser (all text vs its composited background) in both themes at 1366px, 768px and 375px: no failures. Chart palettes were validated with the dataviz validator per theme surface (#0F1336 / #FFFFFF); on light the progress ramp is reversed so Applied stays the most prominent step.
 
 ## Components
 
@@ -158,7 +168,7 @@ All brief components exist; later stages connect them to the real API.
 - Opening an email (subject) marks it read silently and expands the preview; explicit read/unread, save and archive buttons toast.
 - Extract Opportunity (mock): only for unlinked emails; creates an opportunity from the email's own fields (title from subject, organizer = sender, summary = snippet, match = AI relevance; priority from relevance ≥85 High / ≥70 Medium / else Low); everything else null. Non-opportunity emails return "No opportunity found".
 - Swipe (touch only): right = save, left = archive; buttons are the fallback and the keyboard path.
-- **Charts** follow the dataviz skill: palette validated on the #0F1336 surface. Trend bars = one hue (`#A78BFA`, hover `#C4B5FD`); the progress donut is an ordered sequence, so an ordinal violet ramp `#EDE9FE → #C4B5FD → #8B5CF6 → #5B21B6` (validator: all checks pass). The violet/blue token pair failed CVD separation, so it is not used as a categorical pair. Every chart has a text alternative, hover/focus tooltips and a table or legend with values. Viz colours live in `components/oppora/charts.tsx` (`VIZ`), not as design tokens.
+- **Charts** follow the dataviz skill: palette validated on the #0F1336 surface. Trend bars = one hue (`#A78BFA`, hover `#C4B5FD`); the progress donut is an ordered sequence, so an ordinal violet ramp `#EDE9FE → #C4B5FD → #8B5CF6 → #5B21B6` (validator: all checks pass). The violet/blue token pair failed CVD separation, so it is not used as a categorical pair. Every chart has a text alternative, hover/focus tooltips and a table or legend with values. Viz colours are per-theme CSS variables (`--viz-*` in globals.css, read through `VIZ` in `components/oppora/charts.tsx`); the light set was validated on #FFFFFF (see the tokens table).
 - Insights definitions: Most common category = most frequent type (% of all tracked); Top company = organization with most opportunities; Best Day To Apply = weekday on which the most opportunities arrived (ties are flagged, never hidden); Trends = **opportunity emails** found per day (emails in opportunity categories: new opportunities plus updates, reminders and invitations; 7 or 30 days, ending today). Counting opportunities discovered would cap the 7-day view at 2 bars, because the "+2 this week" target allows only two new opportunities; Progress = applied ÷ all tracked, split into disjoint Applied / In Progress / Saved (saved, not started) / Other; recommendation count = strong matches.
 - Calendar items: deadlines (all-day; kind from type: application / hackathon / scholarship), interviews (timed, from seed `interviews`, each backed by an invitation email) and reminders (09:00 the day before the deadline for opportunities with `reminderSet`; none for closed deadlines). Calendar page colours by kind (with icons + legend); Deadlines page colours by urgency.
 - Seed: TCS and Microsoft have reminders on; Atlassian (+5 days 14:00–14:45, video call) and Swiggy (+9 days 11:00, location not stated) interviews.
@@ -172,7 +182,7 @@ All brief components exist; later stages connect them to the real API.
 - Landing "Sign in with Google" and "Get Started" link to `/dashboard` until OAuth lands in Stage 8 (the dev sign-in does the rest).
 - **AI assistant** (`lib/domain/assistant.ts`, mock until Stage 8): answers only from the user's stored opportunities, emails and interviews; every answer lists the opportunities/emails it used as links (clicking closes the panel); when the data doesn't contain the answer it says so and offers prompts. The 5 brief prompts are always visible (list before the first question, chip row above the input after). "Why is this opportunity relevant?" uses the opportunity page you're on, otherwise asks which. Conversation persists while navigating; Clear resets it.
 - Notifications are derived from data and filtered by settings (New opportunities, Deadline reminders, AI recommendations); the bell refreshes each time it opens.
-- **Preferences** (`Preferences`, `GmailConnection` types; UserPreference + GmailConnection models): toggles save instantly with a toast and roll back on failure. AI recommendations off → Home/Insights show RecommendationsOffCard and the AI notification is hidden. Minimum match, preferred locations, personalization and categories are stored for the Stage 8 ranking (not applied to existing lists). Theme is dark-only; language English-only.
+- **Preferences** (`Preferences`, `GmailConnection` types; UserPreference + GmailConnection models): toggles save instantly with a toast and roll back on failure. AI recommendations off → Home/Insights show RecommendationsOffCard and the AI notification is hidden. Minimum match, preferred locations, personalization and categories are stored for the Stage 8 ranking (not applied to existing lists). Language English-only.
 - Profile save (name, interests, skills, experience level) re-runs `explainMatch` on every opportunity so AI Summaries stay truthful.
 - Gmail: Manage (scopes, read-only, 60-day first scan, reconnect), Disconnect (confirm; revokes + deletes tokens; opportunities stay). Scans need a connected Gmail — otherwise the Gmail-error toast with "Reconnect Gmail" (`useScanGmail`, shared by every Scan Gmail button and the sync button).
 - Delete my data (confirm): deletes opportunities, emails, interviews, notification state, disconnects Gmail, resets sync to "Not synced yet". Account and preferences remain.
@@ -258,7 +268,7 @@ All seed dates are offsets from today, so these hold on every date (offsets repr
 - Client IP = X-Forwarded-For with `NUM_PROXIES=1` (the Next.js proxy adds it; REMOTE_ADDR is always the proxy).
 - **Input limits:** `DATA_UPLOAD_MAX_MEMORY_SIZE` 256 KB, max 200 fields; `?q=` ≤ 200 characters and ≤ 8 terms (`BoundedSearchFilter`); every body goes through a serializer (types, lengths, choices, user-scoped ids); filters reject unknown choices; `ordering` is a whitelist; path ids are UUIDs; `X-Timezone` is validated.
 - **Headers.** Django: nosniff, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, COOP same-origin; on `/api/*` (`core.middleware.SecurityHeadersMiddleware`) also `Cache-Control: no-store`, `CSP: default-src 'none'; frame-ancestors 'none'`, CORP same-origin and Permissions-Policy. Production (`DEBUG=false`): HSTS 1 year + subdomains, HTTPS redirect, secure cookies; `SECURE_HSTS_PRELOAD` and `TRUST_X_FORWARDED_PROTO` are explicit opt-ins. `manage.py check --deploy` passes apart from preload (deliberately opt-in).
-- **Next.js headers** (next.config.ts): CSP "without nonces" per the Next 16 docs (`script-src 'self' 'unsafe-inline'`; nonces would force dynamic rendering for every page); everything else is 'self' only (fonts self-hosted by next/font, no third-party scripts/images), `object-src 'none'`, `frame-ancestors 'none'`, `form-action 'self'`, `upgrade-insecure-requests` in production; dev adds `'unsafe-eval'` + the HMR websocket. Also nosniff, X-Frame-Options DENY, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy, COOP, HSTS in production; `poweredByHeader: false`. Verified in the browser: no CSP violations. The app never uses dangerouslySetInnerHTML/eval.
+- **Next.js headers** (next.config.ts): CSP "without nonces" per the Next 16 docs (`script-src 'self' 'unsafe-inline'`; nonces would force dynamic rendering for every page); everything else is 'self' only (fonts self-hosted by next/font, no third-party scripts/images), `object-src 'none'`, `frame-ancestors 'none'`, `form-action 'self'`, `upgrade-insecure-requests` in production; dev adds `'unsafe-eval'` + the HMR websocket. Also nosniff, X-Frame-Options DENY, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy, COOP, HSTS in production; `poweredByHeader: false`. Verified in the browser: no CSP violations. The app never uses eval; the only dangerouslySetInnerHTML is the static theme script (`THEME_SCRIPT` in lib/theme.ts, no user input).
 - **CORS:** none, on purpose. The browser only talks to the Next.js origin; Django sends no Access-Control-* headers, and cross-origin writes fail the CSRF Origin check (tested).
 - **Links from data:** `lib/safe-url.ts`: external links (application links from emails) render only if http(s) (no `javascript:`/`data:`); assistant links render only if internal (`/…`, not `//host` or `/\host`).
 - **Tokens:** Fernet at rest since Stage 8; `manage.py rotate_token_key` re-encrypts with the first key of `TOKEN_ENCRYPTION_KEY=new,old` (MultiFernet). Tokens never appear in any API response (tested).
@@ -266,3 +276,30 @@ All seed dates are offsets from today, so these hold on every date (offsets repr
 - **Secrets:** a production-build scan found none of the `.env` secrets in any of the 423 build files and no key-shaped strings in the browser bundle; `NEXT_PUBLIC_API_URL` (unused since Stage 7) was removed from `.env`.
 - **Dependencies:** `pip-audit -r requirements.txt` → no known vulnerabilities; `npm audit --omit=dev` → 0. Accepted, dev-only: `braces` (GHSA-vfj7-8cjw-p6xm, via ESLint's fast-glob), with no patched version; npm's "fix" downgrades eslint-config-next to 14. Re-check later.
 - Before a public deployment: change the default Postgres password, set `DJANGO_DEBUG=false`, serve over HTTPS, and go through Google's restricted-scope verification (see the Gmail notes above).
+
+## Pre-Stage-11 fixes (4 Oct 2026)
+
+**A. Skills matching + score breakdown**
+- Real data showed 43/51 opportunities had no extracted skills list, so skills were always "unknown" with fixed points: adding skills changed nothing.
+- Skills now match case-insensitively with synonyms (`skill_aliases.json`, identical copies in `backend/core/domain/` and `frontend/lib/domain/`, test-enforced; e.g. React/React.js/ReactJS, JS/JavaScript, Node/Node.js) as whole words in the title, summary, requirements and the skills list. Aliases that are common English words (go, next, ai) are left out.
+- Interests match the built-in signals, the opportunity type ("internships" → Internship) or all of the interest's words in the text.
+- Skills are **met** if any match, **unmet** only if the email lists skills and none match, otherwise **unknown**. The checklist shows "Skills not mentioned in email" (or "Add skills to your profile to compare" when the user has none).
+- Profile score (`mail/pipeline.py`): interests 40, skills 30, level 15, deadline 15. Unknown checks are **neutral**, i.e. left out of both the points and the maximum. With no known fit checks the score is 50 (0 if the deadline has passed).
+- `Opportunity.score_breakdown` (JSON) stores relevance, profile weight, parts, location bonus, fee penalty and score. The details page shows "How this match % is worked out" (collapsible, inside the AI Summary), whose lines add up to the score.
+- `manage.py rescore_matches` re-scores without AI calls. On the real account the average went from 50 → 56 %; skills met went from 4 → 6 and interests met from 24 → 32.
+
+**B. Weekly digest**
+- The "Weekly AI digest" setting was previously connected to nothing.
+- Now: the Celery beat task `notifications.tasks.weekly_digest` runs hourly (minute 9) and creates the notification for users whose local time is Monday 08:00 (`DIGEST_LOCAL_HOUR`), only when the setting is on. Key `digest:<Monday>`, title "Your weekly digest", `link` "/digest".
+- `Notification.link` and the serializer's `href` route bell items that aren't about one opportunity.
+- `GET /api/digest/` (`core/domain/digest.py`) is computed from the user's own data: new this week, top 3 matches with reasons (open, not applied, no fee), deadlines in the next 7 days, fee warnings, and progress.
+- The `/digest` page, plus "Preview digest now" in Settings. No email is sent.
+
+**C. Light theme**
+- `Preferences.theme`: dark | light | system, default dark, stored on the account.
+- The browser keeps a copy in localStorage `oppora-theme`. An inline head script (`THEME_SCRIPT`) sets `<html data-theme>` before first paint, so there is no flash on any page, including the landing page, and it follows OS changes for System.
+- `AppShell` mirrors the account value into the browser on load. Settings applies the theme instantly and reverts if the save fails. The transitions are frozen for one frame during a switch.
+- `<html suppressHydrationWarning>` is needed because the script changes the attribute before hydration.
+- The viewport `themeColor` follows the OS.
+- The browser pane's colour-scheme emulation doesn't fire `change` events, so the live System switch is covered by a unit test instead.
+- The hero illustration (night scene in a circular vignette), the Monogram tiles and the Google button are unchanged in light (they sit on their own backgrounds). Inbox swipe backgrounds use `bg-purple/25` / `bg-urgent/25` with `text-ink`. Calendar days outside the month use `text-ink-3` (they previously used ink-3/50, which failed contrast).

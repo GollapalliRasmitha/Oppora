@@ -33,6 +33,7 @@ class OpportunitySerializer(serializers.ModelSerializer):
     discoveredAt = serializers.DateTimeField(source="discovered_at", read_only=True)
     applicationLink = serializers.URLField(source="application_link", read_only=True)
     matchReasons = serializers.JSONField(source="match_reasons", read_only=True)
+    scoreBreakdown = serializers.JSONField(source="score_breakdown", read_only=True)
     sourceEmailIds = serializers.SerializerMethodField()
     saved = serializers.SerializerMethodField()
     application = serializers.SerializerMethodField()
@@ -59,6 +60,7 @@ class OpportunitySerializer(serializers.ModelSerializer):
             "benefits",
             "applicationLink",
             "matchReasons",
+            "scoreBreakdown",
             "sourceEmailIds",
             "saved",
             "application",

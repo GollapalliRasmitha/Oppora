@@ -39,7 +39,7 @@ export function FloatingAIButton() {
       aria-expanded={assistantOpen}
       className={cn(
         "fixed right-4 z-40 inline-flex size-14 items-center justify-center rounded-full bg-brand text-white focus-ring transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 md:bottom-6 md:right-6",
-        "shadow-[0_0_0_1px_rgba(167,139,250,.45),0_10px_30px_-6px_rgba(124,58,237,.8)] hover:shadow-[0_0_0_1px_rgba(167,139,250,.7),0_14px_40px_-6px_rgba(96,165,250,.8)]",
+        "shadow-[0_0_0_1px_rgba(167,139,250,.45),0_10px_30px_-6px_var(--glow-purple)] hover:shadow-[0_0_0_1px_rgba(167,139,250,.7),0_14px_40px_-6px_rgba(96,165,250,.8)]",
         raised ? "bottom-24" : "bottom-20",
         assistantOpen && "pointer-events-none opacity-0",
       )}
@@ -69,7 +69,7 @@ function PromptButton({ prompt, onAsk, compact }: { prompt: string; onAsk: (q: s
       type="button"
       onClick={() => onAsk(prompt)}
       className={cn(
-        "flex min-h-11 items-center gap-2 rounded-md border border-line bg-white/[.03] px-3.5 text-left text-sm font-medium text-ink-2 focus-ring transition-colors hover:border-line-strong hover:text-ink",
+        "flex min-h-11 items-center gap-2 rounded-md border border-line bg-tint/[.03] px-3.5 text-left text-sm font-medium text-ink-2 focus-ring transition-colors hover:border-line-strong hover:text-ink",
         compact ? "shrink-0 rounded-full" : "w-full",
       )}
     >
@@ -199,7 +199,7 @@ export function AIAssistantPanel() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask about your opportunities…"
               autoComplete="off"
-              className="h-12 w-full rounded-md border border-line bg-white/[.04] pl-4 pr-14 text-sm text-ink placeholder:text-ink-3 outline-none transition-[border-color,box-shadow] focus:border-violet/70 focus:shadow-[0_0_0_4px_rgba(124,58,237,.18)]"
+              className="h-12 w-full rounded-md border border-line bg-tint/[.04] pl-4 pr-14 text-sm text-ink placeholder:text-ink-3 outline-none transition-[border-color,box-shadow] focus:border-violet/70 focus:shadow-[0_0_0_4px_rgba(124,58,237,.18)]"
             />
             <button
               type="submit"

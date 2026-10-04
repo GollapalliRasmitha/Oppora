@@ -34,7 +34,7 @@ export function DeadlineItem({
   const Icon = DEADLINE_KIND_ICON[kind];
 
   return (
-    <li className={cn("rounded-md border border-line bg-white/[.03] p-3", closed && "opacity-75")}>
+    <li className={cn("rounded-md border border-line bg-tint/[.03] p-3", closed && "opacity-75")}>
       <div className="flex gap-3">
         <div
           aria-hidden

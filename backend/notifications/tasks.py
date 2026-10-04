@@ -20,6 +20,22 @@ from opportunities.models import Opportunity
 from .models import Notification
 
 
+def weekly_digest_notification(user, now) -> bool:
+    """Creates this week's digest notification (idempotent per week). Returns whether it was new."""
+    from core.domain.digest import compute_digest, digest_summary
+
+    d = compute_digest(opportunity_dicts(user), now)
+    return _create(
+        user,
+        f"digest:{d['weekOf']}",
+        kind=Notification.Kind.AI_RECOMMENDATION,
+        title="Your weekly digest",
+        body=digest_summary(d)[:300],
+        created_at=clock.now(),
+        link="/digest",
+    )
+
+
 def _local_now(user):
     return clock.now().astimezone(clock.zone(user.timezone) or clock.zone(settings.DEFAULT_USER_TIMEZONE))
 
@@ -102,4 +118,16 @@ def daily_briefing(force_hour: bool = False) -> int:
             body="; ".join(parts) + ".",
             created_at=clock.now(),
         )
+    return made
+
+
+@shared_task(name="notifications.tasks.weekly_digest")
+def weekly_digest(force_hour: bool = False) -> int:
+    """Mondays at DIGEST_LOCAL_HOUR in each user's zone, only for users with "Weekly AI digest" on."""
+    made = 0
+    for user in User.objects.filter(preferences__notify_weekly_digest=True):
+        now = _local_now(user)
+        if not force_hour and (now.weekday() != 0 or now.hour != settings.DIGEST_LOCAL_HOUR):
+            continue
+        made += weekly_digest_notification(user, now)
     return made

@@ -33,6 +33,7 @@ export const seedUser: User = {
 export const defaultPreferences: Preferences = {
   notifications: { email: true, deadlineReminders: true, newOpportunities: true, weeklyDigest: false },
   language: "en",
+  theme: "dark",
   minimumMatch: 0,
   preferredLocations: [],
   ai: {
@@ -88,7 +89,7 @@ export function createSeed(today: Date = new Date()): Seed {
     appliedAt: null,
   });
 
-  type Draft = Omit<Opportunity, "reminderSet" | "dismissed" | "matchReasons" | "requirements" | "benefits" | "fee"> &
+  type Draft = Omit<Opportunity, "reminderSet" | "dismissed" | "matchReasons" | "requirements" | "benefits" | "fee" | "scoreBreakdown"> &
     Partial<Pick<Opportunity, "requirements" | "benefits">>;
 
   const drafts: Draft[] = [
@@ -340,6 +341,8 @@ export function createSeed(today: Date = new Date()): Seed {
     dismissed: false,
     // None of the demo emails asks for a fee.
     fee: null,
+    // Demo scores are hand-set (the brief's numbers), so there's no computed breakdown.
+    scoreBreakdown: null,
   }));
 
   // Interviews for two applications, each backed by an invitation email below.

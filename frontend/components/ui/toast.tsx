@@ -13,7 +13,7 @@ export function Toaster() {
       toastOptions={{
         classNames: {
           toast:
-            "!rounded-md !border !border-line-strong !bg-surface/95 !text-ink !backdrop-blur-xl !shadow-[0_18px_48px_-12px_rgba(0,0,0,.7)] !font-sans",
+            "!rounded-md !border !border-line-strong !bg-surface/95 !text-ink !backdrop-blur-xl !shadow-[var(--shadow-pop)] !font-sans",
           description: "!text-ink-2",
           actionButton: "!bg-brand !text-white !font-semibold !rounded-sm",
           success: "[&_[data-icon]]:!text-success",

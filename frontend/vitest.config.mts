@@ -9,5 +9,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./tests/setup.ts"],
     include: ["tests/**/*.test.{ts,tsx}"],
+    // userEvent keyboard tests can pass 5s when lint + typecheck run alongside.
+    testTimeout: 15000,
   },
 });

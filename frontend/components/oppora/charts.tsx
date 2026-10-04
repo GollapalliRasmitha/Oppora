@@ -6,14 +6,17 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /**
- * Data-viz colours (validated with the dataviz skill's palette checker on the
- * #0F1336 surface). Single-series bars use one hue; the progress donut is an
- * ordered sequence, so it uses one ordinal violet ramp (bright = further along).
+ * Data-viz colours: CSS variables defined per theme in globals.css, each set
+ * validated with the dataviz skill's palette checker against its own surface
+ * (dark #0F1336, light #FFFFFF). Single-series bars use one hue; the progress
+ * donut is an ordered sequence on one violet ramp, its first step the most
+ * prominent ("further along"): brightest on dark, darkest on light.
  */
 export const VIZ = {
-  bar: "#A78BFA",
-  barHover: "#C4B5FD",
-  ordinal: ["#EDE9FE", "#C4B5FD", "#8B5CF6", "#5B21B6"],
+  bar: "var(--viz-bar)",
+  barHover: "var(--viz-bar-hover)",
+  ordinal: ["var(--viz-1)", "var(--viz-2)", "var(--viz-3)", "var(--viz-4)"],
+  track: "var(--viz-track)",
 } as const;
 
 function niceMax(n: number) {
@@ -93,7 +96,7 @@ export function BarChart({
                   onMouseLeave={() => setActive(null)}
                   onFocus={() => setActive(i)}
                   onBlur={() => setActive(null)}
-                  className="group relative flex h-full flex-1 flex-col justify-end rounded-sm pb-6 outline-none focus-visible:bg-white/[.04] focus-visible:ring-2 focus-visible:ring-violet"
+                  className="group relative flex h-full flex-1 flex-col justify-end rounded-sm pb-6 outline-none focus-visible:bg-tint/[.04] focus-visible:ring-2 focus-visible:ring-violet"
                 >
                   {/* bar: anchored to the baseline, rounded data end */}
                   <div className="mx-auto h-38 w-full max-w-7 self-end">
@@ -122,7 +125,7 @@ export function BarChart({
                     <div
                       role="tooltip"
                       className={cn(
-                        "pointer-events-none absolute bottom-full z-10 mb-1 whitespace-nowrap rounded-sm border border-line-strong bg-surface px-2.5 py-1.5 text-meta shadow-[0_12px_32px_-8px_rgba(0,0,0,.8)]",
+                        "pointer-events-none absolute bottom-full z-10 mb-1 whitespace-nowrap rounded-sm border border-line-strong bg-surface px-2.5 py-1.5 text-meta shadow-[var(--shadow-pop)]",
                         // Keep the tooltip inside the chart near the edges.
                         i < data.length * 0.2 ? "left-0" : i > data.length * 0.8 ? "right-0" : "left-1/2 -translate-x-1/2",
                       )}
@@ -178,7 +181,7 @@ export function DonutChart({
     <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg viewBox="0 0 100 100" className="-rotate-90" role="img" aria-label={`${title}: ${data.map((d) => `${d.label} ${d.value}`).join(", ")}`}>
-          <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="12" />
+          <circle cx="50" cy="50" r={r} fill="none" style={{ stroke: VIZ.track }} strokeWidth="12" />
           {data.map((d, i) => {
             if (!d.value) return null;
             const len = (d.value / total) * c;
@@ -189,7 +192,7 @@ export function DonutChart({
                 cy="50"
                 r={r}
                 fill="none"
-                stroke={VIZ.ordinal[i]}
+                style={{ stroke: VIZ.ordinal[i] }}
                 strokeWidth={active === d.key ? 14 : 12}
                 strokeDasharray={`${Math.max(len - gap, 0.1)} ${c}`}
                 strokeDashoffset={-starts[i]}
@@ -225,7 +228,7 @@ export function DonutChart({
               onBlur={() => setActive(null)}
               className={cn(
                 "flex items-center gap-2.5 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-violet",
-                active === d.key && "bg-white/[.05]",
+                active === d.key && "bg-tint/[.05]",
               )}
             >
               <span aria-hidden className="size-3 shrink-0 rounded-[3px]" style={{ background: VIZ.ordinal[i] }} />

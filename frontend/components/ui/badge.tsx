@@ -7,7 +7,7 @@ export const badgeVariants = cva(
   {
     variants: {
       tone: {
-        neutral: "border-line bg-white/[.04] text-ink-2",
+        neutral: "border-line bg-tint/[.04] text-ink-2",
         purple: "border-violet/30 bg-purple/15 text-violet",
         blue: "border-blue/30 bg-blue/10 text-blue",
         pink: "border-pink/30 bg-pink/10 text-pink",

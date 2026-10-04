@@ -33,7 +33,7 @@ export function FilterChips<T extends string>({ options, value, onValueChange, l
           key={o.value}
           value={o.value}
           className={cn(
-            "inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white/[.03] px-4 text-sm font-semibold text-ink-2 focus-ring transition-[background-color,border-color,color,box-shadow] duration-200 hover:border-line-strong hover:text-ink",
+            "inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-line bg-tint/[.03] px-4 text-sm font-semibold text-ink-2 focus-ring transition-[background-color,border-color,color,box-shadow] duration-200 hover:border-line-strong hover:text-ink",
             "data-[state=on]:border-transparent data-[state=on]:bg-brand data-[state=on]:text-white data-[state=on]:shadow-[var(--glow-brand)]",
           )}
         >
@@ -72,7 +72,7 @@ export function MultiChips<T extends string>({
           key={o.value}
           value={o.value}
           className={cn(
-            "inline-flex h-11 items-center gap-1.5 rounded-full border border-line bg-white/[.03] px-4 text-sm font-semibold text-ink-2 focus-ring transition-[background-color,border-color,color] duration-200 hover:border-line-strong hover:text-ink",
+            "inline-flex h-11 items-center gap-1.5 rounded-full border border-line bg-tint/[.03] px-4 text-sm font-semibold text-ink-2 focus-ring transition-[background-color,border-color,color] duration-200 hover:border-line-strong hover:text-ink",
             "data-[state=on]:border-violet/60 data-[state=on]:bg-purple/20 data-[state=on]:text-ink",
             "[&[data-state=on]_.chip-check]:inline",
           )}

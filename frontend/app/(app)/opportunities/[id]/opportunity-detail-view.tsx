@@ -22,6 +22,7 @@ import { DeadlineIndicator, FeeBadge, MatchRing, PriorityBadge, formatFee } from
 import { EmailCard } from "@/components/oppora/email-card";
 import { InfoItem, NotMentioned } from "@/components/oppora/info-item";
 import { MatchChecklist } from "@/components/oppora/match-checklist";
+import { ScoreBreakdownView } from "@/components/oppora/score-breakdown";
 import { Monogram } from "@/components/oppora/monogram";
 import { StatusBadge } from "@/components/oppora/opportunity-row";
 import { SaveToggle } from "@/components/oppora/save-toggle";
@@ -140,7 +141,7 @@ function Detail({
     <article aria-labelledby="opp-title">
       <BackLink />
 
-      <GlassCard strong className="relative overflow-hidden bg-[linear-gradient(120deg,rgba(124,58,237,.22),rgba(37,99,235,.08)_60%)] p-5 sm:p-6">
+      <GlassCard strong className="relative overflow-hidden bg-wash p-5 sm:p-6">
         <div aria-hidden className="pointer-events-none absolute -right-16 -top-24 size-64 rounded-full bg-purple/25 blur-3xl" />
         <div className="relative flex flex-col gap-5 md:flex-row md:items-start">
           <Monogram name={opp.organization} size="lg" />
@@ -158,7 +159,7 @@ function Detail({
               <FeeBadge fee={opp.fee} />
             </div>
           </div>
-          <div className="rounded-md border border-line bg-white/[.04] px-4 py-3 md:min-w-44">
+          <div className="rounded-md border border-line bg-tint/[.04] px-4 py-3 md:min-w-44">
             <div className="mb-1 text-meta font-medium text-ink-3">Deadline</div>
             <DeadlineIndicator deadline={opp.deadline} days={days} />
           </div>
@@ -179,6 +180,7 @@ function Detail({
             <p className="text-[15px] text-ink">{matchSentence(opp.matchReasons)}</p>
           </div>
           <MatchChecklist opp={opp} now={now} className="mt-5" />
+          {opp.scoreBreakdown && <ScoreBreakdownView breakdown={opp.scoreBreakdown} className="mt-4" />}
         </AICard>
 
         <GlassCard className="min-w-0 p-2 sm:p-3 lg:order-1">
@@ -252,7 +254,7 @@ function Detail({
       </div>
 
       {/* Mobile: sticky action bar (the page is full-screen, the bottom nav is hidden) */}
-      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-line bg-[#080b1f]/90 p-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-xl md:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-line bg-chrome p-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-xl md:hidden">
         <div className="flex-1 [&>button]:w-full">{applyButton}</div>
         <SaveToggle compact saved={opp.saved} title={opp.title} onToggle={() => actions.toggleSave(opp)} className="glass" />
         <IconButton label="Share" icon={<Share2 aria-hidden />} variant="glass" onClick={() => share(opp)} />
@@ -393,7 +395,7 @@ function ApplyModal({
           </a>
         </Button>
       ) : (
-        <div className="rounded-md border border-line bg-white/[.03] p-3 text-sm text-ink-2">
+        <div className="rounded-md border border-line bg-tint/[.03] p-3 text-sm text-ink-2">
           The email didn&apos;t include an application link. Check the original email for how to apply.
           <Button variant="secondary" size="sm" className="mt-3 w-full" onClick={onShowEmails}>
             View related emails

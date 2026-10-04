@@ -11,7 +11,7 @@ describe("explainMatch", () => {
     expect(r.interests).toBe("met");
     expect(r.matchedInterests).toContain("frontend development");
     expect(r.skills).toBe("met");
-    expect(r.matchedSkills).toEqual(["React", "TypeScript", "CSS"]);
+    expect(r.matchedSkills).toEqual(["TypeScript", "React", "CSS"]); // in the profile's order
   });
   it("is unknown when the email doesn't state eligibility or skills", () => {
     const r = byId("opp_wtm_scholarship").matchReasons;

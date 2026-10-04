@@ -59,7 +59,7 @@ export function Navbar() {
               <Link
                 href={l.href}
                 onClick={() => setOpen(false)}
-                className="flex h-12 items-center rounded-md px-3 text-base font-semibold text-ink-2 focus-ring hover:bg-white/[.05] hover:text-ink"
+                className="flex h-12 items-center rounded-md px-3 text-base font-semibold text-ink-2 focus-ring hover:bg-tint/[.05] hover:text-ink"
               >
                 {l.label}
               </Link>

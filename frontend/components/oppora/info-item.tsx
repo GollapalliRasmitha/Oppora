@@ -22,7 +22,7 @@ export function InfoItem({
   const empty = children === null || children === undefined || children === "";
   return (
     <div className={cn("flex gap-3", className)}>
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-line bg-white/[.04] text-violet">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-line bg-tint/[.04] text-violet">
         <Icon aria-hidden className="size-4" />
       </span>
       <div className="min-w-0">

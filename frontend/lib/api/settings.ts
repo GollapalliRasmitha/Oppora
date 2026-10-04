@@ -20,6 +20,11 @@ export async function getSettings(): Promise<Settings> {
   return { user, preferences, gmail: mockMode() === "gmail" ? { ...gmail, status: "needs_reconnect" } : gmail };
 }
 
+/** GET /api/preferences/ */
+export function getPreferences(): Promise<Preferences> {
+  return request<Preferences>("/preferences", NO_GMAIL);
+}
+
 type PrefPatch = Partial<Omit<Preferences, "notifications" | "ai">> & {
   notifications?: Partial<Preferences["notifications"]>;
   ai?: Partial<Preferences["ai"]>;

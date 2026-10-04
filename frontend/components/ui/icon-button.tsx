@@ -18,7 +18,7 @@ export function IconButton({ label, icon, variant = "ghost", dot, className, typ
       title={label}
       className={cn(
         "relative inline-flex size-11 shrink-0 items-center justify-center rounded-md text-ink-2 focus-ring transition-colors duration-200 hover:text-ink [&_svg]:size-5",
-        variant === "ghost" && "hover:bg-white/[.06]",
+        variant === "ghost" && "hover:bg-tint/[.06]",
         variant === "glass" && "glass hover:border-line-strong",
         className,
       )}

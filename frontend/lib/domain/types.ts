@@ -54,6 +54,26 @@ export interface Fee {
   text: string;
 }
 
+/** One profile check in the match score. `points` is null when it couldn't be checked (neutral, left out). */
+export interface ScorePart {
+  key: "interests" | "skills" | "experience" | "deadline";
+  label: string;
+  status: MatchCheck | "open" | "passed" | "not_mentioned";
+  points: number | null;
+  max: number;
+}
+
+/** Match % = (1 − profileWeight) × relevance + profileWeight × profile + locationBonus − feePenalty. */
+export interface ScoreBreakdown {
+  relevance: number;
+  profileWeight: number;
+  profile: number;
+  parts: ScorePart[];
+  locationBonus: number;
+  feePenalty: number;
+  score: number;
+}
+
 export interface Opportunity {
   id: string;
   title: string;
@@ -75,6 +95,8 @@ export interface Opportunity {
   benefits: string[];
   applicationLink: string | null;
   matchReasons: MatchReasons;
+  /** How the match % was computed; null for the seeded demo (its scores are hand-set). */
+  scoreBreakdown: ScoreBreakdown | null;
   sourceEmailIds: string[];
   saved: boolean;
   application: Application | null;
@@ -131,6 +153,31 @@ export interface Notification {
   createdAt: ISODateTime;
   read: boolean;
   opportunityId: string | null;
+  /** Where it opens when it isn't about one opportunity (e.g. "/digest"). */
+  href?: string | null;
+}
+
+/** An opportunity as listed in the weekly digest. */
+export interface DigestItem {
+  id: string;
+  title: string;
+  organization: string;
+  type: OpportunityType;
+  deadline: ISODate | null;
+  daysLeft: number | null;
+  matchScore: number;
+  fee: Fee | null;
+}
+
+/** The weekly digest (GET /api/digest/), computed from the user's own data. */
+export interface Digest {
+  weekOf: ISODate;
+  weekLabel: string;
+  newThisWeek: DigestItem[];
+  topMatches: (DigestItem & { why: string; matchReasons: MatchReasons })[];
+  deadlinesSoon: DigestItem[];
+  feeWarnings: DigestItem[];
+  progress: { applied: number; inProgress: number; saved: number; total: number; appliedPercent: number };
 }
 
 /** An interview scheduled from an email (Stage 8 extracts these). */
@@ -165,6 +212,8 @@ export interface CalendarItem {
 export type PersonalizationLevel = "low" | "balanced" | "high";
 
 /** Mirrors the UserPreference model (Stage 7). */
+export type Theme = "dark" | "light" | "system";
+
 export interface Preferences {
   notifications: {
     email: boolean;
@@ -174,6 +223,8 @@ export interface Preferences {
   };
   /** Only English is available for now. */
   language: "en";
+  /** "system" follows the operating system's light/dark setting. */
+  theme: Theme;
   /** Opportunity preferences used when ranking new opportunities (Stage 8). */
   minimumMatch: 0 | 50 | 70 | 85;
   preferredLocations: string[];

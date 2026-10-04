@@ -27,8 +27,8 @@ export function LogoMark({ className }: { className?: string }) {
       </defs>
       <ellipse cx="20" cy="21" rx="16.5" ry="8.5" transform="rotate(-28 20 21)" stroke={`url(#${orbit})`} strokeWidth="3.2" strokeLinecap="round" strokeDasharray="78 12" />
       <circle cx="19" cy="21" r="8" fill={`url(#${core})`} opacity=".55" />
-      <path d="M19 12.5c.7 4.6 2.4 6.6 6.8 7.6-4.4 1-6.1 3-6.8 7.6-.7-4.6-2.4-6.6-6.8-7.6 4.4-1 6.1-3 6.8-7.6Z" fill="#fff" />
-      <path d="M31 5.5c.3 1.8 1 2.5 2.7 2.9-1.7.4-2.4 1.1-2.7 2.9-.3-1.8-1-2.5-2.7-2.9 1.7-.4 2.4-1.1 2.7-2.9Z" fill="#C4B5FD" />
+      <path d="M19 12.5c.7 4.6 2.4 6.6 6.8 7.6-4.4 1-6.1 3-6.8 7.6-.7-4.6-2.4-6.6-6.8-7.6 4.4-1 6.1-3 6.8-7.6Z" style={{ fill: "var(--logo-star)" }} />
+      <path d="M31 5.5c.3 1.8 1 2.5 2.7 2.9-1.7.4-2.4 1.1-2.7 2.9-.3-1.8-1-2.5-2.7-2.9 1.7-.4 2.4-1.1 2.7-2.9Z" style={{ fill: "var(--logo-star-2)" }} />
     </svg>
   );
 }

@@ -12,7 +12,7 @@ import { SIDEBAR_NAV, isActive } from "./nav";
 import { useShell } from "./shell-context";
 
 export const navItemActive =
-  "bg-[linear-gradient(90deg,rgba(124,58,237,.38),rgba(37,99,235,.14))] text-ink shadow-[inset_0_0_0_1px_rgba(167,139,250,.35),0_0_22px_-6px_rgba(124,58,237,.7)]";
+  "bg-[linear-gradient(90deg,rgba(124,58,237,.38),rgba(37,99,235,.14))] text-ink shadow-[inset_0_0_0_1px_rgba(167,139,250,.35),0_0_22px_-6px_var(--glow-purple)]";
 
 /**
  * Desktop (≥1024px): fixed 230px. Tablet (768–1023px): 72px icon rail that
@@ -38,8 +38,8 @@ export function Sidebar({ expanded, onExpandedChange }: { expanded: boolean; onE
       <aside
         aria-label="Main"
         className={cn(
-          "fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-line bg-[#080b1f]/90 backdrop-blur-xl transition-[width] duration-200 md:flex",
-          expanded ? "w-[var(--sidebar-w)] shadow-[24px_0_64px_-24px_rgba(0,0,0,.8)]" : "w-[var(--sidebar-w-collapsed)]",
+          "fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-line bg-chrome backdrop-blur-xl transition-[width] duration-200 md:flex",
+          expanded ? "w-[var(--sidebar-w)] shadow-[var(--shadow-chrome)]" : "w-[var(--sidebar-w-collapsed)]",
           "lg:w-[var(--sidebar-w)] lg:shadow-none",
         )}
       >
@@ -55,7 +55,7 @@ export function Sidebar({ expanded, onExpandedChange }: { expanded: boolean; onE
           onClick={() => onExpandedChange(!expanded)}
           aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
           aria-expanded={expanded}
-          className="mx-auto mb-2 inline-flex size-11 items-center justify-center rounded-md text-ink-3 focus-ring hover:bg-white/[.06] hover:text-ink lg:hidden"
+          className="mx-auto mb-2 inline-flex size-11 items-center justify-center rounded-md text-ink-3 focus-ring hover:bg-tint/[.06] hover:text-ink lg:hidden"
         >
           {expanded ? <PanelLeftClose aria-hidden className="size-5" /> : <PanelLeftOpen aria-hidden className="size-5" />}
         </button>
@@ -72,7 +72,7 @@ export function Sidebar({ expanded, onExpandedChange }: { expanded: boolean; onE
                     title={expanded ? undefined : label}
                     onClick={() => expanded && onExpandedChange(false)}
                     className={cn(
-                      "flex h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold text-ink-2 focus-ring transition-[background-color,color,box-shadow] duration-200 hover:bg-white/[.05] hover:text-ink",
+                      "flex h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold text-ink-2 focus-ring transition-[background-color,color,box-shadow] duration-200 hover:bg-tint/[.05] hover:text-ink",
                       !expanded && "md:justify-center lg:justify-start",
                       active && navItemActive,
                     )}
@@ -90,7 +90,7 @@ export function Sidebar({ expanded, onExpandedChange }: { expanded: boolean; onE
           <Link
             href="/settings"
             className={cn(
-              "flex items-center gap-3 rounded-md p-2 focus-ring transition-colors hover:bg-white/[.05]",
+              "flex items-center gap-3 rounded-md p-2 focus-ring transition-colors hover:bg-tint/[.05]",
               !expanded && "md:justify-center lg:justify-start",
             )}
           >

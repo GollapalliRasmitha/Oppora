@@ -56,7 +56,7 @@ export function DashboardView() {
       <section aria-labelledby="greeting" className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <GlassCard
           strong
-          className="relative overflow-hidden bg-[linear-gradient(120deg,rgba(124,58,237,.30),rgba(79,70,229,.16)_45%,rgba(37,99,235,.10))] p-6 sm:p-7"
+          className="relative overflow-hidden bg-wash p-6 sm:p-7"
         >
           <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-purple/30 blur-3xl" />
           <div className="relative">
@@ -212,7 +212,7 @@ function DashboardContent({
                   <li key={o.id}>
                     <Link
                       href={`/opportunities/${o.id}`}
-                      className="flex items-center gap-3 rounded-md p-2 focus-ring transition-colors hover:bg-white/[.04]"
+                      className="flex items-center gap-3 rounded-md p-2 focus-ring transition-colors hover:bg-tint/[.04]"
                     >
                       <Monogram name={o.organization} size="sm" />
                       <span className="min-w-0 flex-1">

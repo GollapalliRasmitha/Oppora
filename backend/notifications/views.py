@@ -15,10 +15,14 @@ from .models import Notification
 class NotificationSerializer(serializers.ModelSerializer):
     createdAt = serializers.DateTimeField(source="created_at")
     opportunityId = serializers.UUIDField(source="opportunity_id", allow_null=True)
+    href = serializers.SerializerMethodField()
 
     class Meta:
         model = Notification
-        fields = ["id", "kind", "title", "body", "createdAt", "read", "opportunityId"]
+        fields = ["id", "kind", "title", "body", "createdAt", "read", "opportunityId", "href"]
+
+    def get_href(self, obj):
+        return obj.link or None
 
 
 def _enabled(user) -> dict[str, bool]:
@@ -58,11 +62,17 @@ def refresh_notifications(user, now) -> list[Notification]:
             n.save(update_fields=["title", "body"])
         if not n.cleared and enabled[n.kind]:
             out.append(n)
-    # Created by the scheduled jobs (notifications.tasks): reminders and the daily briefing.
-    scheduled = Notification.objects.filter(user=user, cleared=False, key__regex=r"^(reminder|briefing):").order_by(
+    # Created by the scheduled jobs (notifications.tasks), each governed by its own setting.
+    p = user.preferences
+    allowed = {
+        "reminder": p.notify_deadline_reminders,
+        "briefing": p.ai_recommendations,
+        "digest": p.notify_weekly_digest,
+    }
+    scheduled = Notification.objects.filter(user=user, cleared=False, key__regex=r"^(reminder|briefing|digest):").order_by(
         "-created_at"
     )[:20]
-    out += [n for n in scheduled if enabled[n.kind]]
+    out += [n for n in scheduled if allowed[n.key.split(":", 1)[0]]]
     return out
 
 

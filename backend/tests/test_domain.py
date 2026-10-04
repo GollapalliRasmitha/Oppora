@@ -138,7 +138,7 @@ def test_the_five_prompts():
 def test_why_relevant_uses_context_or_asks():
     a = ask("Why is this opportunity relevant?", {"opportunityId": "opp_amazon_frontend"})
     assert "Frontend Developer — 86% match." in a["text"]
-    assert "✓ Matches your skills (React, TypeScript, CSS)" in a["text"]
+    assert "✓ Matches your skills (TypeScript, React, CSS)" in a["text"]
     assert "⚠ Eligibility not mentioned in email" in a["text"]
     no_ctx = ask("Why is this opportunity relevant?")
     assert no_ctx["links"] == [] and "Why is TCS CodeVita 2026 relevant?" in no_ctx["followUps"]
@@ -168,3 +168,70 @@ def test_links_point_at_real_opportunities_or_the_inbox(q):
     real = {f"/opportunities/{o['id']}" for o in OPPS}
     for link in ask(q)["links"]:
         assert link["href"] in real or link["href"].startswith("/inbox?q=")
+
+
+# --- Skills: synonyms, text, neutral when unknown -------------------------------------------
+
+PROFILE = {
+    "interests": ["machine learning", "internships"],
+    "skills": ["ReactJS", "JS", "Node", "Python"],
+    "experienceLevel": None,
+}
+
+
+def opp(**kw):
+    base = {"title": "Intern", "type": "Internship", "skills": [], "eligibility": None, "summary": "", "requirements": []}
+    return {**base, **kw}
+
+
+def test_skills_match_synonyms_and_text_not_only_the_list():
+    r = explain_match(opp(title="Frontend Intern (React.js)", summary="You'll write JavaScript and Node.js services."), PROFILE)
+    assert r["skills"] == "met" and r["matchedSkills"] == ["ReactJS", "JS", "Node"]
+    r = explain_match(opp(skills=["react", "typescript"]), PROFILE)
+    assert r["matchedSkills"] == ["ReactJS"]
+    r = explain_match(opp(requirements=["Strong Python 3 skills"]), PROFILE)
+    assert r["matchedSkills"] == ["Python"]
+
+
+def test_whole_words_only():
+    r = explain_match(opp(summary="We build JavaScript tools."), {**PROFILE, "skills": ["Java"]})
+    assert r["skills"] == "unknown"  # "java" isn't "javascript"; the email names no skills → neutral
+
+
+def test_no_skills_in_the_email_is_neutral_not_a_miss():
+    r = explain_match(opp(summary="Apply for our summer internship."), PROFILE)
+    assert r["skills"] == "unknown" and r["matchedSkills"] == []
+    r = explain_match(opp(skills=["Figma"]), PROFILE)
+    assert r["skills"] == "unmet"  # the email lists skills and none are yours
+    assert explain_match(opp(skills=["Figma"]), {**PROFILE, "skills": []})["skills"] == "unknown"
+
+
+def test_any_interest_can_match_not_only_the_built_in_three():
+    r = explain_match(opp(title="ML Research Intern", summary="Work on machine learning models."), PROFILE)
+    assert r["matchedInterests"] == ["machine learning", "internships"]
+    assert explain_match(opp(), {**PROFILE, "interests": []})["interests"] == "unknown"
+
+
+def test_checklist_wording_for_unknown_checks():
+    from core.domain.match import match_checklist
+
+    o = {**opp(summary="Apply now."), "deadline": None, "matchReasons": explain_match(opp(summary="Apply now."), PROFILE)}
+    labels = [c["label"] for c in match_checklist(o, DEMO_NOW)]
+    assert "Skills not mentioned in email" in labels
+    o2 = {
+        **opp(skills=["Go"]),
+        "deadline": None,
+        "matchReasons": explain_match(opp(skills=["Go"]), {**PROFILE, "skills": [], "interests": []}),
+    }
+    labels = [c["label"] for c in match_checklist(o2, DEMO_NOW)]
+    assert "Add skills to your profile to compare" in labels and "Add interests to your profile to compare" in labels
+
+
+def test_skill_alias_tables_are_identical_in_backend_and_frontend():
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    back = json.loads((root / "backend/core/domain/skill_aliases.json").read_text(encoding="utf-8"))
+    front = json.loads((root / "frontend/lib/domain/skill-aliases.json").read_text(encoding="utf-8"))
+    assert back == front

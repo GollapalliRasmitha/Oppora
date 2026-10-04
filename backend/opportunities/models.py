@@ -32,6 +32,8 @@ class Opportunity(models.Model):
     application_link = models.URLField(max_length=500, null=True, blank=True)
     #: Why it matched (skills / interests / experience), stored so the UI can explain.
     match_reasons = models.JSONField(default=empty_reasons)
+    #: How the match % was computed (mail.pipeline.score_breakdown); null for seeded demo data.
+    score_breakdown = models.JSONField(null=True, blank=True)
     reminder_set = models.BooleanField(default=False)
     #: "Not interested": hidden everywhere, reversible.
     dismissed = models.BooleanField(default=False)

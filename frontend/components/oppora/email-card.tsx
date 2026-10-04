@@ -41,7 +41,7 @@ export function EmailCard({
       aria-label={`${email.read ? "" : "Unread. "}${email.subject}, from ${email.sender}`}
       className={cn(
         "rounded-md border border-line bg-surface p-3.5 transition-colors",
-        !email.read && "border-line-strong bg-[#141a45]",
+        !email.read && "border-line-strong bg-unread",
         className,
       )}
     >

@@ -21,7 +21,7 @@ export const KIND_CHIP: Record<CalendarKind, string> = {
   hackathon: "border-pink/40 bg-pink/12 text-pink",
   scholarship: "border-success/40 bg-success/12 text-success",
   interview: "border-blue/40 bg-blue/12 text-blue",
-  reminder: "border-line-strong bg-white/[.06] text-ink-2",
+  reminder: "border-line-strong bg-tint/[.06] text-ink-2",
 };
 
 /** Colour by deadline urgency (Deadlines page). */
@@ -29,8 +29,8 @@ export const URGENCY_CHIP: Record<Urgency, string> = {
   urgent: "border-urgent/40 bg-urgent/15 text-urgent",
   soon: "border-soon/40 bg-soon/15 text-soon",
   later: "border-later/40 bg-later/15 text-later",
-  passed: "border-line bg-white/[.04] text-ink-3",
-  none: "border-line bg-white/[.04] text-ink-3",
+  passed: "border-line bg-tint/[.04] text-ink-3",
+  none: "border-line bg-tint/[.04] text-ink-3",
 };
 
 const URGENCY_DOT: Record<Urgency, string> = {

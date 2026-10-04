@@ -503,7 +503,7 @@ def test_follow_up_with_a_different_type_links_instead_of_duplicating(real_user,
 
 
 def test_profile_changes_rescore_ai_found_opportunities_but_not_the_seed(real_user, gmail, fake_ai, user):
-    real_user.interests, real_user.skills = [], []
+    real_user.interests, real_user.skills, real_user.experience_level = [], [], None
     real_user.save()
     gmail.messages = {"m1": INTERNSHIP}
     fake_ai.push(extraction(relevance=60))
@@ -531,3 +531,41 @@ def test_server_start_resumes_interrupted_syncs(real_user, gmail, fake_ai):
     g.refresh_from_db()
     assert g.sync_phase == "completed" and Opportunity.objects.filter(user=real_user).count() == 1
     assert sync.resume_all_interrupted() == 0  # nothing left to resume
+
+
+def test_breakdown_explains_the_score_and_unknown_checks_are_neutral(real_user):
+    from mail.pipeline import score_breakdown
+
+    reasons = {"interests": "met", "skills": "unknown", "experience": "unknown", "matchedSkills": [], "matchedInterests": ["x"]}
+    bd = score_breakdown(80, reasons, [], None, None, real_user.preferences, NOW)
+    parts = {p["key"]: p for p in bd["parts"]}
+    assert parts["skills"]["points"] is None and parts["experience"]["points"] is None  # left out, not 0
+    assert bd["profile"] == 100  # interests 40/40 + deadline 15/15
+    assert bd["score"] == round(0.5 * 80 + 0.5 * 100)
+    # Same email, skills now known and not matched: lower; matched: higher.
+    unmet = score_breakdown(80, {**reasons, "skills": "unmet"}, ["Go"], None, None, real_user.preferences, NOW)
+    met = score_breakdown(
+        80, {**reasons, "skills": "met", "matchedSkills": ["Go"]}, ["Go"], None, None, real_user.preferences, NOW
+    )
+    assert unmet["score"] < bd["score"] <= met["score"]
+    # Nothing known about the profile → neutral, not perfect.
+    empty = {"interests": "unknown", "skills": "unknown", "experience": "unknown", "matchedSkills": [], "matchedInterests": []}
+    assert score_breakdown(80, empty, [], None, None, real_user.preferences, NOW)["profile"] == 50
+
+
+def test_adding_a_skill_the_email_mentions_raises_the_match(real_user, gmail, fake_ai):
+    real_user.skills = ["Figma"]
+    real_user.interests = ["hackathons"]  # not this internship: the profile isn't already perfect
+    real_user.save()
+    gmail.messages = {"m1": INTERNSHIP}
+    # No extracted skills list, but the stored summary mentions React (bodies aren't stored).
+    fake_ai.push(extraction(skills=[], relevance=60, summary="Frontend interns build UIs with React and TypeScript."))
+    sync.start_sync(real_user)
+    o = Opportunity.objects.get(user=real_user)
+    assert o.match_reasons["skills"] == "unknown" and o.score_breakdown["score"] == o.match_score
+    before = o.match_score
+    make_client(real_user).patch("/api/auth/me/", {"skills": ["Figma", "React.js"]}, format="json")
+    o.refresh_from_db()
+    assert o.match_reasons["skills"] == "met" and o.match_reasons["matchedSkills"] == ["React.js"]
+    assert o.match_score > before
+    assert make_client(real_user).get(f"/api/opportunities/{o.id}/").json()["scoreBreakdown"]["score"] == o.match_score

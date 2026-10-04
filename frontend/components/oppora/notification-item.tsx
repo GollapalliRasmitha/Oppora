@@ -19,9 +19,9 @@ export function NotificationItem({
   onNavigate?: () => void;
 }) {
   const { icon: Icon, cls } = KIND[item.kind];
-  const href = item.opportunityId ? `/opportunities/${item.opportunityId}` : "/opportunities";
+  const href = item.href ?? (item.opportunityId ? `/opportunities/${item.opportunityId}` : "/opportunities");
   return (
-    <li className={cn("relative flex gap-3 rounded-md p-3 transition-colors hover:bg-white/[.04]", !item.read && "bg-white/[.03]")}>
+    <li className={cn("relative flex gap-3 rounded-md p-3 transition-colors hover:bg-tint/[.04]", !item.read && "bg-tint/[.03]")}>
       <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-md", cls)}>
         <Icon aria-hidden className="size-5" />
       </span>
@@ -40,7 +40,7 @@ export function NotificationItem({
           onClick={() => onMarkRead(item)}
           aria-label={`Mark "${item.title}" as read`}
           title="Mark as read"
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-ink-3 focus-ring hover:bg-white/[.06] hover:text-ink"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-ink-3 focus-ring hover:bg-tint/[.06] hover:text-ink"
         >
           <Check aria-hidden className="size-4" />
         </button>

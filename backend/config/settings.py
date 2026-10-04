@@ -251,9 +251,12 @@ CELERY_BEAT_SCHEDULE = {
     # Reminders and the daily briefing, at the right local hour for each user.
     "deadline-reminders": {"task": "notifications.tasks.deadline_reminders", "schedule": crontab(minute=2)},
     "daily-briefing": {"task": "notifications.tasks.daily_briefing", "schedule": crontab(minute=7)},
+    # Mondays 08:00 in each user's zone (checked hourly), only when "Weekly AI digest" is on.
+    "weekly-digest": {"task": "notifications.tasks.weekly_digest", "schedule": crontab(minute=9)},
 }
 REMINDER_LOCAL_HOUR = 9  # reminders the day before a deadline, 09:00 in the user's zone
 BRIEFING_LOCAL_HOUR = 8
+DIGEST_LOCAL_HOUR = 8  # Mondays
 
 LOGGING = {
     "version": 1,

@@ -25,6 +25,8 @@ class Notification(models.Model):
     created_at = models.DateTimeField()
     read = models.BooleanField(default=False)
     cleared = models.BooleanField(default=False)
+    #: Where clicking it goes when it isn't about one opportunity (e.g. "/digest").
+    link = models.CharField(max_length=200, blank=True)
     opportunity = models.ForeignKey(
         "opportunities.Opportunity", null=True, blank=True, on_delete=models.CASCADE, related_name="+"
     )

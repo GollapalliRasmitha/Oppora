@@ -13,10 +13,10 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "bg-brand text-white shadow-[0_6px_20px_-8px_rgba(124,58,237,.7)] hover:-translate-y-px hover:shadow-[var(--glow-brand)] active:translate-y-0",
+          "bg-brand text-white shadow-[0_6px_20px_-8px_var(--glow-purple)] hover:-translate-y-px hover:shadow-[var(--glow-brand)] active:translate-y-0",
         secondary:
-          "border border-line-strong bg-glass-strong text-ink hover:border-violet/60 hover:bg-white/[.09]",
-        ghost: "text-ink-2 hover:bg-white/[.06] hover:text-ink",
+          "border border-line-strong bg-glass-strong text-ink hover:border-violet/60 hover:bg-tint/[.09]",
+        ghost: "text-ink-2 hover:bg-tint/[.06] hover:text-ink",
         danger: "border border-urgent/40 text-urgent hover:bg-urgent/10",
       },
       size: {

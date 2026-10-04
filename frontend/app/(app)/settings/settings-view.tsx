@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   BellRing,
@@ -46,8 +47,11 @@ import {
 } from "@/lib/api";
 import { formatDate } from "@/lib/domain/dates";
 import { OPPORTUNITY_CATEGORIES } from "@/lib/domain/inbox";
-import type { GmailConnection, HiddenSender, OpportunityType, PersonalizationLevel, Preferences, User } from "@/lib/domain/types";
+import type { GmailConnection, HiddenSender, OpportunityType, PersonalizationLevel, Preferences, Theme, User } from "@/lib/domain/types";
 import { useResource } from "@/lib/hooks/use-resource";
+import { applyTheme } from "@/lib/theme";
+
+const THEME_LABELS: Record<Theme, string> = { dark: "Dark", light: "Light", system: "System" };
 
 const SECTIONS = [
   { id: "gmail", label: "Gmail connection" },
@@ -169,9 +173,11 @@ function SettingsContent({ data, mutate }: { data: Settings; mutate: (fn: (s: Se
       try {
         await updatePreferences(patch);
         toast.success("Settings saved", { description: label });
+        return true;
       } catch {
         mutate((s) => ({ ...s, preferences: before }));
         toast.error("Couldn't save that setting. Please try again.");
+        return false;
       }
     },
     [data.preferences, mutate],
@@ -187,7 +193,7 @@ function SettingsContent({ data, mutate }: { data: Settings; mutate: (fn: (s: Se
           <ul className="sticky top-24 space-y-1">
             {SECTIONS.map((s) => (
               <li key={s.id}>
-                <a href={`#${s.id}`} className="flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-ink-2 focus-ring hover:bg-white/[.05] hover:text-ink">
+                <a href={`#${s.id}`} className="flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-ink-2 focus-ring hover:bg-tint/[.05] hover:text-ink">
                   {s.label}
                 </a>
               </li>
@@ -228,20 +234,33 @@ function SettingsContent({ data, mutate }: { data: Settings; mutate: (fn: (s: Se
                 checked={prefs.notifications.weeklyDigest}
                 onCheckedChange={(v) => savePrefs({ notifications: { weeklyDigest: v } }, `Weekly AI digest ${onOff(v)}`)}
               />
+              <div className="flex flex-wrap items-center gap-3 py-3">
+                <p className="flex-1 text-meta text-ink-3">
+                  Arrives in the bell on Mondays at 08:00 (your time zone) while this is on.
+                </p>
+                <Button asChild size="sm" variant="secondary">
+                  <Link href="/digest">Preview digest now</Link>
+                </Button>
+              </div>
             </div>
           </Section>
 
           <Section id="preferences" title="Preferences">
             <div className="grid gap-5 sm:grid-cols-2">
               <div>
-                <span id="theme-label" className="mb-1.5 block text-sm font-semibold text-ink">
-                  Theme
-                </span>
-                <div aria-labelledby="theme-label" className="flex h-11 items-center gap-2 rounded-md border border-line bg-white/[.04] px-4 text-sm text-ink">
-                  <span aria-hidden className="size-3 rounded-full bg-bg ring-1 ring-line-strong" />
-                  Dark
-                </div>
-                <p className="mt-1 text-meta text-ink-3">Oppora is dark-only for now.</p>
+                <span className="mb-1.5 block text-sm font-semibold text-ink">Theme</span>
+                <Select<Theme>
+                  label="Theme"
+                  value={prefs.theme}
+                  onValueChange={(v) => {
+                    const before = prefs.theme;
+                    applyTheme(v);
+                    void savePrefs({ theme: v }, `Theme: ${THEME_LABELS[v]}`).then((ok) => ok || applyTheme(before));
+                  }}
+                  options={(Object.keys(THEME_LABELS) as Theme[]).map((t) => ({ value: t, label: THEME_LABELS[t] }))}
+                  className="w-full justify-between"
+                />
+                <p className="mt-1 text-meta text-ink-3">System follows your device&apos;s light or dark setting.</p>
               </div>
               <div>
                 <span className="mb-1.5 block text-sm font-semibold text-ink">Language</span>
@@ -367,7 +386,7 @@ function GmailSection({ gmail, onChange }: { gmail: GmailConnection; onChange: (
   return (
     <Section id="gmail" title="Gmail connection" description="Oppora reads your Gmail to find opportunities. It can't send, change or delete email.">
       <div className="flex flex-wrap items-center gap-4">
-        <span className="flex size-12 items-center justify-center rounded-md border border-line bg-white/[.05] text-violet">
+        <span className="flex size-12 items-center justify-center rounded-md border border-line bg-tint/[.05] text-violet">
           <Mail aria-hidden className="size-6" />
         </span>
         <div className="min-w-0 flex-1">

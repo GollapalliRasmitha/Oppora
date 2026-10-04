@@ -68,6 +68,8 @@ class UserPreference(models.Model):
     notify_new_opportunities = models.BooleanField(default=True)
     notify_weekly_digest = models.BooleanField(default=False)
     language = models.CharField(max_length=8, choices=[("en", "English")], default="en")
+    #: dark | light | system (follows the OS). The browser also keeps a copy so pages paint in it before any fetch.
+    theme = models.CharField(max_length=8, choices=[("dark", "Dark"), ("light", "Light"), ("system", "System")], default="dark")
     minimum_match = models.PositiveSmallIntegerField(choices=MINIMUM_MATCH_CHOICES, default=0)
     preferred_locations = models.JSONField(default=list, blank=True)
     ai_recommendations = models.BooleanField(default=True)

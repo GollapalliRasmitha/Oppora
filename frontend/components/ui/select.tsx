@@ -20,7 +20,7 @@ export function Select<T extends string>({ value, onValueChange, options, label,
       <RadixSelect.Trigger
         aria-label={label}
         className={cn(
-          "inline-flex h-11 min-w-0 items-center gap-2 rounded-md border border-line bg-white/[.04] px-4 text-sm font-semibold text-ink focus-ring transition-colors hover:border-line-strong",
+          "inline-flex h-11 min-w-0 items-center gap-2 rounded-md border border-line bg-tint/[.04] px-4 text-sm font-semibold text-ink focus-ring transition-colors hover:border-line-strong",
           className,
         )}
       >
@@ -37,14 +37,14 @@ export function Select<T extends string>({ value, onValueChange, options, label,
         <RadixSelect.Content
           position="popper"
           sideOffset={6}
-          className="z-50 min-w-[var(--radix-select-trigger-width)] rounded-md border border-line-strong bg-surface/95 p-1.5 shadow-[0_18px_48px_-12px_rgba(0,0,0,.7)] backdrop-blur-xl"
+          className="z-50 min-w-[var(--radix-select-trigger-width)] rounded-md border border-line-strong bg-surface/95 p-1.5 shadow-[var(--shadow-pop)] backdrop-blur-xl"
         >
           <RadixSelect.Viewport>
             {options.map((o) => (
               <RadixSelect.Item
                 key={o.value}
                 value={o.value}
-                className="flex min-h-11 cursor-pointer select-none items-center justify-between gap-3 rounded-sm px-3 text-sm font-medium text-ink-2 outline-none data-[highlighted]:bg-white/[.07] data-[highlighted]:text-ink"
+                className="flex min-h-11 cursor-pointer select-none items-center justify-between gap-3 rounded-sm px-3 text-sm font-medium text-ink-2 outline-none data-[highlighted]:bg-tint/[.07] data-[highlighted]:text-ink"
               >
                 <RadixSelect.ItemText>{o.label}</RadixSelect.ItemText>
                 <RadixSelect.ItemIndicator>

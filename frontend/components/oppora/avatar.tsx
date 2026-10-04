@@ -8,8 +8,8 @@ export function Avatar({ name, online, className }: { name?: string; online?: bo
       <span
         aria-hidden
         className={cn(
-          "flex size-full items-center justify-center rounded-full text-sm font-bold text-white ring-1 ring-white/15",
-          name ? "bg-brand" : "bg-white/[.08] text-ink-2",
+          "flex size-full items-center justify-center rounded-full text-sm font-bold text-white ring-1 ring-tint/15",
+          name ? "bg-brand" : "bg-tint/[.08] text-ink-2",
         )}
       >
         {name ? name.charAt(0).toUpperCase() : <UserRound className="size-4" />}

@@ -31,7 +31,7 @@ export function Drawer({ open, onOpenChange, title, icon, description, headerExt
         <Dialog.Content
           {...focus}
           className={cn(
-            "fixed inset-0 z-50 flex flex-col bg-surface/95 backdrop-blur-xl focus:outline-none sm:inset-y-3 sm:left-auto sm:right-3 sm:w-[420px] sm:rounded-card sm:border sm:border-line-strong sm:shadow-[0_24px_64px_-16px_rgba(0,0,0,.8)]",
+            "fixed inset-0 z-50 flex flex-col bg-surface/95 backdrop-blur-xl focus:outline-none sm:inset-y-3 sm:left-auto sm:right-3 sm:w-[420px] sm:rounded-card sm:border sm:border-line-strong sm:shadow-[var(--shadow-pop)]",
             "data-[state=open]:animate-drawer-in",
             className,
           )}
@@ -49,7 +49,7 @@ export function Drawer({ open, onOpenChange, title, icon, description, headerExt
             {headerExtra}
             <Dialog.Close
               aria-label="Close panel"
-              className="inline-flex size-11 items-center justify-center rounded-md text-ink-3 focus-ring hover:bg-white/[.06] hover:text-ink"
+              className="inline-flex size-11 items-center justify-center rounded-md text-ink-3 focus-ring hover:bg-tint/[.06] hover:text-ink"
             >
               <X className="size-5" />
             </Dialog.Close>

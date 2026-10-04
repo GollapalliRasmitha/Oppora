@@ -113,7 +113,7 @@ export function SyncStatus({ className, compact }: { className?: string; compact
           disabled={running}
           aria-label={running ? "Sync in progress" : "Sync Gmail now"}
           title={running ? "Sync in progress" : "Sync Gmail now"}
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-ink-3 focus-ring transition-colors hover:bg-white/[.06] hover:text-ink disabled:opacity-60"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-ink-3 focus-ring transition-colors hover:bg-tint/[.06] hover:text-ink disabled:opacity-60"
         >
           <RefreshCw aria-hidden className={cn("size-4", running && "animate-spin")} />
         </button>

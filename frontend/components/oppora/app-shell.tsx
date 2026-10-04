@@ -1,16 +1,34 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getPreferences } from "@/lib/api";
+import { applyTheme, storedTheme } from "@/lib/theme";
 import { AIAssistantPanel, FloatingAIButton } from "./ai-assistant";
 import { Header } from "./header";
 import { MobileBottomNav } from "./mobile-bottom-nav";
 import { ShellProvider } from "./shell-context";
 import { Sidebar } from "./sidebar";
 
+/** Mirrors the account's theme into this browser (e.g. after choosing it on another device). */
+function useThemeSync() {
+  useEffect(() => {
+    let live = true;
+    getPreferences()
+      .then((p) => {
+        if (live && p.theme && p.theme !== storedTheme()) applyTheme(p.theme);
+      })
+      .catch(() => {}); // keep the stored theme; the page shows its own load errors
+    return () => {
+      live = false;
+    };
+  }, []);
+}
+
 /** Layout shared by every signed-in page. */
 export function AppShell({ children }: { children: ReactNode }) {
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  useThemeSync();
   return (
     <ShellProvider>
       <div className="ambient min-h-dvh">

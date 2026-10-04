@@ -1,4 +1,5 @@
 import { daysLeft, daysLeftLabel } from "./dates";
+import skillAliases from "./skill-aliases.json";
 import type { MatchCheck, MatchReasons, Opportunity, User } from "./types";
 
 /**
@@ -18,17 +19,66 @@ const INTEREST_SIGNALS: Record<string, (o: MatchInput) => boolean> = {
   hackathons: (o) => o.type === "Hackathon",
 };
 
-type MatchInput = Pick<Opportunity, "title" | "type" | "skills" | "eligibility">;
+type MatchInput = Pick<Opportunity, "title" | "type" | "skills" | "eligibility"> &
+  Partial<Pick<Opportunity, "summary" | "requirements">>;
 
 const norm = (s: string) => s.trim().toLowerCase();
 
-export function explainMatch(o: MatchInput, user: Pick<User, "interests" | "skills" | "experienceLevel">): MatchReasons {
-  const mine = new Set(user.skills.map(norm));
-  const matchedSkills = o.skills.filter((s) => mine.has(norm(s)));
-  const skills: MatchCheck = o.skills.length === 0 || user.skills.length === 0 ? "unknown" : matchedSkills.length > 0 ? "met" : "unmet";
+// Same table and rules as backend/core/domain/match.py (a backend test keeps the JSON files identical,
+// and the parity test compares both implementations on the whole seed).
+const ALIASES: Record<string, string[]> = Object.fromEntries(
+  Object.entries(skillAliases as Record<string, string | string[]>).filter(([k]) => !k.startsWith("_")),
+) as Record<string, string[]>;
+const CANONICAL: Record<string, string> = Object.fromEntries(
+  Object.entries(ALIASES).flatMap(([canon, aliases]) => aliases.map((a) => [a, canon])),
+);
 
-  const matchedInterests = user.interests.filter((i) => INTEREST_SIGNALS[norm(i)]?.(o));
-  const interests: MatchCheck = matchedInterests.length > 0 ? "met" : "unmet";
+/** "ReactJS" / "React.js" / "react" → "react"; unknown skills stay as written (lowercased). */
+export function canonicalSkill(skill: string): string {
+  const s = norm(skill).replace(/\s+/g, " ");
+  return CANONICAL[s] ?? CANONICAL[s.replace(/ /g, "")] ?? s;
+}
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** Whole-word, case-insensitive: "java" doesn't match "javascript"; "c++" and "node.js" work. */
+function mentions(text: string, phrase: string): boolean {
+  return new RegExp(`(?<![a-z0-9])${escapeRe(phrase)}(?![a-z0-9+#])`).test(text);
+}
+
+function skillText(o: MatchInput): string {
+  return [o.title ?? "", o.summary ?? "", ...(o.requirements ?? []), ...o.skills].join(" \n ").toLowerCase();
+}
+
+export function matchedSkillsFor(o: MatchInput, userSkills: string[]): string[] {
+  const listed = new Set(o.skills.map(canonicalSkill));
+  const text = skillText(o);
+  return userSkills.filter((skill) => {
+    const canon = canonicalSkill(skill);
+    return listed.has(canon) || (ALIASES[canon] ?? [canon]).some((a) => mentions(text, a));
+  });
+}
+
+const singular = (w: string) => (w.length > 3 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w);
+const STOP = new Set(["and", "or", "the", "of", "in", "for", "to", "a", "an", "with", "on"]);
+
+function interestMatches(interest: string, o: MatchInput): boolean {
+  const key = norm(interest);
+  if (INTEREST_SIGNALS[key]?.(o)) return true;
+  const words = (key.match(/[a-z0-9+#.]+/g) ?? []).filter((w) => !STOP.has(w)).map(singular);
+  if (words.length === 0) return false;
+  if (words.length === 1 && words[0] === o.type.toLowerCase()) return true; // "internships" → Internship
+  const text = skillText(o);
+  return words.every((w) => mentions(text, w) || mentions(text, `${w}s`));
+}
+
+export function explainMatch(o: MatchInput, user: Pick<User, "interests" | "skills" | "experienceLevel">): MatchReasons {
+  const matchedSkills = matchedSkillsFor(o, user.skills);
+  const skills: MatchCheck =
+    user.skills.length === 0 ? "unknown" : matchedSkills.length > 0 ? "met" : o.skills.length > 0 ? "unmet" : "unknown";
+
+  const matchedInterests = user.interests.filter((i) => interestMatches(i, o));
+  const interests: MatchCheck = user.interests.length === 0 ? "unknown" : matchedInterests.length > 0 ? "met" : "unmet";
 
   let experience: MatchCheck = "unknown";
   if (o.eligibility && user.experienceLevel && /student/i.test(user.experienceLevel)) {
@@ -65,15 +115,17 @@ export function matchChecklist(opp: Opportunity, now: Date): ChecklistItem[] {
   const skills: Record<MatchCheck, ChecklistItem> = {
     met: { ok: true, label: "Matches your skills", detail: joinList(r.matchedSkills) },
     unmet: { ok: false, label: "Doesn't list skills from your profile", detail: joinList(opp.skills) },
-    unknown: { ok: false, label: "Skills not mentioned in email" },
+    // The email listed skills but the profile has none, or the email names no skills at all.
+    unknown: { ok: false, label: opp.skills.length ? "Add skills to your profile to compare" : "Skills not mentioned in email" },
   };
   items.push(skills[r.skills]);
 
-  items.push(
-    r.interests === "met"
-      ? { ok: true, label: "Matches your interests", detail: joinList(r.matchedInterests) }
-      : { ok: false, label: "Outside your listed interests" },
-  );
+  const interests: Record<MatchCheck, ChecklistItem> = {
+    met: { ok: true, label: "Matches your interests", detail: joinList(r.matchedInterests) },
+    unmet: { ok: false, label: "Outside your listed interests" },
+    unknown: { ok: false, label: "Add interests to your profile to compare" },
+  };
+  items.push(interests[r.interests]);
 
   const experience: Record<MatchCheck, ChecklistItem> = {
     met: { ok: true, label: "Suitable experience level", detail: opp.eligibility ?? undefined },

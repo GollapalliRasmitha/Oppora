@@ -4,7 +4,9 @@ parity test compares both on the whole seed). A check is "unknown" whenever
 the email or the profile doesn't give enough information.
 """
 
+import json
 import re
+from pathlib import Path
 
 from .dates import days_left, days_left_label
 
@@ -34,20 +36,84 @@ def _norm(s: str) -> str:
     return s.strip().lower()
 
 
+_ALIASES: dict[str, list[str]] = {
+    k: v
+    for k, v in json.loads((Path(__file__).with_name("skill_aliases.json")).read_text(encoding="utf-8")).items()
+    if not k.startswith("_")
+}
+_CANONICAL = {alias: canon for canon, aliases in _ALIASES.items() for alias in aliases}
+
+
+def canonical_skill(skill: str) -> str:
+    """'ReactJS' / 'React.js' / 'react' → 'react'; unknown skills stay as written (lowercased)."""
+    s = re.sub(r"\s+", " ", _norm(skill))
+    return _CANONICAL.get(s, _CANONICAL.get(s.replace(" ", ""), s))
+
+
+def _mentions(text: str, phrase: str) -> bool:
+    """Whole-word, case-insensitive: 'java' doesn't match 'javascript', 'c++' and 'node.js' work."""
+    return bool(re.search(rf"(?<![a-z0-9]){re.escape(phrase)}(?![a-z0-9+#])", text))
+
+
+def _skill_text(opp: dict) -> str:
+    """Where an email's skills can show up: the extracted list, title, description and requirements."""
+    parts = [opp.get("title") or "", opp.get("summary") or "", *(opp.get("requirements") or []), *(opp.get("skills") or [])]
+    return " \n ".join(parts).lower()
+
+
+def matched_skills_for(opp: dict, user_skills: list[str]) -> list[str]:
+    listed = {canonical_skill(s) for s in opp.get("skills") or []}
+    text = _skill_text(opp)
+    out = []
+    for skill in user_skills:
+        canon = canonical_skill(skill)
+        aliases = _ALIASES.get(canon, [canon])
+        if canon in listed or any(_mentions(text, a) for a in aliases):
+            out.append(skill)
+    return out
+
+
+def _singular(word: str) -> str:
+    return word[:-1] if len(word) > 3 and word.endswith("s") and not word.endswith("ss") else word
+
+
+_STOP = {"and", "or", "the", "of", "in", "for", "to", "a", "an", "with", "on"}
+
+
+def _interest_matches(interest: str, opp: dict) -> bool:
+    key = _norm(interest)
+    if (fn := INTEREST_SIGNALS.get(key)) and fn(opp):
+        return True
+    words = [_singular(w) for w in re.findall(r"[a-z0-9+#.]+", key) if w not in _STOP]
+    if not words:
+        return False
+    if len(words) == 1 and words[0] == opp["type"].lower():
+        return True  # "internships" → Internship
+    text = _skill_text(opp)
+    # Every word of the interest, as whole words (singular or plural), somewhere in the email's fields.
+    return all(_mentions(text, w) or _mentions(text, w + "s") for w in words)
+
+
 def explain_match(opp: dict, user: dict) -> dict:
     """
-    `opp` needs title, type, skills, eligibility; `user` needs interests,
-    skills, experienceLevel (camelCase, like the API).
+    `opp` needs title, type, skills, eligibility (summary and requirements are
+    used too when present); `user` needs interests, skills, experienceLevel.
     """
-    mine = {_norm(s) for s in user["skills"]}
-    matched_skills = [s for s in opp["skills"] if _norm(s) in mine]
-    if not opp["skills"] or not user["skills"]:
+    matched_skills = matched_skills_for(opp, user["skills"])
+    if not user["skills"]:
         skills = "unknown"
+    elif matched_skills:
+        skills = "met"
+    elif opp.get("skills"):
+        skills = "unmet"
     else:
-        skills = "met" if matched_skills else "unmet"
+        skills = "unknown"  # the email names no skills: neutral, "Skills not mentioned in email"
 
-    matched_interests = [i for i in user["interests"] if (fn := INTEREST_SIGNALS.get(_norm(i))) and fn(opp)]
-    interests = "met" if matched_interests else "unmet"
+    matched_interests = [i for i in user["interests"] if _interest_matches(i, opp)]
+    if not user["interests"]:
+        interests = "unknown"
+    else:
+        interests = "met" if matched_interests else "unmet"
 
     experience = "unknown"
     level = user.get("experienceLevel")
@@ -87,13 +153,17 @@ def match_checklist(opp: dict, now) -> list[dict]:
     skills = {
         "met": {"ok": True, "label": "Matches your skills", "detail": join(r["matchedSkills"])},
         "unmet": {"ok": False, "label": "Doesn't list skills from your profile", "detail": join(opp["skills"])},
-        "unknown": {"ok": False, "label": "Skills not mentioned in email"},
+        "unknown": {
+            "ok": False,
+            # The email listed skills but the profile has none, or the email names no skills at all.
+            "label": "Add skills to your profile to compare" if opp["skills"] else "Skills not mentioned in email",
+        },
     }[r["skills"]]
-    interests = (
-        {"ok": True, "label": "Matches your interests", "detail": join(r["matchedInterests"])}
-        if r["interests"] == "met"
-        else {"ok": False, "label": "Outside your listed interests"}
-    )
+    interests = {
+        "met": {"ok": True, "label": "Matches your interests", "detail": join(r["matchedInterests"])},
+        "unmet": {"ok": False, "label": "Outside your listed interests"},
+        "unknown": {"ok": False, "label": "Add interests to your profile to compare"},
+    }[r["interests"]]
     elig = opp.get("eligibility")
     experience = {
         "met": {"ok": True, "label": "Suitable experience level", "detail": elig},

@@ -159,13 +159,13 @@ export function InboxView() {
                     right={{
                       label: e.saved ? "Unsave" : "Save",
                       icon: <Bookmark aria-hidden />,
-                      className: "bg-purple/40 text-white",
+                      className: "bg-purple/25 text-ink",
                       onTrigger: () => actions.toggleSave(e),
                     }}
                     left={{
                       label: "Archive",
                       icon: <Archive aria-hidden />,
-                      className: "bg-urgent/35 text-white",
+                      className: "bg-urgent/25 text-ink",
                       onTrigger: () => actions.archive(e),
                     }}
                   >

@@ -165,14 +165,14 @@ function WeekView({
         const items = byDay.get(iso) ?? [];
         const isToday = iso === today;
         return (
-          <li key={iso} className="min-w-0 rounded-md border border-line bg-white/[.025] p-1.5 md:min-h-64 md:p-2">
+          <li key={iso} className="min-w-0 rounded-md border border-line bg-tint/[.025] p-1.5 md:min-h-64 md:p-2">
             <button
               type="button"
               onClick={() => onOpenDay(iso)}
               aria-label={`${longFmt.format(d)}, ${items.length} ${items.length === 1 ? "item" : "items"}. Open day view`}
               aria-current={isToday ? "date" : undefined}
               className={cn(
-                "flex min-h-11 w-full items-center gap-2 rounded-sm px-1 text-left focus-ring hover:bg-white/[.05] md:mb-2 md:flex-col md:items-start md:gap-0",
+                "flex min-h-11 w-full items-center gap-2 rounded-sm px-1 text-left focus-ring hover:bg-tint/[.05] md:mb-2 md:flex-col md:items-start md:gap-0",
                 items.length > 0 && "mb-2",
               )}
             >

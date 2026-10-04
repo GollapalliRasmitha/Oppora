@@ -14,14 +14,14 @@ from django.conf import settings
 from django.db.models import Q
 
 from ai import client as ai_client
-from ai.fees import FEE_PENALTY, FEE_SCHEMA, fee_sentences, validate_fee
+from ai.fees import FEE_SCHEMA, fee_sentences, validate_fee
 from ai.providers.base import DailyLimitReached, InvalidOutput, NotConfigured, TransientAIError
 from core import clock
 from opportunities.models import Opportunity
 
 from .content import parse_message
 from .models import Email
-from .pipeline import set_fee
+from .pipeline import apply_fee_penalty, set_fee
 
 log = logging.getLogger(__name__)
 
@@ -90,8 +90,8 @@ def recheck_fees(user, client=None, limit: int = 200) -> dict:
             continue  # stays unchecked; a later sync finishes it
         fields = set_fee(opp, fee, now)
         if fee:
-            opp.match_score = max(0, opp.match_score - FEE_PENALTY)
-            fields.append("match_score")
+            apply_fee_penalty(opp)
+            fields += ["match_score", "score_breakdown"]
             flagged += 1
         opp.save(update_fields=list(dict.fromkeys(fields)))
         checked += 1

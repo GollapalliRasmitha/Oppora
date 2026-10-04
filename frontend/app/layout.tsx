@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Roboto } from "next/font/google";
 import { Toaster } from "@/components/ui/toast";
+import { THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -23,13 +24,21 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#070A1A",
-  colorScheme: "dark",
+  // Follows the OS; the page itself follows the account's theme (lib/theme.ts).
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F4F5FB" },
+    { media: "(prefers-color-scheme: dark)", color: "#070A1A" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${jakarta.variable} ${roboto.variable}`}>
+    // data-theme is set by THEME_SCRIPT before React hydrates, hence suppressHydrationWarning.
+    <html lang="en" data-theme="dark" className={`${jakarta.variable} ${roboto.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Static constant (no user input): applies the saved theme before first paint. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body>
         {children}
         <Toaster />

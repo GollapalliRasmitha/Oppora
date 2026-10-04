@@ -80,7 +80,7 @@ export function MatchMeter({ value, className }: { value: number; className?: st
         aria-valuemax={100}
         aria-valuenow={v}
         aria-label="Match with your profile"
-        className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[.07]"
+        className="h-1.5 flex-1 overflow-hidden rounded-full bg-tint/[.07]"
       >
         <div className="h-full rounded-full bg-[image:var(--grad-ai-border)]" style={{ width: `${v}%` }} />
       </div>
@@ -108,12 +108,12 @@ export function MatchRing({ value, size = 96, className }: { value: number; size
       <svg viewBox="0 0 100 100" className="absolute inset-0 -rotate-90" aria-hidden>
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#7c3aed" />
-            <stop offset=".5" stopColor="#60a5fa" />
-            <stop offset="1" stopColor="#f472b6" />
+            <stop offset="0" style={{ stopColor: "var(--purple)" }} />
+            <stop offset=".5" style={{ stopColor: "var(--blue)" }} />
+            <stop offset="1" style={{ stopColor: "var(--pink)" }} />
           </linearGradient>
         </defs>
-        <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth="8" />
+        <circle cx="50" cy="50" r={r} fill="none" style={{ stroke: "var(--viz-track)" }} strokeWidth="8" />
         <circle
           cx="50"
           cy="50"

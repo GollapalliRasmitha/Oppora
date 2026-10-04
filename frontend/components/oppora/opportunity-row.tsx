@@ -32,7 +32,7 @@ export function OpportunityRow({ opp, now, actions }: { opp: Opportunity; now: D
   const href = `/opportunities/${opp.id}`;
 
   return (
-    <li className="group relative grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 rounded-md px-2 py-3 transition-colors duration-200 hover:bg-white/[.03] @md:grid-cols-[auto_minmax(0,1fr)_auto_auto] @md:px-3 @3xl:grid-cols-[auto_minmax(0,1fr)_150px_130px_auto_auto]">
+    <li className="group relative grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 rounded-md px-2 py-3 transition-colors duration-200 hover:bg-tint/[.03] @md:grid-cols-[auto_minmax(0,1fr)_auto_auto] @md:px-3 @3xl:grid-cols-[auto_minmax(0,1fr)_150px_130px_auto_auto]">
       <Monogram name={opp.organization} />
 
       <div className="min-w-0">

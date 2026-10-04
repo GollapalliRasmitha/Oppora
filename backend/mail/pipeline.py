@@ -42,34 +42,111 @@ class Outcome:
 # --- Scoring -------------------------------------------------------------------
 
 
-def profile_score(reasons: dict, opp_skills: list[str], deadline, now) -> int:
-    """0-100 from the stored match reasons (the same checks the AI Summary shows)."""
-    score = 40 if reasons["interests"] == "met" else 0
-    if reasons["skills"] == "met":
-        score += round(30 * min(1, len(reasons["matchedSkills"]) / max(1, min(3, len(opp_skills)))))
-    elif reasons["skills"] == "unknown":
-        score += 15
-    score += {"met": 15, "unknown": 8}.get(reasons["experience"], 0)
-    d = days_left(deadline, now) if deadline else None
-    score += 0 if d is not None and d < 0 else 15
-    return score
+#: Profile checks and their weight. A check the email (or profile) can't answer is left out
+#: ("neutral"), so it neither helps nor hurts: the profile score is points ÷ points checked.
+PROFILE_CHECKS = (
+    ("interests", "Interests", 40),
+    ("skills", "Skills", 30),
+    ("experience", "Level", 15),
+    ("deadline", "Deadline", 15),
+)
+
+
+def profile_parts(reasons: dict, opp_skills: list[str], deadline, now) -> list[dict]:
+    parts = []
+    for key, label, weight in PROFILE_CHECKS:
+        if key == "deadline":
+            d = days_left(deadline, now) if deadline else None
+            status, points = ("passed", 0) if d is not None and d < 0 else ("open" if deadline else "not_mentioned", weight)
+        else:
+            status = reasons[key]
+            if status == "met":
+                if key == "skills":
+                    needed = max(1, min(3, len(opp_skills))) if opp_skills else 1
+                    points = round(weight * min(1, len(reasons["matchedSkills"]) / needed))
+                else:
+                    points = weight
+            elif status == "unmet":
+                points = 0
+            else:
+                points = None  # unknown → neutral, left out
+        parts.append({"key": key, "label": label, "status": status, "points": points, "max": weight})
+    return parts
+
+
+def profile_score(parts: list[dict]) -> int:
+    """
+    Points ÷ points checked. If none of the fit checks (interests, skills, level)
+    could be checked, the profile says nothing either way: neutral 50 (0 once the
+    deadline has passed), never a perfect score from the deadline alone.
+    """
+    fit_known = [p for p in parts if p["key"] != "deadline" and p["points"] is not None]
+    deadline = next(p for p in parts if p["key"] == "deadline")
+    if not fit_known:
+        return 50 if deadline["points"] else 0
+    counted = [*fit_known, deadline]
+    return round(sum(p["points"] for p in counted) / sum(p["max"] for p in counted) * 100)
+
+
+def score_breakdown(
+    relevance: int, reasons: dict, skills: list[str], deadline, location: str | None, prefs, now, asks_fee: bool = False
+) -> dict:
+    """
+    The match %, explained: AI relevance blended with the profile checks
+    (personalization sets the blend), plus a preferred-location bonus and the
+    fee penalty. Stored on the opportunity; the details page shows it.
+    """
+    parts = profile_parts(reasons, skills, deadline, now)
+    profile = profile_score(parts)
+    w = PROFILE_WEIGHT.get(prefs.personalization, 0.5)
+    bonus = 5 if location and any(loc.lower() in location.lower() for loc in prefs.preferred_locations) else 0
+    penalty = FEE_PENALTY if asks_fee else 0
+    return {
+        "relevance": relevance,
+        "profileWeight": w,
+        "profile": profile,
+        "parts": parts,
+        "locationBonus": bonus,
+        "feePenalty": penalty,
+        "score": total_from_breakdown(relevance, w, profile, bonus, penalty),
+    }
+
+
+def total_from_breakdown(relevance: int, w: float, profile: int, bonus: int, penalty: int) -> int:
+    return max(0, min(100, round((1 - w) * relevance + w * profile + bonus - penalty)))
 
 
 def blend(
     relevance: int, reasons: dict, skills: list[str], deadline, location: str | None, prefs, now, asks_fee: bool = False
 ) -> int:
-    """AI relevance blended with the profile checks; personalization sets the blend. Asking for a fee ranks lower."""
-    w = PROFILE_WEIGHT.get(prefs.personalization, 0.5)
-    score = (1 - w) * relevance + w * profile_score(reasons, skills, deadline, now)
-    if location and any(loc.lower() in location.lower() for loc in prefs.preferred_locations):
-        score += 5
-    if asks_fee:
-        score -= FEE_PENALTY
-    return max(0, min(100, round(score)))
+    return score_breakdown(relevance, reasons, skills, deadline, location, prefs, now, asks_fee)["score"]
 
 
 def match_score(x: Extraction, reasons: dict, prefs, now) -> int:
     return blend(x.relevance, reasons, x.skills, x.deadline, x.location, prefs, now, asks_fee=bool(x.fee))
+
+
+def apply_fee_penalty(o: Opportunity) -> None:
+    """A fee found later (follow-up email or re-check): lower the score the same way scoring does."""
+    bd = o.score_breakdown
+    if bd and not bd.get("feePenalty"):
+        bd["feePenalty"] = FEE_PENALTY
+        bd["score"] = total_from_breakdown(bd["relevance"], bd["profileWeight"], bd["profile"], bd["locationBonus"], FEE_PENALTY)
+        o.score_breakdown, o.match_score = bd, bd["score"]
+    elif not bd:
+        o.match_score = max(0, o.match_score - FEE_PENALTY)
+
+
+def match_input(o) -> dict:
+    """What explain_match reads, from an Opportunity row."""
+    return {
+        "title": o.title,
+        "type": o.type,
+        "skills": o.skills,
+        "eligibility": o.eligibility,
+        "summary": o.summary,
+        "requirements": o.requirements,
+    }
 
 
 def set_fee(o: Opportunity, fee: dict | None, now) -> list[str]:
@@ -84,10 +161,10 @@ def set_fee(o: Opportunity, fee: dict | None, now) -> list[str]:
 
 def rescore(user, now) -> int:
     """
-    After a profile or preference change: re-explain every match, and recompute
-    the match % of opportunities the AI found, reusing the relevance it stored
-    (no new AI requests). Seeded demo scores stay as designed. Returns how many
-    scores changed.
+    After a profile or preference change (or a matching improvement): re-explain
+    every match, and recompute the match % and its breakdown for opportunities
+    the AI found, reusing the relevance it stored (no new AI requests). Seeded
+    demo scores stay as designed. Returns how many scores changed.
     """
     profile = {"interests": user.interests, "skills": user.skills, "experienceLevel": user.experience_level}
     prefs = user.preferences
@@ -97,19 +174,17 @@ def rescore(user, now) -> int:
         first_email.setdefault(e.opportunity_id, e)
     changed = 0
     for o in opps:
-        o.match_reasons = explain_match(
-            {"title": o.title, "type": o.type, "skills": o.skills, "eligibility": o.eligibility}, profile
-        )
+        o.match_reasons = explain_match(match_input(o), profile)
         e = first_email.get(o.id)
         c = getattr(e, "classification", None) if e else None
         if c is None or c.model_name == "seed":
             continue
         deadline = o.deadline.due_date if hasattr(o, "deadline") else None
-        score = blend(c.relevance, o.match_reasons, o.skills, deadline, o.location, prefs, now, asks_fee=bool(o.fee_text))
-        if score != o.match_score:
-            o.match_score = score
+        bd = score_breakdown(c.relevance, o.match_reasons, o.skills, deadline, o.location, prefs, now, asks_fee=bool(o.fee_text))
+        if bd["score"] != o.match_score:
             changed += 1
-    Opportunity.objects.bulk_update(opps, ["match_reasons", "match_score"])
+        o.match_score, o.score_breakdown = bd["score"], bd
+    Opportunity.objects.bulk_update(opps, ["match_reasons", "match_score", "score_breakdown"])
     return changed
 
 
@@ -210,8 +285,8 @@ def store(user, m: MessageContent, x: Extraction) -> Outcome:
         changed = _fill_missing(opp, x)
         if x.fee and not opp.fee_text:
             changed += set_fee(opp, x.fee, now)
-            opp.match_score = max(0, opp.match_score - FEE_PENALTY)
-            changed.append("match_score")
+            apply_fee_penalty(opp)
+            changed += ["match_score", "score_breakdown"]
         if changed:
             opp.save(update_fields=list(dict.fromkeys(changed)))
         outcome = "linked"
@@ -220,8 +295,13 @@ def store(user, m: MessageContent, x: Extraction) -> Outcome:
             return Outcome(ProcessedMessage.Status.DONE, "category_off", email)
         profile = {"interests": user.interests, "skills": user.skills, "experienceLevel": user.experience_level}
         title = x.opportunity_name or re.sub(r"^(invitation|reminder|re|fwd?)\s*:\s*", "", m.subject, flags=re.I).strip()
-        reasons = explain_match({"title": title, "type": x.category, "skills": x.skills, "eligibility": x.eligibility}, profile)
-        score = match_score(x, reasons, prefs, now)
+        reasons = explain_match(
+            {"title": title, "type": x.category, "skills": x.skills, "eligibility": x.eligibility,
+             "summary": x.summary, "requirements": x.requirements},
+            profile,
+        )  # fmt: skip
+        breakdown = score_breakdown(x.relevance, reasons, x.skills, x.deadline, x.location, prefs, now, asks_fee=bool(x.fee))
+        score = breakdown["score"]
         if score < prefs.minimum_match:
             return Outcome(ProcessedMessage.Status.DONE, "below_minimum_match", email)
         opp = Opportunity.objects.create(
@@ -241,6 +321,7 @@ def store(user, m: MessageContent, x: Extraction) -> Outcome:
             benefits=x.benefits,
             application_link=x.application_link,
             match_reasons=reasons,
+            score_breakdown=breakdown,
             fee_amount=x.fee["amount"] if x.fee else None,
             fee_currency=x.fee["currency"] if x.fee else "",
             fee_text=x.fee["text"] if x.fee else "",

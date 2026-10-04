@@ -8,3 +8,4 @@ export * from "./emails";
 export * from "./insights";
 export * from "./settings";
 export * from "./assistant";
+export * from "./digest";

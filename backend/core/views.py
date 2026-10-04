@@ -9,6 +9,7 @@ from mail import sync
 from . import clock
 from .data import email_dicts, interview_dicts, opportunity_dicts
 from .domain.assistant import answer_question
+from .domain.digest import compute_digest
 from .domain.insights import TREND_RANGES, compute_insights
 from .domain.stats import (
     build_recommendation,
@@ -81,6 +82,13 @@ class SyncView(APIView):
             demo_batch = recent_email_count(email_dicts(request.user), clock.user_now(request))
         g = sync.start_sync(request.user, demo_batch=demo_batch)
         return Response(_sync_payload(g), status=202)
+
+
+class DigestView(APIView):
+    """GET /api/digest/ — this week's digest, computed from the user's data (also the "Preview digest now" button)."""
+
+    def get(self, request):
+        return Response(compute_digest(opportunity_dicts(request.user), clock.user_now(request)))
 
 
 class AssistantQuery(serializers.Serializer):

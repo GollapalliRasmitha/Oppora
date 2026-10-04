@@ -42,6 +42,7 @@ api = [
     path("insights/dashboard/", core.DashboardView.as_view()),
     path("sync/", core.SyncView.as_view()),
     path("assistant/", core.AssistantView.as_view()),
+    path("digest/", core.DigestView.as_view()),
     path("", include(router.urls)),
     # Unknown /api/* paths get the same JSON error shape as everything else.
     re_path(r"^.*$", lambda request, *a, **k: json_error(404, "not_found", "Not found.")),

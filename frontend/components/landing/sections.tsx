@@ -115,11 +115,11 @@ export function HowItWorks() {
         {/* Glowing timeline: vertical on mobile, horizontal on desktop */}
         <span
           aria-hidden
-          className="absolute bottom-6 left-[27px] top-6 w-px bg-[linear-gradient(180deg,#7c3aed,#60a5fa,#f472b6)] shadow-[0_0_12px_rgba(124,58,237,.8)] md:bottom-auto md:left-[16.66%] md:right-[16.66%] md:top-[27px] md:h-px md:w-auto md:bg-[linear-gradient(90deg,#7c3aed,#60a5fa,#f472b6)]"
+          className="absolute bottom-6 left-[27px] top-6 w-px bg-[linear-gradient(180deg,#7c3aed,#60a5fa,#f472b6)] shadow-[0_0_12px_var(--glow-purple)] md:bottom-auto md:left-[16.66%] md:right-[16.66%] md:top-[27px] md:h-px md:w-auto md:bg-[linear-gradient(90deg,#7c3aed,#60a5fa,#f472b6)]"
         />
         {STEPS.map(({ n, icon: Icon, title, body }) => (
           <li key={n} className="relative flex gap-4 md:flex-col md:items-center md:text-center">
-            <span className="relative z-10 flex size-14 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface text-violet shadow-[0_0_0_6px_var(--bg),0_0_28px_-4px_rgba(124,58,237,.8)]">
+            <span className="relative z-10 flex size-14 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface text-violet shadow-[0_0_0_6px_var(--bg),0_0_28px_-4px_var(--glow-purple)]">
               <Icon aria-hidden className="size-6" />
             </span>
             <div className="pt-1 md:pt-4">
@@ -137,7 +137,7 @@ export function HowItWorks() {
 export function FinalCTA() {
   return (
     <section aria-labelledby="cta-heading" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
-      <div className="ai-border relative overflow-hidden rounded-card bg-[linear-gradient(135deg,rgba(124,58,237,.28),rgba(37,99,235,.14)_55%,rgba(244,114,182,.10))] px-6 py-14 text-center shadow-[0_0_80px_-20px_rgba(124,58,237,.7)] sm:px-12 sm:py-20">
+      <div className="ai-border relative overflow-hidden rounded-card bg-wash-ai px-6 py-14 text-center shadow-[0_0_80px_-20px_var(--glow-purple)] sm:px-12 sm:py-20">
         <div aria-hidden className="pointer-events-none absolute -left-20 -top-24 size-72 rounded-full bg-purple/30 blur-3xl" />
         <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-16 size-72 rounded-full bg-blue/20 blur-3xl" />
         <h2 id="cta-heading" className="relative mx-auto max-w-3xl text-section font-extrabold tracking-tight text-ink">

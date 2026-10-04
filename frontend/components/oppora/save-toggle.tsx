@@ -41,7 +41,7 @@ export function SaveToggle({
         onClick={onToggle}
         className={cn(
           "inline-flex size-11 shrink-0 items-center justify-center rounded-md focus-ring transition-colors duration-200 [&_svg]:size-5",
-          saved ? "bg-purple/15 hover:bg-purple/25" : "text-ink-3 hover:bg-white/[.06] hover:text-ink",
+          saved ? "bg-purple/15 hover:bg-purple/25" : "text-ink-3 hover:bg-tint/[.06] hover:text-ink",
           className,
         )}
       >

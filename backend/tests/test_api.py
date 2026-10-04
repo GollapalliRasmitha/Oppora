@@ -37,6 +37,7 @@ def test_opportunity_shape_matches_the_frontend_type(api, ids):
         "benefits",
         "applicationLink",
         "matchReasons",
+        "scoreBreakdown",
         "sourceEmailIds",
         "saved",
         "application",
@@ -194,6 +195,14 @@ def test_preferences_merge_and_validate(api):
     for bad in ({"minimumMatch": 42}, {"language": "fr"}, {"ai": {"personalization": "max"}}, {"ai": {"categories": ["Party"]}}):
         res = api.patch("/api/preferences/", bad, format="json")
         assert res.status_code == 400 and res.json()["error"]["code"] == "validation_error"
+
+
+def test_theme_preference(api):
+    assert api.get("/api/preferences/").json()["theme"] == "dark"  # default
+    for t in ("light", "system", "dark"):
+        assert api.patch("/api/preferences/", {"theme": t}, format="json").json()["theme"] == t
+    assert api.get("/api/preferences/").json()["theme"] == "dark"
+    assert api.patch("/api/preferences/", {"theme": "neon"}, format="json").status_code == 400
 
 
 def test_recommendations_off_hides_ai_everywhere(api):

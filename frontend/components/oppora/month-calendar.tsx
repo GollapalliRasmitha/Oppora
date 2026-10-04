@@ -155,8 +155,8 @@ export function MonthCalendar({
                     aria-selected={isSelected}
                     className={cn(
                       "relative h-12 rounded-sm border align-top transition-colors @lg:h-16 @2xl:h-24",
-                      inMonth ? "border-line bg-white/[.025]" : "border-transparent bg-transparent",
-                      isSelected && "border-violet/70 bg-purple/15 shadow-[0_0_16px_-6px_rgba(124,58,237,.8)]",
+                      inMonth ? "border-line bg-tint/[.025]" : "border-transparent bg-transparent",
+                      isSelected && "border-violet/70 bg-purple/15 shadow-[0_0_16px_-6px_var(--glow-purple)]",
                     )}
                   >
                     <button
@@ -176,7 +176,7 @@ export function MonthCalendar({
                       <span
                         className={cn(
                           "flex size-7 items-center justify-center rounded-full text-sm font-semibold",
-                          inMonth ? "text-ink-2" : "text-ink-3/50",
+                          inMonth ? "text-ink" : "font-medium text-ink-3",
                           isToday && "bg-brand text-white shadow-[var(--glow-brand)]",
                         )}
                       >
