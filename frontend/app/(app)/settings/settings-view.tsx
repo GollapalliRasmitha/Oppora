@@ -39,7 +39,6 @@ import {
   disconnectGmail,
   listHiddenSenders,
   showSender,
-  signOut,
   getSettings,
   updatePreferences,
   updateProfile,
@@ -49,6 +48,7 @@ import { formatDate } from "@/lib/domain/dates";
 import { OPPORTUNITY_CATEGORIES } from "@/lib/domain/inbox";
 import type { GmailConnection, HiddenSender, OpportunityType, PersonalizationLevel, Preferences, Theme, User } from "@/lib/domain/types";
 import { useResource } from "@/lib/hooks/use-resource";
+import { useSignOut } from "@/lib/hooks/use-sign-out";
 import { applyTheme } from "@/lib/theme";
 
 const THEME_LABELS: Record<Theme, string> = { dark: "Dark", light: "Light", system: "System" };
@@ -130,7 +130,7 @@ function useGmailReturnToast() {
     const q = new URLSearchParams(window.location.search);
     const key = q.get("gmail") ?? q.get("gmail_error");
     if (!key) return;
-    (GMAIL_RETURN[key] ?? (() => toast.error("We couldn't connect your Gmail. Please try again.")))();
+    (GMAIL_RETURN[key] ?? (() => toast.error("Couldn't connect your Gmail. Please try again.")))();
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.hash}`);
   }, []);
 }
@@ -327,7 +327,7 @@ function SettingsContent({ data, mutate }: { data: Settings; mutate: (fn: (s: Se
                   value={prefs.ai.categories}
                   onValueChange={(v) => {
                     if (v.length === 0) {
-                      toast.error("Keep at least one category", { description: "Oppora needs something to look for." });
+                      toast.error("Keep at least one category.", { description: "Oppora needs something to look for." });
                       return;
                     }
                     savePrefs({ ai: { categories: v } }, `Tracking ${v.length} ${v.length === 1 ? "category" : "categories"}`);
@@ -364,7 +364,7 @@ function GmailSection({ gmail, onChange }: { gmail: GmailConnection; onChange: (
       setManageOpen(false);
       toast.success("Gmail connected", { description: "Oppora will scan new emails on the next sync." });
     } catch {
-      toast.error("We couldn't connect your Gmail. Please try again.");
+      toast.error("Couldn't connect your Gmail. Please try again.");
     } finally {
       setWorking(false);
     }
@@ -377,7 +377,7 @@ function GmailSection({ gmail, onChange }: { gmail: GmailConnection; onChange: (
       setConfirmOpen(false);
       toast.success("Gmail disconnected", { description: "Access revoked and stored tokens deleted." });
     } catch {
-      toast.error("We couldn't disconnect Gmail. Please try again.");
+      toast.error("Couldn't disconnect Gmail. Please try again.");
     } finally {
       setWorking(false);
     }
@@ -484,6 +484,7 @@ function AccountSection({
   onDataDeleted: (g: GmailConnection) => void;
 }) {
   const router = useRouter();
+  const signOutNow = useSignOut();
   const [draft, setDraft] = useState(user);
   const [saving, setSaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -625,15 +626,7 @@ function AccountSection({
         <div className="border-t border-line pt-6">
           <Button
             variant="secondary"
-            onClick={async () => {
-              try {
-                await signOut();
-                toast.success("Signed out");
-                router.push("/");
-              } catch {
-                toast.error("We couldn't sign you out. Please try again.");
-              }
-            }}
+            onClick={signOutNow}
           >
             <LogOut aria-hidden /> Sign out
           </Button>

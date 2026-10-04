@@ -20,6 +20,10 @@ vi.mock("next/dynamic", () => ({
     },
 }));
 
+// The idle prefetch imports the real panel modules; stub them so nothing loads after teardown.
+vi.mock("@/components/oppora/ai-assistant", () => ({ AIAssistantPanel: () => null }));
+vi.mock("@/components/oppora/notifications-panel", () => ({ NotificationsPanel: () => null }));
+
 let assistantOpen = false;
 vi.mock("@/components/oppora/shell-context", () => ({ useShell: () => ({ assistantOpen }) }));
 

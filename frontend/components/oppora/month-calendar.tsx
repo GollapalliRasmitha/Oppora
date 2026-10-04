@@ -156,7 +156,7 @@ export function MonthCalendar({
                     className={cn(
                       "relative h-12 rounded-sm border align-top transition-colors @lg:h-16 @2xl:h-24",
                       inMonth ? "border-line bg-tint/[.025]" : "border-transparent bg-transparent",
-                      isSelected && "border-violet/70 bg-purple/15 shadow-[0_0_16px_-6px_var(--glow-purple)]",
+                      isSelected && "border-violet/70 bg-purple/15 shadow-[var(--glow-active)]",
                     )}
                   >
                     <button
@@ -198,7 +198,7 @@ export function MonthCalendar({
                           <CalendarEvent key={o.id} item={o} now={now} colorBy={colorBy} className="pointer-events-auto" />
                         ))}
                         {dayEvents.length > 2 && (
-                          <span className="block px-1 text-[12px] font-semibold text-ink-3">+{dayEvents.length - 2} more</span>
+                          <span className="block px-1 text-micro font-semibold text-ink-3">+{dayEvents.length - 2} more</span>
                         )}
                       </div>
                     )}

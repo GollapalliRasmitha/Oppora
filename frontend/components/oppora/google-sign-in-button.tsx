@@ -13,7 +13,7 @@ export function GoogleSignInButton({ href = SIGN_IN_URL, className }: { href?: s
     <a
       href={href}
       className={cn(
-        "inline-flex h-12 items-center gap-3 rounded-full border border-[#747775] bg-white pl-3 pr-5 font-google text-[15px] font-medium text-[#1F1F1F] focus-ring transition-[box-shadow,background-color] duration-200 hover:bg-[#F8FAFF] hover:shadow-[0_0_0_4px_rgba(167,139,250,.25),0_10px_30px_-8px_rgba(124,58,237,.6)]",
+        "inline-flex h-12 items-center gap-3 rounded-full border border-[#747775] bg-white pl-3 pr-5 font-google text-body font-medium text-[#1F1F1F] focus-ring transition-[box-shadow,background-color] duration-200 hover:bg-[#F8FAFF] hover:shadow-[var(--glow-brand)]",
         className,
       )}
     >

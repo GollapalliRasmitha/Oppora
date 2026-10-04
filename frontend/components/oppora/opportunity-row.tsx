@@ -37,7 +37,7 @@ export function OpportunityRow({ opp, now, actions }: { opp: Opportunity; now: D
 
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <Link href={href} className="truncate text-[15px] font-bold text-ink focus-ring rounded-sm hover:text-violet">
+          <Link href={href} className="truncate text-body font-bold text-ink focus-ring rounded-sm hover:text-violet">
             {opp.title}
           </Link>
           <StatusBadge opp={opp} />

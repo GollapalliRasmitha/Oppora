@@ -19,7 +19,7 @@ export function useScanGmail() {
       return status;
     } catch (e) {
       if (e instanceof ApiError && e.code === "gmail") {
-        toast.error("We couldn't access your Gmail. Reconnect your account to continue.", {
+        toast.error("Couldn't access your Gmail. Reconnect your account to continue.", {
           action: { label: "Reconnect Gmail", onClick: () => router.push("/settings#gmail") },
         });
       } else {

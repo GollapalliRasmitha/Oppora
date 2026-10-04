@@ -17,8 +17,8 @@ Personal AI agent that reads a user's Gmail, finds opportunities, extracts deadl
 - Stage 9 — Celery + Redis background jobs (+ real-data feedback: type chips, fees, hide sender): done.
 - Stage 10 — Security hardening: done.
 - Pre-Stage-11 fixes (A skills matching + score breakdown, B weekly digest, C light theme): done.
-- **Stage 11 — Performance + accessibility audit: done** (awaiting "continue").
-- Next: Stage 12 — Final polish (consistency of spacing, type, colour, borders, shadows, gradients, icons, motion, toasts).
+- Stage 11 — Performance + accessibility audit: done.
+- **Stage 12 — Final polish + end-to-end journey + README: done.** All 12 stages of PROMPT.md are complete.
 - Profile check (4 Oct 2026): the user's Google account has 6 interests, 1 skill and a level set; the demo account is unchanged. Suggest adding more skills (worth up to 30 match points).
 - Profile skills: keep the demo skills for now (user decision, Stage 3 review).
 
@@ -43,11 +43,11 @@ docker-compose.yml   Postgres 16 + Redis 7 for local dev
 
 ```
 app/
-  layout.tsx              fonts (Plus Jakarta Sans; Roboto only for the Google button), <Toaster/>
+  layout.tsx              fonts (Plus Jakarta Sans; Roboto only for the Google button), no-flash theme script
   globals.css             DESIGN TOKENS (CSS vars + Tailwind @theme) and shared utilities
   icon.svg                favicon (logo mark)
   (marketing)/            public: landing page, /privacy, /terms, /contact
-  (app)/layout.tsx        AppShell for every signed-in page
+  (app)/layout.tsx        AppShell + <Toaster/> for every signed-in page
   (app)/dashboard/        Dashboard (page.tsx = server, dashboard-view.tsx = client)
   (app)/opportunities/    list (search/type/show/sort in the URL) + [id]/ details
   (app)/deadlines/        month calendar + upcoming list
@@ -116,11 +116,12 @@ Two themes, one token set: `:root` holds the dark values, `:root[data-theme="lig
 | Accent washes | full strength | half (`--wash: .5`) | `bg-wash` (hero cards), `bg-wash-ai` (AI cards) |
 | Chart colours | bar `#A78BFA` (hover `#C4B5FD`); progress ramp `#EDE9FE → #C4B5FD → #8B5CF6 → #5B21B6` | bar `#7C3AED` (hover `#5B21B6`); ramp `#2E1065 → #5B21B6 → #8B5CF6 → #A78BFA` | `--viz-bar`, `--viz-bar-hover`, `--viz-1…4`, `--viz-track` |
 | Logo sparkles | `#FFFFFF` / `#C4B5FD` | `#6D28D9` / `#8B5CF6` | `--logo-star`, `--logo-star-2` |
+| Effects | `--focus-halo` (focused fields), `--glow-active` (selected nav item/day), `--glow-ai` (AI cards), `--shadow-fab(-hover)` (floating AI button) | softer light values | `shadow-[var(--…)]` |
 | Brand gradient | `#7C3AED → #4F46E5 → #2563EB` (135°) | same | `bg-brand` |
 | Headline gradient | violet → blue → pink | `#6D28D9 → #1D4ED8 → #BE185D` | `text-gradient` |
 | AI border gradient | purple → blue → pink | `ai-border` (needs `relative`) |
 | Radius | 8 / 12 / 20 / pill | `rounded-sm` / `rounded-md` / `rounded-card` / `rounded-full` |
-| Type | hero 40→70px/800, section 32→46px/800, card 16–20/700, body 15–18/400, meta 13/500 | `text-hero`, `text-section`, `text-meta` |
+| Type | hero 40→70px/800, section 32→46px/800, page h1 28→32px/800, stat 30→34px/800, card 16–20/700, body 15px/400, meta 13/500, micro 12 | `text-hero`, `text-section`, `text-page`, `text-stat`, `text-body`, `text-meta`, `text-micro` |
 | Spacing | Tailwind default 4px scale | |
 | Motion | 150–300ms; `animate-float`, `animate-pulse-orb`, `animate-fade-up`, `animate-drawer-in`, `animate-shimmer` | all disabled under `prefers-reduced-motion` |
 | Layout | sidebar 230px (desktop) / 72px rail (tablet) | `--sidebar-w`, `--sidebar-w-collapsed` |
@@ -349,3 +350,35 @@ All seed dates are offsets from today, so these hold on every date (offsets repr
 - **Dialogs** (assistant, notifications, after lazy loading): labelled and described; focus moves inside; the background is hidden from screen readers; Escape closes and focus returns to the trigger. The assistant input is labelled "Ask Oppora AI" and answers are in a live region.
 - Contrast: see the light-theme pass (both themes, 3 widths).
 - Real NVDA/VoiceOver and physical keyboard runs weren't possible here (the browser pane couldn't take synthetic key presses), so they were checked through the accessibility tree and DOM instead. Worth a quick manual pass with NVDA before launch.
+
+## Stage 12 decisions (final polish, 4 Oct 2026)
+
+**Consistency pass**
+- A code audit for anything bypassing the design system found:
+  - no raw colours left in classes (brand art excepted: hero scene, Monogram tiles, AI orb, Google button);
+  - every radius on the scale (one 6px chip moved to `rounded-sm`);
+  - motion only 200/300 ms;
+  - icon sizes following text size.
+- **Shadows:** 14 one-off glow/focus values were consolidated into named per-theme tokens (`--focus-halo`, `--glow-active`, `--glow-ai`, `--shadow-fab`, `--shadow-fab-hover`).
+- **Type:** arbitrary sizes became tokens (`text-page` for every page h1, `text-stat`, `text-body` 15px, `text-micro` 12px). The details title and the dashboard greeting now use the same h1 size as every other page. The only arbitrary size left is the 11px bottom-nav label (Stage 6 decision for 360px).
+- **Toasts:** successes are short with no period ("Profile saved"); errors are sentences starting "Couldn't …" ending with "Please try again." ("We couldn't …" variants normalized).
+- Checked in both themes: modals, menus, select popovers, toasts, and the empty / error / Gmail-disconnected states (`?mock=`). Every scan passes 4.5:1.
+  - The pane can leave CSS transitions unfinished, so a scan right after a theme flip has to finish them first (`document.getAnimations()`).
+
+**Bugs found and fixed**
+- The header account menu's **Sign out** only showed a toast and navigated: it never ended the session. Sign-out is now one hook (`lib/hooks/use-sign-out.ts`) shared by the header and Settings, calling the API before leaving; tested.
+- **Journey gap:** the details page had no way to set a deadline reminder (only the ⋯ menu and Deadlines). It now has **Set Reminder / Reminder set** next to Save (desktop) and a bell button in the mobile sticky bar, shown only for open deadlines.
+- Reminder toggles (details + DeadlineItem) are named after their visible text plus the title (WCAG 2.5.3 label-in-name), with `aria-pressed` for the state. They used to say "Remove reminder for …" while showing "Reminder set".
+- Assistant greeting grammar: "1 opportunity that matches".
+
+**End-to-end journey**
+- `backend/tests/test_journey.py` runs the whole journey through the real API, pipeline and scheduled task. Only Google's endpoints, the Gmail API and the AI model are faked. Steps:
+  - landing sign-in → Google consent (gmail.readonly only) → callback;
+  - first scan → one AI call (the promotion is pre-filtered) → dashboard;
+  - details (grounded fields, null location, breakdown adds up) → save → apply;
+  - reminder at 09:00 the day before (no duplicates on re-run) → assistant answer linking the opportunity.
+- Browser walk-through on the demo account: details → Set Reminder → Apply → Mark as applied → the reminder at 09:00 the day before on the calendar → the assistant lists and links the deadlines. Demo data was restored afterwards and re-seeded (`seed_demo`).
+- The live sign-in redirect was checked: it goes to Google with exactly openid/email/profile/gmail.readonly, PKCE S256 and the Next.js callback. The real Google sign-in itself needs the user (passwords are never entered by the assistant).
+- On the real account, the queue left over from the free-tier limit has drained by itself: 264 processed, 241 pre-filtered, 0 queued, 57 opportunities.
+
+**README** rewritten: overview, Windows quick start, manual setup (macOS/Linux), configuration table, a 2-minute demo script, how it works, privacy & security, checks, troubleshooting, status and limits. In the demo script, "Frontend Developer" is the one seed opportunity that's open and not applied, and it's already saved, so the script saves "UI Engineer" from the list instead.

@@ -104,7 +104,7 @@ export function CalendarEvent({
       >
         <Icon aria-hidden className="mt-0.5 hidden size-4 shrink-0 @[9rem]:block" />
         <span className="min-w-0 text-left">
-          <span className="block text-[12px] font-semibold uppercase tracking-wide opacity-90">
+          <span className="block text-micro font-semibold uppercase tracking-wide opacity-90">
             <span className="hidden @2xs:inline">{CALENDAR_KIND_LABEL[item.kind]} · </span>
             {eventWhen(item, now)}
           </span>
@@ -128,7 +128,7 @@ export function CalendarEvent({
       aria-label={eventLabel(item, now)}
       title={eventLabel(item, now)}
       className={cn(
-        "flex min-h-6 items-center gap-1 truncate rounded-[6px] border px-1.5 py-0.5 text-[12px] font-semibold leading-tight focus-ring transition-[filter] hover:brightness-125",
+        "flex min-h-6 items-center gap-1 truncate rounded-sm border px-1.5 py-0.5 text-micro font-semibold leading-tight focus-ring transition-[filter] hover:brightness-125",
         chipClass(item, now, colorBy),
         className,
       )}

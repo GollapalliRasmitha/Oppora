@@ -123,7 +123,7 @@ export function MatchRing({ value, size = 96, className }: { value: number; size
           strokeWidth="8"
           strokeLinecap="round"
           strokeDasharray={`${(v / 100) * c} ${c}`}
-          className="drop-shadow-[0_0_6px_rgba(124,58,237,.6)]"
+          className="drop-shadow-[0_0_6px_var(--glow-purple)]"
         />
       </svg>
       <span className="relative text-center leading-none">

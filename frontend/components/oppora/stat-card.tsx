@@ -30,7 +30,7 @@ export function StatCard({ icon: Icon, value, label, trend, trendKind = "up", ac
       <div className={cn("flex size-10 items-center justify-center rounded-md border", ACCENTS[accent])}>
         <Icon aria-hidden className="size-5" />
       </div>
-      <div className="mt-3 text-3xl font-extrabold tracking-tight text-ink sm:text-[34px]">{value}</div>
+      <div className="mt-3 text-stat font-extrabold tracking-tight text-ink">{value}</div>
       {href ? (
         <Link href={href} className="block text-sm font-medium text-ink-2 outline-none after:absolute after:inset-0 after:rounded-card after:content-[''] hover:text-ink">
           {label}

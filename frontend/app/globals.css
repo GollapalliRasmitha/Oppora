@@ -61,6 +61,12 @@
   --wash: 1;
   /* Glows (purple halos around active items); weaker on light */
   --glow-purple: rgba(124, 58, 237, 0.8);
+  /* Named effects (one value per job, used everywhere that job appears) */
+  --focus-halo: 0 0 0 4px rgba(124, 58, 237, 0.18), 0 0 24px -6px rgba(96, 165, 250, 0.45); /* focused text fields */
+  --glow-active: inset 0 0 0 1px rgba(167, 139, 250, 0.35), 0 0 20px -6px var(--glow-purple); /* the selected nav item / day */
+  --glow-ai: 0 0 48px -14px rgba(124, 58, 237, 0.6); /* AI surfaces */
+  --shadow-fab: 0 0 0 1px rgba(167, 139, 250, 0.45), 0 10px 30px -6px var(--glow-purple);
+  --shadow-fab-hover: 0 0 0 1px rgba(167, 139, 250, 0.7), 0 14px 40px -6px rgba(96, 165, 250, 0.8);
 
   /* Logo sparkles (the orbit gradient stays the same in both themes) */
   --logo-star: #ffffff;
@@ -137,6 +143,11 @@
   --ambient-3: rgba(244, 114, 182, 0.06);
   --wash: 0.5;
   --glow-purple: rgba(124, 58, 237, 0.35);
+  --focus-halo: 0 0 0 4px rgba(124, 58, 237, 0.14), 0 0 20px -8px rgba(37, 99, 235, 0.3);
+  --glow-active: inset 0 0 0 1px rgba(109, 40, 217, 0.25), 0 0 16px -8px var(--glow-purple);
+  --glow-ai: 0 0 40px -16px rgba(124, 58, 237, 0.35);
+  --shadow-fab: 0 0 0 1px rgba(109, 40, 217, 0.3), 0 10px 28px -8px rgba(124, 58, 237, 0.5);
+  --shadow-fab-hover: 0 0 0 1px rgba(109, 40, 217, 0.45), 0 14px 36px -8px rgba(37, 99, 235, 0.5);
 
   --logo-star: #6d28d9;
   --logo-star-2: #8b5cf6;
@@ -192,6 +203,14 @@
   --text-section--font-weight: 800;
   --text-meta: 0.8125rem; /* 13px */
   --text-meta--line-height: 1.25rem;
+  --text-micro: 0.75rem; /* 12px: axis ticks, calendar chips, date tiles */
+  --text-micro--line-height: 1rem;
+  --text-body: 0.9375rem; /* 15px: default body copy */
+  --text-body--line-height: 1.5rem;
+  --text-page: clamp(1.75rem, 1.45rem + 0.9vw, 2rem); /* 28 → 32px: every page's h1 */
+  --text-page--line-height: 1.15;
+  --text-stat: clamp(1.875rem, 1.6rem + 0.8vw, 2.125rem); /* 30 → 34px: stat numbers */
+  --text-stat--line-height: 1.1;
 
   --animate-float: float 6s ease-in-out infinite;
   --animate-pulse-orb: pulse-orb 2.4s ease-in-out infinite;

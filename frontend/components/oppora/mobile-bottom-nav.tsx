@@ -31,7 +31,7 @@ export function MobileBottomNav() {
                 <span
                   className={cn(
                     "flex h-7 w-12 items-center justify-center rounded-full transition-[background-color,box-shadow]",
-                    active && "bg-purple/25 shadow-[0_0_18px_-4px_var(--glow-purple)]",
+                    active && "bg-purple/25 shadow-[var(--glow-active)]",
                   )}
                 >
                   <Icon aria-hidden className={cn("size-5", active && "text-violet")} />

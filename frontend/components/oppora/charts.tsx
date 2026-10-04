@@ -74,7 +74,7 @@ export function BarChart({
       ) : (
         <div role="img" aria-label={`${title}: ${data.map((d) => `${d.fullLabel} ${d.value}`).join(", ")}`} className="flex gap-2">
           {/* y-axis */}
-          <div aria-hidden className="flex h-44 flex-col justify-between pb-6 text-right text-[12px] tabular-nums text-ink-3">
+          <div aria-hidden className="flex h-44 flex-col justify-between pb-6 text-right text-micro tabular-nums text-ink-3">
             {ticks.map((t) => (
               <span key={t} className="leading-none">{t}</span>
             ))}
@@ -114,7 +114,7 @@ export function BarChart({
                   <span
                     aria-hidden
                     className={cn(
-                      "absolute bottom-0 left-1/2 -translate-x-1/2 whitespace-nowrap text-[12px] text-ink-3",
+                      "absolute bottom-0 left-1/2 -translate-x-1/2 whitespace-nowrap text-micro text-ink-3",
                       // Long ranges: every 5th day, counted back from today so the last bar is labelled.
                       !few && (data.length - 1 - i) % 5 !== 0 && "invisible",
                     )}

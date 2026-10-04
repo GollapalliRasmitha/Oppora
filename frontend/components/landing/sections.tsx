@@ -93,7 +93,7 @@ export function Features() {
                 <Icon aria-hidden className="size-5" />
               </span>
               <h3 className="mt-4 text-lg font-bold text-ink">{title}</h3>
-              <p className="mt-1.5 text-[15px] leading-relaxed text-ink-2">{body}</p>
+              <p className="mt-1.5 text-body leading-relaxed text-ink-2">{body}</p>
             </GlassCard>
           </li>
         ))}
@@ -126,7 +126,7 @@ export function HowItWorks() {
             <div className="pt-1 md:pt-4">
               <div className="text-meta font-bold tracking-widest text-gradient">{n}</div>
               <h3 className="mt-1 text-lg font-bold text-ink">{title}</h3>
-              <p className="mt-1 max-w-xs text-[15px] text-ink-2">{body}</p>
+              <p className="mt-1 max-w-xs text-body text-ink-2">{body}</p>
             </div>
           </li>
         ))}
@@ -138,7 +138,7 @@ export function HowItWorks() {
 export function FinalCTA() {
   return (
     <section aria-labelledby="cta-heading" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
-      <div className="ai-border relative overflow-hidden rounded-card bg-wash-ai px-6 py-14 text-center shadow-[0_0_80px_-20px_var(--glow-purple)] sm:px-12 sm:py-20">
+      <div className="ai-border relative overflow-hidden rounded-card bg-wash-ai px-6 py-14 text-center shadow-[var(--glow-ai)] sm:px-12 sm:py-20">
         <div aria-hidden className="pointer-events-none absolute -left-20 -top-24 size-72 rounded-full bg-purple/30 blur-3xl" />
         <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-16 size-72 rounded-full bg-blue/20 blur-3xl" />
         <h2 id="cta-heading" className="relative mx-auto max-w-3xl text-section font-extrabold tracking-tight text-ink">

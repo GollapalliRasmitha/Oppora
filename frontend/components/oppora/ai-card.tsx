@@ -20,7 +20,7 @@ export function AICard({ title = "AI Recommendation", children, actions, orb, cl
     <section
       aria-label={title}
       className={cn(
-        "ai-border relative overflow-hidden rounded-card bg-wash-ai p-5 shadow-[0_0_40px_-12px_rgba(124,58,237,.55)]",
+        "ai-border relative overflow-hidden rounded-card bg-wash-ai p-5 shadow-[var(--glow-ai)]",
         className,
       )}
     >
@@ -35,7 +35,7 @@ export function AICard({ title = "AI Recommendation", children, actions, orb, cl
         )}
         <h2 className="text-base font-bold text-ink">{title}</h2>
       </div>
-      <div className="relative mt-3 text-[15px] leading-relaxed text-ink-2">{children}</div>
+      <div className="relative mt-3 text-body leading-relaxed text-ink-2">{children}</div>
       {actions && <div className="relative mt-4 flex flex-wrap gap-2">{actions}</div>}
     </section>
   );

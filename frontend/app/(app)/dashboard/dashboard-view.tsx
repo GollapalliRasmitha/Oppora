@@ -60,7 +60,7 @@ export function DashboardView() {
         >
           <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full bg-purple/30 blur-3xl" />
           <div className="relative">
-            <h1 id="greeting" className="text-2xl font-extrabold tracking-tight text-ink sm:text-[32px]">
+            <h1 id="greeting" className="text-page font-extrabold tracking-tight text-ink">
               {greetingReady ? (
                 <>
                   {greetingFor(now)}
@@ -76,7 +76,7 @@ export function DashboardView() {
               )}
             </h1>
             {!greetingReady && <Skeleton className="h-9 w-72 max-w-full" />}
-            <p className="mt-2 text-[15px] text-ink-2 sm:text-base">Here&apos;s what&apos;s happening with your opportunities today.</p>
+            <p className="mt-2 text-body text-ink-2 sm:text-base">Here&apos;s what&apos;s happening with your opportunities today.</p>
           </div>
         </GlassCard>
 

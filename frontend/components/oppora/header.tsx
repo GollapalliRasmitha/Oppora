@@ -8,8 +8,8 @@ import { Dropdown, DropdownContent, DropdownItem, DropdownSeparator, DropdownTri
 import { IconButton } from "@/components/ui/icon-button";
 import { SearchBar } from "@/components/ui/search-bar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/components/ui/toast";
 import { useNotifications } from "@/lib/hooks/use-notifications";
+import { useSignOut } from "@/lib/hooks/use-sign-out";
 import { Avatar } from "./avatar";
 import { LazyNotificationsPanel } from "./lazy-panels";
 import { LogoMark } from "./logo";
@@ -18,6 +18,7 @@ import { useShell } from "./shell-context";
 
 export function Header() {
   const router = useRouter();
+  const signOutNow = useSignOut();
   const pageHasSearch = hasOwnSearch(usePathname());
   const { user, userStatus, setAssistantOpen, notificationsOpen, setNotificationsOpen } = useShell();
   const notifications = useNotifications();
@@ -88,12 +89,7 @@ export function Header() {
               </Link>
             </DropdownItem>
             <DropdownSeparator />
-            <DropdownItem
-              onSelect={() => {
-                toast.success("Signed out");
-                router.push("/");
-              }}
-            >
+            <DropdownItem onSelect={() => void signOutNow()}>
               <LogOut aria-hidden /> Sign out
             </DropdownItem>
           </DropdownContent>

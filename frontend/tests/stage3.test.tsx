@@ -121,7 +121,8 @@ describe("DeadlineItem", () => {
       </ul>,
     );
     expect(screen.getByText("7 days left")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Set reminder for Frontend Developer" }));
+    await userEvent.click(screen.getByRole("button", { name: "Set Reminder for Frontend Developer" }));
+    expect(screen.getByRole("button", { name: "Set Reminder for Frontend Developer" })).toHaveAttribute("aria-pressed", "false");
     await userEvent.click(screen.getByRole("button", { name: "Mark Frontend Developer complete" }));
     expect(onRemind).toHaveBeenCalled();
     expect(onComplete).toHaveBeenCalled();

@@ -34,7 +34,7 @@ function Greeting() {
   return (
     <p>
       {n > 0
-        ? `Hi! I found ${n} ${n === 1 ? "opportunity" : "opportunities"} that match your profile today.`
+        ? `Hi! I found ${n} ${n === 1 ? "opportunity that matches" : "opportunities that match"} your profile today.`
         : "Hi! I haven't found strong matches for your profile yet."}
     </p>
   );
@@ -176,7 +176,7 @@ export function AIAssistantPanel() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask about your opportunities…"
               autoComplete="off"
-              className="h-12 w-full rounded-md border border-line bg-tint/[.04] pl-4 pr-14 text-sm text-ink placeholder:text-ink-3 outline-none transition-[border-color,box-shadow] focus:border-violet/70 focus:shadow-[0_0_0_4px_rgba(124,58,237,.18)]"
+              className="h-12 w-full rounded-md border border-line bg-tint/[.04] pl-4 pr-14 text-sm text-ink placeholder:text-ink-3 outline-none transition-[border-color,box-shadow] focus:border-violet/70 focus:shadow-[var(--focus-halo)]"
             />
             <button
               type="submit"
@@ -191,7 +191,7 @@ export function AIAssistantPanel() {
       }
     >
       <div className="space-y-4 p-5">
-        <div className="ai-border relative rounded-card bg-purple/10 p-4 text-[15px] text-ink">
+        <div className="ai-border relative rounded-card bg-purple/10 p-4 text-body text-ink">
           <Greeting />
         </div>
 

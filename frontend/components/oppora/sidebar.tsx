@@ -12,7 +12,7 @@ import { SIDEBAR_NAV, isActive } from "./nav";
 import { useShell } from "./shell-context";
 
 export const navItemActive =
-  "bg-[linear-gradient(90deg,rgba(124,58,237,.38),rgba(37,99,235,.14))] text-ink shadow-[inset_0_0_0_1px_rgba(167,139,250,.35),0_0_22px_-6px_var(--glow-purple)]";
+  "bg-[linear-gradient(90deg,rgba(124,58,237,.38),rgba(37,99,235,.14))] text-ink shadow-[var(--glow-active)]";
 
 /**
  * Desktop (≥1024px): fixed 230px. Tablet (768–1023px): 72px icon rail that

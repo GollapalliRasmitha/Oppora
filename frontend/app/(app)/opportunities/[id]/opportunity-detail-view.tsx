@@ -14,6 +14,8 @@ import {
   MapPin,
   SearchX,
   Share2,
+  Bell,
+  BellRing,
   Sparkles,
 } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -125,6 +127,12 @@ function Detail({
   const days = daysLeft(opp.deadline, now);
   const applied = opp.application?.status === "applied";
   const closed = days !== null && days < 0;
+  // A reminder needs a date: only for open deadlines (09:00 the day before, in the bell).
+  const canRemind = opp.deadline !== null && !closed;
+  const remindText = opp.reminderSet ? "Reminder set" : "Set Reminder";
+  // Name = the visible text (+ title) so voice control matches what's on screen; aria-pressed carries the state.
+  const remindLabel = `${remindText} for ${opp.title}`;
+  const remindIcon = opp.reminderSet ? <BellRing aria-hidden className="text-violet" /> : <Bell aria-hidden />;
 
   const applyButton = (
     <Button
@@ -146,10 +154,10 @@ function Detail({
         <div className="relative flex flex-col gap-5 md:flex-row md:items-start">
           <Monogram name={opp.organization} size="lg" />
           <div className="min-w-0 flex-1">
-            <h1 id="opp-title" className="text-2xl font-extrabold tracking-tight text-ink sm:text-[28px]">
+            <h1 id="opp-title" className="text-page font-extrabold tracking-tight text-ink">
               {opp.title}
             </h1>
-            <p className="mt-1 text-[15px] font-medium text-ink-2">
+            <p className="mt-1 text-body font-medium text-ink-2">
               {opp.organization} · {opp.type}
             </p>
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -167,6 +175,12 @@ function Detail({
         <div className="relative mt-5 hidden flex-wrap gap-2 md:flex">
           {applyButton}
           <SaveToggle saved={opp.saved} title={opp.title} onToggle={() => actions.toggleSave(opp)} />
+          {canRemind && (
+            <Button variant="secondary" aria-pressed={opp.reminderSet} aria-label={remindLabel} onClick={() => actions.remind(opp)}>
+              {remindIcon}
+              {remindText}
+            </Button>
+          )}
           <Button variant="secondary" onClick={() => share(opp)}>
             <Share2 aria-hidden /> Share
           </Button>
@@ -177,7 +191,7 @@ function Detail({
         <AICard orb title="AI Summary" className="lg:order-2 lg:self-start">
           <div className="flex items-center gap-4">
             <MatchRing value={opp.matchScore} size={88} />
-            <p className="text-[15px] text-ink">{matchSentence(opp.matchReasons)}</p>
+            <p className="text-body text-ink">{matchSentence(opp.matchReasons)}</p>
           </div>
           <MatchChecklist opp={opp} now={now} className="mt-5" />
           {opp.scoreBreakdown && <ScoreBreakdownView breakdown={opp.scoreBreakdown} className="mt-4" />}
@@ -194,7 +208,7 @@ function Detail({
 
             <TabsContent value="overview" className="p-3 sm:p-4 focus-ring rounded-md">
               <h2 className="text-base font-bold text-ink">About the opportunity</h2>
-              <p className="mt-2 text-[15px] leading-relaxed text-ink-2">{opp.summary ?? <NotMentioned />}</p>
+              <p className="mt-2 text-body leading-relaxed text-ink-2">{opp.summary ?? <NotMentioned />}</p>
               {opp.fee && (
                 <div role="note" className="mt-5 flex gap-3 rounded-md border border-urgent/35 bg-urgent/[.07] p-4">
                   <BadgeAlert aria-hidden className="mt-0.5 size-5 shrink-0 text-urgent" />
@@ -257,6 +271,9 @@ function Detail({
       <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-line bg-chrome p-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-xl md:hidden">
         <div className="flex-1 [&>button]:w-full">{applyButton}</div>
         <SaveToggle compact saved={opp.saved} title={opp.title} onToggle={() => actions.toggleSave(opp)} className="glass" />
+        {canRemind && (
+          <IconButton label={remindLabel} aria-pressed={opp.reminderSet} icon={remindIcon} variant="glass" onClick={() => actions.remind(opp)} />
+        )}
         <IconButton label="Share" icon={<Share2 aria-hidden />} variant="glass" onClick={() => share(opp)} />
       </div>
 
@@ -285,14 +302,14 @@ function BulletList({ title, items }: { title: string; items: string[] }) {
       {items.length ? (
         <ul className="mt-3 space-y-2">
           {items.map((r) => (
-            <li key={r} className="flex gap-2.5 text-[15px] text-ink-2">
+            <li key={r} className="flex gap-2.5 text-body text-ink-2">
               <CircleCheck aria-hidden className="mt-0.5 size-[18px] shrink-0 text-violet" />
               {r}
             </li>
           ))}
         </ul>
       ) : (
-        <p className="mt-2 text-[15px]">
+        <p className="mt-2 text-body">
           <NotMentioned />
         </p>
       )}

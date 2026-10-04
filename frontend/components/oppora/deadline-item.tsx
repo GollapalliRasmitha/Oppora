@@ -41,7 +41,7 @@ export function DeadlineItem({
           className={cn("flex w-12 shrink-0 flex-col items-center justify-center rounded-md border py-1.5", URGENCY_CHIP[urgency])}
         >
           <span className="text-lg font-extrabold leading-none">{date?.getDate() ?? "–"}</span>
-          <span className="text-[12px] font-semibold uppercase">{date ? monFmt.format(date) : ""}</span>
+          <span className="text-micro font-semibold uppercase">{date ? monFmt.format(date) : ""}</span>
         </div>
         <div className="min-w-0 flex-1">
           <Link
@@ -74,7 +74,8 @@ export function DeadlineItem({
           variant="ghost"
           disabled={closed}
           onClick={() => onRemind(opp)}
-          aria-label={opp.reminderSet ? `Remove reminder for ${opp.title}` : `Set reminder for ${opp.title}`}
+          aria-pressed={opp.reminderSet}
+          aria-label={`${opp.reminderSet ? "Reminder set" : "Set Reminder"} for ${opp.title}`}
         >
           {opp.reminderSet ? <BellRing aria-hidden className="text-violet" /> : <Bell aria-hidden />}
           {opp.reminderSet ? "Reminder set" : "Set Reminder"}
