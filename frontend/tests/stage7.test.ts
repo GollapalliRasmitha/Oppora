@@ -47,7 +47,7 @@ describe("request()", () => {
       [json(409, { error: { code: "gmail_access", message: "x" } }), "gmail"],
       [json(404, { error: { code: "not_found", message: "Not found." } }), "not_found"],
       [json(400, { error: { code: "validation_error", message: "Bad", fields: { name: ["Required"] } } }), "validation"],
-      [json(502, undefined), "server"],
+      [json(500, undefined), "server"], // 502-504 on reads are retried first (deploy.test.tsx)
       [json(429, { error: { code: "rate_limited", message: "Too many requests. Please wait 30 seconds and try again." } }), "rate_limited"],
     ];
     for (const [res, code] of cases) {

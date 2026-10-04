@@ -44,12 +44,13 @@ def test_weekly_notification_only_on_monday_8am_local_and_only_when_on(user, fre
     assert ntasks.weekly_digest() == 0  # setting off (default)
     user.preferences.notify_weekly_digest = True
     user.preferences.save()
-    freeze(monday_8 + timedelta(hours=1))
-    assert ntasks.weekly_digest() == 0  # 09:00: not the hour
+    freeze(monday_8 - timedelta(hours=1))
+    assert ntasks.weekly_digest() == 0  # 07:15: not yet
     freeze(monday_8 + timedelta(days=1))
     assert ntasks.weekly_digest() == 0  # Tuesday
-    freeze(monday_8)
-    assert ntasks.weekly_digest() == 1
+    freeze(monday_8 + timedelta(hours=1))
+    assert ntasks.weekly_digest() == 1  # a late scheduler run (09:15) still sends it
+    freeze(monday_8 + timedelta(hours=2))
     assert ntasks.weekly_digest() == 0  # once per week
     n = Notification.objects.get(user=user, key="digest:2026-10-05")
     assert n.title == "Your weekly digest" and n.link == "/digest"

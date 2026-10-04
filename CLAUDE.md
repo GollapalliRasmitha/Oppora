@@ -18,7 +18,8 @@ Personal AI agent that reads a user's Gmail, finds opportunities, extracts deadl
 - Stage 10 — Security hardening: done.
 - Pre-Stage-11 fixes (A skills matching + score breakdown, B weekly digest, C light theme): done.
 - Stage 11 — Performance + accessibility audit: done.
-- **Stage 12 — Final polish + end-to-end journey + README: done.** All 12 stages of PROMPT.md are complete.
+- Stage 12 — Final polish + end-to-end journey + README: done. All 12 stages of PROMPT.md are complete.
+- **Free public deployment — Step 1 (code) done**; next: guide the user through Neon → Upstash → Render → Vercel → Google Cloud → GitHub secrets → copy_account (docs/deploy.md), one step at a time.
 - Profile check (4 Oct 2026): the user's Google account has 6 interests, 1 skill and a level set; the demo account is unchanged. Suggest adding more skills (worth up to 30 match points).
 - Profile skills: keep the demo skills for now (user decision, Stage 3 review).
 
@@ -382,3 +383,53 @@ All seed dates are offsets from today, so these hold on every date (offsets repr
 - On the real account, the queue left over from the free-tier limit has drained by itself: 264 processed, 241 pre-filtered, 0 queued, 57 opportunities.
 
 **README** rewritten: overview, Windows quick start, manual setup (macOS/Linux), configuration table, a 2-minute demo script, how it works, privacy & security, checks, troubleshooting, status and limits. In the demo script, "Frontend Developer" is the one seed opportunity that's open and not applied, and it's already saved, so the script saves "UI Engineer" from the list instead.
+
+## Free deployment decisions (4 Oct 2026; guide: docs/deploy.md)
+
+**Hosting**
+- Vercel (frontend, root `frontend`, env `BACKEND_ORIGIN`), Render free (`render.yaml` blueprint; gunicorn, 1 worker × 4 threads; migrations in the build), Neon (Postgres, `conn_health_checks` because it pauses), Upstash (Redis: rate-limit counters only; `_cache_url` keeps the URL as-is because hosted Redis has no database 1). No card anywhere.
+- GitHub Actions hourly at :17 UTC (≈730 of 2,000 free private-repo minutes). Every 10 minutes would exceed the free minutes.
+- **Same-origin as before:** Vercel proxies `/api/*` to Render, so cookies are first-party and there's no CORS. Vercel waits up to 120 s for the backend, which covers a 30–60 s cold start.
+- `NUM_PROXIES=2` (Vercel + Render). `RENDER_EXTERNAL_HOSTNAME` is added to `ALLOWED_HOSTS` automatically. `FRONTEND_ORIGIN` is the Vercel URL and is trusted for CSRF (`CSRF_EXTRA_ORIGINS` for extras). Local `.env` stays on `http://localhost:3000`.
+- **Production refuses to start** unless the secret key is ≥ 50 characters, `TOKEN_ENCRYPTION_KEY` and `DATABASE_URL` are set, `CRON_SECRET` is ≥ 32 characters (if set), and `FRONTEND_ORIGIN` is https.
+- Secrets come from `manage.py generate_secrets`, run by the user in their own terminal. Render's generated values are only 44 characters, too short for Django's 50-character check.
+
+**No always-on worker**
+- `JOBS_BACKEND=thread`. `run_sync(user, seconds)` is time-boxed (`SYNC_BATCH_SECONDS`, 480 in production; 0 = until done, locally). It stops between emails; every email is committed as it finishes, so a sleeping instance loses nothing and the next Scan or scheduler call continues.
+- **`POST /api/cron/`** (Bearer `CRON_SECRET`, `hmac.compare_digest`, auth rate limit, 404 when unset) answers 202 and runs `core.scheduler.tick` in a thread:
+  - demo refresh;
+  - reminders, briefing, digest;
+  - `sync_accounts(CRON_BATCH_SECONDS)`: each account gets an equal slice of the remaining time, longest-waiting first, via `sync.run_scheduled`.
+- Answering immediately keeps each GitHub job to seconds; a synchronous run would bill minutes.
+- Scheduled notifications fire at **or after** their local hour (`>=`). Their date-stamped keys keep them once a day, so late or skipped hourly runs (and Celery beat) still deliver.
+- `GET /api/health/` (no DB) is pinged by the landing page (`WakeBackend`) to start waking Render early. `request()` retries **GETs only** on 502/503/504 (3 s, 8 s, 15 s); writes are never repeated.
+
+**AI fair share**
+- `AIUserUsage` (user, provider, quota day). `ai.client.for_user()` (contextvar) wraps each sync.
+- `_reserve` checks the global `AI_REQUESTS_PER_DAY`, then the account's `fair_share()` = daily budget ÷ connected non-demo accounts. Over its share → `DailyLimitReached`, and the emails stay queued for the next quota day.
+- `AI_FAIR_SHARE=false` turns it off.
+
+**Public read-only demo**
+- `GET /api/auth/demo/` ("Try the demo" on the landing hero and CTA): `ensure_demo()`, then logs out any real session and signs into `DEMO_USER_EMAIL`.
+- `DemoReadOnlyMiddleware` refuses every non-GET `/api/` request from the demo user with 403 `demo_read_only`. Only logout and the assistant are allowed. Gmail connect for the demo redirects to `gmail_error=demo_read_only`.
+- `DEMO_READ_ONLY` defaults to `not DEBUG`: locally the demo account stays writable for testing (`seed_demo` resets it).
+- `/api/auth/me` returns `isDemo` and `readOnly`.
+- **Frontend:**
+  - `DemoBanner` on every page;
+  - `notifyReadOnlyDemo()` shows one "This is a read-only demo" toast and silences the action's own error toast for 2 s (the action still rolls back);
+  - the demo's theme choice stays in the visitor's browser (no ThemeSync, local only).
+- **No Node in production:** `core/demo_seed.json` (from `manage.py export_demo_template`) is shifted by whole days to today by `core.demo.shifted()`. This covers ISO dates, UTC timestamps and "4 October"-style dates in email text (nearest year). A test proves it equals a fresh export on 5 dates. **Re-run `export_demo_template` after editing seed.ts** (a test fails if the file is stale).
+- The demo reloads when the day changes (`GmailConnection.demo_seeded_for`).
+
+**Sign-in for non-test users**
+- In Testing mode Google blocks them on its own "Access blocked" page, which Oppora can't change.
+- The landing page says sign-in is invite-only and offers the demo. If Google redirects back with `access_denied`, the notice says only invited accounts can connect Gmail.
+
+**Copying data to production**
+- `manage.py copy_account --email … [--yes] [--replace]` with `TARGET_DATABASE_URL` set in the terminal (the `target` alias exists only then, and in tests). Dry run by default; refuses to overwrite without `--replace` or to copy the demo; checks the target is migrated.
+- Copies the profile, preferences, opportunities (+ deadlines, applications, interviews), emails + classifications, saved items, hidden senders, notification state and the ProcessedMessage log, with the same UUIDs and timestamps (`auto_now` is paused during the copy). Already-analysed emails are therefore never re-sent to the AI, and queued ones continue.
+- Never copied: Google tokens (connection left disconnected; history_id kept), AI usage counters, sessions. The user-created signal now writes to the same database alias.
+
+**Privacy**
+- The page states plainly that relevant emails go to **Gemini's free tier** (subject, sender, date, cleaned text ≤ 4,000 characters; never attachments).
+- It also says that under Google's terms Google may use the content and human reviewers may read it, and that Google advises against sending personal information to unpaid services. Settings links to the page.

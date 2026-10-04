@@ -49,7 +49,7 @@ import { OPPORTUNITY_CATEGORIES } from "@/lib/domain/inbox";
 import type { GmailConnection, HiddenSender, OpportunityType, PersonalizationLevel, Preferences, Theme, User } from "@/lib/domain/types";
 import { useResource } from "@/lib/hooks/use-resource";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
-import { applyTheme } from "@/lib/theme";
+import { applyTheme, storedTheme } from "@/lib/theme";
 
 const THEME_LABELS: Record<Theme, string> = { dark: "Dark", light: "Light", system: "System" };
 
@@ -123,6 +123,8 @@ const GMAIL_RETURN: Record<string, () => void> = {
     toast.error("That Google account isn't the one you're signed in with.", { description: "Choose the same account to reconnect." }),
   scope_missing: () =>
     toast.error("Oppora needs permission to read your Gmail.", { description: "Reconnect and tick the Gmail box on Google's screen." }),
+  demo_read_only: () =>
+    toast.info("This is a read-only demo", { description: "Sign in with Google to connect your own Gmail." }),
 };
 
 function useGmailReturnToast() {
@@ -155,6 +157,8 @@ export function SettingsView() {
 }
 
 function SettingsContent({ data, mutate }: { data: Settings; mutate: (fn: (s: Settings) => Settings) => void }) {
+  const readOnly = !!data.user.readOnly;
+  const [browserTheme, setBrowserTheme] = useState<Theme>(() => storedTheme());
   const { preferences: prefs } = data;
 
   /** Optimistic preference change with a toast and rollback. */
@@ -251,8 +255,15 @@ function SettingsContent({ data, mutate }: { data: Settings; mutate: (fn: (s: Se
                 <span className="mb-1.5 block text-sm font-semibold text-ink">Theme</span>
                 <Select<Theme>
                   label="Theme"
-                  value={prefs.theme}
+                  value={readOnly ? browserTheme : prefs.theme}
                   onValueChange={(v) => {
+                    if (readOnly) {
+                      // The shared demo can't be changed: keep this visitor's choice in their own browser.
+                      applyTheme(v);
+                      setBrowserTheme(v);
+                      toast.success(`Theme: ${THEME_LABELS[v]}`, { description: "Saved in this browser (demo)." });
+                      return;
+                    }
                     const before = prefs.theme;
                     applyTheme(v);
                     void savePrefs({ theme: v }, `Theme: ${THEME_LABELS[v]}`).then((ok) => ok || applyTheme(before));
@@ -609,7 +620,11 @@ function AccountSection({
           <p className="mt-3 text-sm text-ink-2">
             To find opportunities, the subject, sender and a trimmed text version of each email that looks relevant (never
             attachments) is sent to Google Gemini. Oppora uses Gemini&apos;s free tier, where Google may use this content to
-            improve its products. Emails that don&apos;t look like opportunities are never sent or stored.
+            improve its products and human reviewers may read it. Emails that don&apos;t look like opportunities are never sent or
+            stored.{" "}
+            <Link href="/privacy" className="font-semibold text-violet focus-ring rounded-sm hover:text-ink">
+              Read the privacy page
+            </Link>
           </p>
           <div className="mt-4 rounded-md border border-urgent/30 bg-urgent/[.06] p-4">
             <p className="text-sm font-semibold text-ink">Delete my data</p>

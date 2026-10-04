@@ -1,0 +1,57 @@
+# Render Blueprint for the Oppora API (free plan). Render → New → Blueprint → pick this repo.
+# Secrets are NOT in this file: every `sync: false` value is typed into Render's dashboard.
+services:
+  - type: web
+    name: oppora-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    # Migrations run at build time, so a sleeping free server wakes up faster.
+    buildCommand: pip install -r requirements.txt && python manage.py migrate --noinput
+    # One process: the AI rate limiter and sync locks live in memory. Threads serve requests
+    # while scans and scheduler runs work in the background (time-boxed, resumable).
+    startCommand: gunicorn config.wsgi:application --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
+    healthCheckPath: /api/health/
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.14.0"
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+      # Render terminates HTTPS and sets X-Forwarded-Proto; Vercel → Render is two proxy hops.
+      - key: TRUST_X_FORWARDED_PROTO
+        value: "true"
+      - key: NUM_PROXIES
+        value: "2"
+      # No Celery worker on the free plan: scans run in the web process in short batches.
+      - key: JOBS_BACKEND
+        value: thread
+      - key: SYNC_BATCH_SECONDS
+        value: "480"
+      - key: CRON_BATCH_SECONDS
+        value: "600"
+      - key: AI_FAIR_SHARE
+        value: "true"
+      - key: PUBLIC_DEMO_ENABLED
+        value: "true"
+      # --- Typed into the dashboard (never committed) ---
+      - key: FRONTEND_ORIGIN # https://<your-project>.vercel.app
+        sync: false
+      - key: DATABASE_URL # Neon connection string
+        sync: false
+      - key: REDIS_URL # Upstash rediss:// URL
+        sync: false
+      - key: DJANGO_SECRET_KEY # from `python backend/manage.py generate_secrets`
+        sync: false
+      - key: TOKEN_ENCRYPTION_KEY # from `python backend/manage.py generate_secrets`
+        sync: false
+      - key: CRON_SECRET # from `python backend/manage.py generate_secrets`
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

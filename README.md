@@ -177,6 +177,15 @@ Next.js (App Router) ◄── /api/* proxy ◄── Django REST API (session +
 - **Delete my data** (Settings) removes opportunities, emails and notifications and disconnects Gmail.
 - **Key rotation:** set `TOKEN_ENCRYPTION_KEY=<new>,<old>`, run `backend\.venv\Scripts\python backend\manage.py rotate_token_key`, then remove the old key.
 
+## Deploy for free
+
+Vercel (website) + Render (API) + Neon (Postgres) + Upstash (Redis) + an hourly GitHub Actions scheduler, all on free plans. Step-by-step guide: [docs/deploy.md](docs/deploy.md). On the free plan:
+
+- **Scans run in short batches** (progress saved after every email), and the hourly scheduler continues them, sends reminders and refreshes the demo.
+- **"Try the demo"** opens a shared read-only sample account.
+- **Gmail sign-in** stays invite-only (Google Testing mode).
+- **Gemini's daily budget** is split fairly between accounts.
+
 ## Checks
 
 ```powershell

@@ -34,6 +34,14 @@ def _in_thread(fn, args, kwargs) -> None:
     threading.Thread(target=run, name=f"job-{fn.__name__}", daemon=True).start()
 
 
+def in_background(fn, *args, **kwargs) -> None:
+    """Always a thread of this process (the scheduler endpoint answers at once and works afterwards)."""
+    if settings.JOBS_EAGER:
+        fn(*args, **kwargs)
+        return
+    _in_thread(fn, args, kwargs)
+
+
 def enqueue(fn, *args, **kwargs) -> None:
     if settings.JOBS_EAGER:
         fn(*args, **kwargs)

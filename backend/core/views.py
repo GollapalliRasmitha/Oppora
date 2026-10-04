@@ -1,4 +1,9 @@
+import hmac
+
+from django.conf import settings
 from rest_framework import serializers
+from rest_framework.exceptions import NotFound
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -18,7 +23,7 @@ from .domain.stats import (
     recent_email_count,
     upcoming_deadlines,
 )
-from .throttling import ScopedThrottle, SyncStartThrottle, UserThrottle
+from .throttling import AuthIPThrottle, ScopedThrottle, SyncStartThrottle, UserThrottle
 
 
 class DashboardView(APIView):
@@ -116,3 +121,39 @@ class AssistantView(APIView):
                 q.validated_data["question"], data, clock.user_now(request), {"opportunityId": str(opp_id) if opp_id else None}
             )
         )
+
+
+class HealthView(APIView):
+    """GET /api/health/ — no database, no session: lets the frontend wake a sleeping free-tier server early."""
+
+    authentication_classes: list = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response({"ok": True})
+
+
+class CronView(APIView):
+    """
+    POST /api/cron/ with `Authorization: Bearer <CRON_SECRET>` — one scheduler
+    run (core.scheduler.tick), for hosting without Celery Beat. Answers 202 at
+    once and works in the background, so the caller (GitHub Actions) finishes
+    in seconds. Doesn't exist unless CRON_SECRET is set.
+    """
+
+    authentication_classes: list = []
+    permission_classes = [AllowAny]
+    throttle_classes = [AuthIPThrottle]
+
+    def post(self, request):
+        if not settings.CRON_SECRET:
+            raise NotFound()
+        header = request.headers.get("Authorization", "")
+        token = header[7:].strip() if header.startswith("Bearer ") else ""
+        if not hmac.compare_digest(token.encode(), settings.CRON_SECRET.encode()):
+            return Response({"error": {"code": "unauthorized", "message": "Wrong or missing scheduler secret."}}, status=401)
+        from . import jobs
+        from .scheduler import tick
+
+        jobs.in_background(tick)
+        return Response({"accepted": True}, status=202)

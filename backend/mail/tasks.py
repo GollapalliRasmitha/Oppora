@@ -19,9 +19,21 @@ def _connected():
     return GmailConnection.objects.filter(is_demo=False, status=GmailConnection.Status.CONNECTED).select_related("user")
 
 
+def _provider() -> str:
+    return settings.AI_PROVIDER if settings.AI_PROVIDER in ("gemini", "openai") else "gemini"
+
+
 def _ai_budget_left() -> bool:
-    provider = settings.AI_PROVIDER if settings.AI_PROVIDER in ("gemini", "openai") else "gemini"
-    return ai_client.requests_today(provider) < settings.AI_REQUESTS_PER_DAY
+    return ai_client.requests_today(_provider()) < settings.AI_REQUESTS_PER_DAY
+
+
+def has_queued_work(g) -> bool:
+    """Queued emails that the AI budget (global and this account's fair share) lets us continue today."""
+    return (
+        _ai_budget_left()
+        and ai_client.user_budget_left(g.user_id, _provider())
+        and ProcessedMessage.objects.filter(user=g.user, status=ProcessedMessage.Status.QUEUED).exists()
+    )
 
 
 @shared_task(name="mail.tasks.resume_queued")
@@ -33,11 +45,10 @@ def resume_queued() -> int:
     """
     started = 0
     now = clock.now()
-    budget = _ai_budget_left()
     for g in _connected():
         if g.sync_phase in sync.RUNNING:
             started += sync.resume_if_interrupted(g)
-        elif budget and ProcessedMessage.objects.filter(user=g.user, status=ProcessedMessage.Status.QUEUED).exists():
+        elif has_queued_work(g):
             log.info("Resuming queued emails for user %s", g.user_id)
             sync.start_sync(g.user)
             started += 1

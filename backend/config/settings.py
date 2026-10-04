@@ -7,6 +7,7 @@ hard-coded here.
 """
 
 import os
+import sys
 from pathlib import Path
 
 import dj_database_url
@@ -60,7 +61,10 @@ if not SECRET_KEY or (not DEBUG and SECRET_KEY == "change-me"):
     raise ImproperlyConfigured("Set DJANGO_SECRET_KEY in the environment (see .env.example).")
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
-FRONTEND_ORIGIN = os.environ.get("FRONTEND_ORIGIN", "http://localhost:3000")
+if os.environ.get("RENDER_EXTERNAL_HOSTNAME"):  # Render sets this to the service's own hostname
+    ALLOWED_HOSTS.append(os.environ["RENDER_EXTERNAL_HOSTNAME"])
+# The browser's origin: the Next.js app that proxies /api/* here (production: the Vercel URL).
+FRONTEND_ORIGIN = os.environ.get("FRONTEND_ORIGIN", "http://localhost:3000").rstrip("/")
 
 INSTALLED_APPS = [
     "django.contrib.auth",
@@ -83,6 +87,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.middleware.DemoReadOnlyMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -94,8 +99,16 @@ DATABASES = {
     "default": dj_database_url.parse(
         os.environ.get("DATABASE_URL", "postgres://oppora:oppora@localhost:5432/oppora"),
         conn_max_age=60,
+        # Neon's free tier pauses an idle database and drops connections: check before reuse.
+        conn_health_checks=True,
     )
 }
+# Only for `manage.py copy_account`: the database to copy an account into (e.g. Neon), given
+# for one command in the terminal, never saved in .env.
+if os.environ.get("TARGET_DATABASE_URL"):
+    DATABASES["target"] = dj_database_url.parse(os.environ["TARGET_DATABASE_URL"], conn_max_age=0)
+elif "pytest" in sys.modules:  # tests/test_copy_account.py copies into a second test database
+    DATABASES["target"] = {**DATABASES["default"], "TEST": {"NAME": "test_oppora_copy_target"}}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
 
@@ -122,7 +135,8 @@ SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 14
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = not DEBUG
-CSRF_TRUSTED_ORIGINS = [FRONTEND_ORIGIN]
+# Extra origins (comma-separated) are only for unusual setups, e.g. a second frontend URL.
+CSRF_TRUSTED_ORIGINS = [FRONTEND_ORIGIN, *env_list("CSRF_EXTRA_ORIGINS")]
 
 # --- Security headers + HTTPS (PROMPT.md §10) ---
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -145,11 +159,18 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 200
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
+
+def _cache_url(url: str) -> str:
+    """Rate-limit counters go to database 1 of a local Redis. Hosted Redis (Upstash) has only one database."""
+    head, _, db = url.rpartition("/")
+    return f"{head}/1" if db.isdigit() and "://" in head else url
+
+
 # --- Cache (rate-limit counters) ---
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": os.environ.get("CACHE_URL", REDIS_URL.rsplit("/", 1)[0] + "/1"),
+        "LOCATION": os.environ.get("CACHE_URL") or _cache_url(REDIS_URL),
         "OPTIONS": {"socket_connect_timeout": 2, "socket_timeout": 2},
         "KEY_PREFIX": "oppora",
     },
@@ -181,6 +202,7 @@ REST_FRAMEWORK = {
     },
     # Requests reach Django through the Next.js proxy, which adds the client's IP to
     # X-Forwarded-For; trust exactly that one hop when identifying anonymous clients.
+    # Production (Vercel → Render) has two hops: NUM_PROXIES=2.
     "NUM_PROXIES": int(os.environ.get("NUM_PROXIES", "1")),
 }
 
@@ -208,7 +230,12 @@ TOKEN_ENCRYPTION_KEY = os.environ.get("TOKEN_ENCRYPTION_KEY", "").strip()
 # Local development without Google credentials: sign in as the seeded demo user.
 # Off as soon as Google sign-in is configured, and never without DEBUG.
 DEV_LOGIN_ENABLED = DEBUG and env_bool("DJANGO_DEV_LOGIN", True) and not GOOGLE_OAUTH_ENABLED
-DEMO_USER_EMAIL = os.environ.get("DEMO_USER_EMAIL", "rasmitha@example.com")
+DEMO_USER_EMAIL = os.environ.get("DEMO_USER_EMAIL", "rasmitha@example.com").strip().lower()
+# The landing page's "Try the demo": anyone can open the demo account, read-only (core.demo).
+PUBLIC_DEMO_ENABLED = env_bool("PUBLIC_DEMO_ENABLED", True)
+# Refuse every change made in the demo account. On in production; off in local development,
+# where the demo account doubles as the test account (seed_demo resets it).
+DEMO_READ_ONLY = env_bool("DEMO_READ_ONLY", not DEBUG)
 
 # --- AI pipeline (Stage 8) ---
 # One interface (ai.providers); switch providers with AI_PROVIDER=gemini|openai.
@@ -223,6 +250,8 @@ OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "").strip()
 # pipeline waits and retries instead of failing when it gets close to them.
 AI_REQUESTS_PER_MINUTE = int(os.environ.get("AI_REQUESTS_PER_MINUTE", "9"))
 AI_REQUESTS_PER_DAY = int(os.environ.get("AI_REQUESTS_PER_DAY", "200"))
+# Split the daily budget equally between connected accounts, so one big inbox can't use it all.
+AI_FAIR_SHARE = env_bool("AI_FAIR_SHARE", True)
 #: Characters of cleaned email text sent to the AI (subject + sender + trimmed body; never attachments).
 AI_MAX_BODY_CHARS = int(os.environ.get("AI_MAX_BODY_CHARS", "4000"))
 
@@ -231,6 +260,17 @@ AI_MAX_BODY_CHARS = int(os.environ.get("AI_MAX_BODY_CHARS", "4000"))
 # needed; restarts interrupt them). Tests set JOBS_EAGER=True to run jobs inline.
 JOBS_BACKEND = os.environ.get("JOBS_BACKEND", "celery").strip().lower()
 JOBS_EAGER = env_bool("JOBS_EAGER", False)
+# Time box for one sync run, in seconds (0 = until the queue is empty). Hosting that sleeps
+# when idle (Render free) uses short batches: progress is saved after every email, and the
+# next Scan or scheduler call continues where this one stopped.
+SYNC_BATCH_SECONDS = int(os.environ.get("SYNC_BATCH_SECONDS", "0"))
+
+# --- Scheduler endpoint (POST /api/cron/), for hosting without Celery Beat ---
+# A free external scheduler (GitHub Actions) calls it hourly with this secret as a Bearer
+# token. Unset = the endpoint doesn't exist. At least 32 characters.
+CRON_SECRET = os.environ.get("CRON_SECRET", "").strip()
+# Total time box for one scheduler call's email processing (shared fairly between accounts).
+CRON_BATCH_SECONDS = int(os.environ.get("CRON_BATCH_SECONDS", "600"))
 
 from celery.schedules import crontab  # noqa: E402
 
@@ -258,9 +298,25 @@ REMINDER_LOCAL_HOUR = 9  # reminders the day before a deadline, 09:00 in the use
 BRIEFING_LOCAL_HOUR = 8
 DIGEST_LOCAL_HOUR = 8  # Mondays
 
+# --- Production safety: refuse to start with missing or weak secrets ---
+if not DEBUG:
+    _problems = []
+    if len(SECRET_KEY) < 50 or SECRET_KEY.startswith("django-insecure"):
+        _problems.append("DJANGO_SECRET_KEY must be a random value of at least 50 characters")
+    if not TOKEN_ENCRYPTION_KEY:
+        _problems.append("TOKEN_ENCRYPTION_KEY is required (it encrypts Gmail tokens)")
+    if not os.environ.get("DATABASE_URL"):
+        _problems.append("DATABASE_URL is required")
+    if CRON_SECRET and len(CRON_SECRET) < 32:
+        _problems.append("CRON_SECRET must be at least 32 characters")
+    if not FRONTEND_ORIGIN.startswith("https://"):
+        _problems.append("FRONTEND_ORIGIN must be the https:// address of the frontend")
+    if _problems:
+        raise ImproperlyConfigured("Production settings: " + "; ".join(_problems) + ".")
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "handlers": {"console": {"class": "logging.StreamHandler"}},
-    "root": {"handlers": ["console"], "level": "INFO" if DEBUG else "WARNING"},
+    "root": {"handlers": ["console"], "level": os.environ.get("LOG_LEVEL", "INFO" if DEBUG else "WARNING")},
 }

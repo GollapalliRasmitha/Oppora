@@ -133,6 +133,10 @@ export interface User {
   skills: string[];
   /** e.g. "Undergraduate student". `null` = not set in the profile. */
   experienceLevel: string | null;
+  /** The shared sample account behind "Try the demo". */
+  isDemo?: boolean;
+  /** The public demo: the server refuses every change, and the UI says so. */
+  readOnly?: boolean;
 }
 
 export type SyncPhase = "idle" | "scanning" | "analyzing" | "completed" | "error";

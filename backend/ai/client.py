@@ -5,14 +5,18 @@ Free-tier limits are respected rather than hit:
 - per minute: a sliding-window limiter spaces requests (AI_REQUESTS_PER_MINUTE)
 - per day: requests are counted in the database (AIUsage) and stop at
   AI_REQUESTS_PER_DAY; the quota day follows the provider's reset (Pacific time)
+- per account (AI_FAIR_SHARE): each connected account gets an equal share of
+  the daily budget (AIUserUsage), so one big inbox can't use it all
 - a 429 waits (the provider's retryDelay, else exponential backoff) and retries
 - if a request still can't go through, the caller leaves the email queued for
   the next sync. A rate limit never fails a sync.
 """
 
+import contextvars
 import threading
 import time
 from collections import deque
+from contextlib import contextmanager
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -20,7 +24,7 @@ from django.conf import settings
 from django.db import transaction
 from django.db.models import F
 
-from .models import AIUsage
+from .models import AIUsage, AIUserUsage
 from .providers.base import AIProvider, DailyLimitReached, NotConfigured, RateLimited, TransientAIError
 
 QUOTA_ZONE = ZoneInfo("America/Los_Angeles")  # Gemini's daily quota resets at midnight Pacific
@@ -113,6 +117,40 @@ def set_provider(provider: AIProvider | None, per_minute: int | None = None, fal
         _limiter = RateLimiter(per_minute or settings.AI_REQUESTS_PER_MINUTE)
 
 
+#: The account whose email is being processed (set by the sync around its work).
+_current_user = contextvars.ContextVar("ai_user_id", default=None)
+
+
+@contextmanager
+def for_user(user_id):
+    """Counts the AI requests made inside this block against `user_id`'s fair share."""
+    token = _current_user.set(user_id)
+    try:
+        yield
+    finally:
+        _current_user.reset(token)
+
+
+def fair_share() -> int:
+    """Each connected (non-demo) account's daily requests: an equal split of AI_REQUESTS_PER_DAY."""
+    from accounts.models import GmailConnection
+
+    accounts = GmailConnection.objects.filter(is_demo=False, status=GmailConnection.Status.CONNECTED).count()
+    return max(1, settings.AI_REQUESTS_PER_DAY // max(1, accounts))
+
+
+def user_requests_today(user_id, provider: str) -> int:
+    row = AIUserUsage.objects.filter(user_id=user_id, provider=provider, day=quota_day()).first()
+    return row.requests if row else 0
+
+
+def user_budget_left(user_id, provider: str) -> bool:
+    """Whether this account may still send requests today (always true without AI_FAIR_SHARE)."""
+    if not settings.AI_FAIR_SHARE:
+        return True
+    return user_requests_today(user_id, provider) < fair_share()
+
+
 def quota_day(now: datetime | None = None):
     return (now or datetime.now(tz=QUOTA_ZONE)).astimezone(QUOTA_ZONE).date()
 
@@ -123,11 +161,18 @@ def requests_today(provider: str) -> int:
 
 
 def _reserve(provider: str) -> None:
-    """Counts one request against today's budget, or raises DailyLimitReached."""
+    """Counts one request against today's budget (and the account's fair share), or raises DailyLimitReached."""
+    user_id = _current_user.get()
     with transaction.atomic():
         row, _ = AIUsage.objects.select_for_update().get_or_create(provider=provider, day=quota_day())
         if row.requests >= settings.AI_REQUESTS_PER_DAY:
             raise DailyLimitReached(f"Reached AI_REQUESTS_PER_DAY ({settings.AI_REQUESTS_PER_DAY}).")
+        if user_id is not None and settings.AI_FAIR_SHARE:
+            mine, _ = AIUserUsage.objects.select_for_update().get_or_create(user_id=user_id, provider=provider, day=quota_day())
+            share = fair_share()
+            if mine.requests >= share:
+                raise DailyLimitReached(f"This account's fair share of today's AI budget is used up ({share}).")
+            AIUserUsage.objects.filter(pk=mine.pk).update(requests=F("requests") + 1)
         AIUsage.objects.filter(pk=row.pk).update(requests=F("requests") + 1)
 
 

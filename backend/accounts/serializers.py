@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import serializers
 
 from core.domain.constants import OPPORTUNITY_TYPES
@@ -31,8 +32,20 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "name", "email", "plan", "interests", "skills", "experienceLevel"]
+        fields = ["id", "name", "email", "plan", "interests", "skills", "experienceLevel", "isDemo", "readOnly"]
         read_only_fields = ["id", "email", "plan"]
+
+    isDemo = serializers.SerializerMethodField()
+    readOnly = serializers.SerializerMethodField()
+
+    def get_isDemo(self, user) -> bool:
+        from core.demo import is_demo_user
+
+        return is_demo_user(user)
+
+    def get_readOnly(self, user) -> bool:
+        """The shared public demo: the UI says so and the server refuses changes."""
+        return settings.DEMO_READ_ONLY and self.get_isDemo(user)
 
     def validate_interests(self, v):
         return _unique(v)

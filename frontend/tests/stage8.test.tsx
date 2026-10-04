@@ -35,7 +35,7 @@ describe("Google sign-in", () => {
   it("explains a failed sign-in and cleans the URL", () => {
     window.history.replaceState(null, "", "/?auth_error=access_denied");
     render(<AuthErrorNotice />);
-    expect(screen.getByRole("alert")).toHaveTextContent("Sign-in was cancelled");
+    expect(screen.getByRole("alert")).toHaveTextContent("only invited Google accounts can connect Gmail");
     expect(window.location.search).toBe("");
   });
 });

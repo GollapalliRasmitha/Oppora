@@ -13,7 +13,18 @@
  *                  still load and show "Needs reconnect"
  */
 
-export type ApiErrorCode = "network" | "gmail" | "ai" | "auth" | "not_found" | "validation" | "server" | "rate_limited";
+import { notifyReadOnlyDemo } from "@/components/ui/toast";
+
+export type ApiErrorCode =
+  | "network"
+  | "gmail"
+  | "ai"
+  | "auth"
+  | "not_found"
+  | "validation"
+  | "server"
+  | "rate_limited"
+  | "read_only_demo";
 
 export class ApiError extends Error {
   constructor(
@@ -46,6 +57,14 @@ const SERVER_ERROR = "Something went wrong on our side. Try again in a moment.";
 const DEV_LOGIN = process.env.NODE_ENV !== "production";
 
 type Query = Record<string, string | number | boolean | null | undefined>;
+
+const WAKING = new Set([502, 503, 504]);
+const WAKE_RETRIES = [3000, 8000, 15000];
+
+/** Wakes a sleeping free-tier backend early (the landing page calls it), so the first click is fast. */
+export function wakeBackend(): void {
+  fetch("/api/health", { credentials: "omit" }).catch(() => {});
+}
 
 export interface RequestOptions<T> {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
@@ -118,6 +137,7 @@ async function toError(res: Response): Promise<ApiError> {
     // not JSON (proxy or server error page)
   }
   if (code === "gmail_access") return new ApiError(GMAIL_ERROR, "gmail");
+  if (code === "demo_read_only") return new ApiError(message, "read_only_demo");
   if (res.status === 401) return new ApiError(message || "Your session has expired. Sign in again to continue.", "auth");
   if (res.status === 404) return new ApiError(message || "This no longer exists.", "not_found");
   if (res.status === 400) return new ApiError(message || "Some fields are invalid.", "validation", fields);
@@ -152,11 +172,21 @@ export async function request<T>(path: string, opts: RequestOptions<T> = {}): Pr
   let res: Response;
   try {
     res = await send();
+    // A free-tier server that was asleep answers 502/503/504 while it wakes up (30-60 s):
+    // reads are safe to repeat, so wait and try again before showing an error.
+    for (let i = 0; method === "GET" && WAKING.has(res.status) && i < WAKE_RETRIES.length; i++) {
+      await new Promise((r) => setTimeout(r, WAKE_RETRIES[i]));
+      res = await send();
+    }
     if (res.status === 401 && DEV_LOGIN && (await devLogin())) res = await send();
   } catch {
     throw new ApiError(NETWORK_ERROR, "network");
   }
-  if (!res.ok) throw await toError(res);
+  if (!res.ok) {
+    const err = await toError(res);
+    if (err.code === "read_only_demo") notifyReadOnlyDemo();
+    throw err;
+  }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }

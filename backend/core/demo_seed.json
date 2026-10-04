@@ -1,0 +1,1024 @@
+{
+ "today": "2026-10-01",
+ "timeZone": "Asia/Kolkata",
+ "seed": {
+  "user": {
+   "id": "u_rasmitha",
+   "name": "Rasmitha",
+   "email": "rasmitha@example.com",
+   "plan": "Free",
+   "interests": [
+    "frontend development",
+    "software engineering",
+    "hackathons"
+   ],
+   "skills": [
+    "JavaScript",
+    "TypeScript",
+    "React",
+    "HTML",
+    "CSS",
+    "Data structures",
+    "Algorithms",
+    "Problem solving"
+   ],
+   "experienceLevel": "Undergraduate student"
+  },
+  "opportunities": [
+   {
+    "id": "opp_google_summer_2027",
+    "title": "Google Summer Internship 2027",
+    "organization": "Google",
+    "type": "Internship",
+    "deadline": "2026-12-14",
+    "priority": "High",
+    "matchScore": 92,
+    "discoveredAt": "2026-09-13T04:54:00.000Z",
+    "summary": "A 12-week summer internship for students pursuing a Bachelor's or Master's degree, working on real-world engineering projects.",
+    "location": null,
+    "duration": "12 weeks",
+    "eligibility": "Students pursuing a Bachelor's or Master's degree",
+    "skills": [
+     "Software engineering",
+     "Data structures",
+     "Algorithms"
+    ],
+    "requirements": [
+     "Currently pursuing a Bachelor's or Master's degree"
+    ],
+    "applicationLink": "https://www.google.com/about/careers/applications/",
+    "sourceEmailIds": [
+     "em_google_careers",
+     "em_google_tips"
+    ],
+    "saved": true,
+    "application": {
+     "status": "in_progress",
+     "startedAt": "2026-09-19T12:40:00.000Z",
+     "appliedAt": null
+    },
+    "benefits": [],
+    "matchReasons": {
+     "skills": "met",
+     "interests": "met",
+     "experience": "met",
+     "matchedSkills": [
+      "Data structures",
+      "Algorithms"
+     ],
+     "matchedInterests": [
+      "software engineering"
+     ]
+    },
+    "reminderSet": false,
+    "dismissed": false,
+    "fee": null,
+    "scoreBreakdown": null
+   },
+   {
+    "id": "opp_microsoft_explore",
+    "title": "Microsoft Explore",
+    "organization": "Microsoft",
+    "type": "Internship",
+    "deadline": "2026-10-04",
+    "priority": "High",
+    "matchScore": 90,
+    "discoveredAt": "2026-09-09T03:32:00.000Z",
+    "summary": "A summer internship program for first- and second-year undergraduate students.",
+    "location": null,
+    "duration": null,
+    "eligibility": "First- and second-year undergraduate students",
+    "skills": [
+     "Programming fundamentals"
+    ],
+    "applicationLink": "https://careers.microsoft.com/",
+    "sourceEmailIds": [
+     "em_microsoft_explore",
+     "em_microsoft_reminder",
+     "em_microsoft_session"
+    ],
+    "saved": true,
+    "application": {
+     "status": "in_progress",
+     "startedAt": "2026-09-17T15:15:00.000Z",
+     "appliedAt": null
+    },
+    "requirements": [],
+    "benefits": [],
+    "matchReasons": {
+     "skills": "unmet",
+     "interests": "met",
+     "experience": "met",
+     "matchedSkills": [],
+     "matchedInterests": [
+      "software engineering"
+     ]
+    },
+    "reminderSet": true,
+    "dismissed": false,
+    "fee": null,
+    "scoreBreakdown": null
+   },
+   {
+    "id": "opp_tcs_codevita_2026",
+    "title": "TCS CodeVita 2026",
+    "organization": "TCS",
+    "type": "Hackathon",
+    "deadline": "2026-10-03",
+    "priority": "High",
+    "matchScore": 88,
+    "discoveredAt": "2026-09-26T05:45:00.000Z",
+    "summary": "A global coding contest. Registration closes on 3 October.",
+    "location": "Online",
+    "duration": null,
+    "eligibility": null,
+    "skills": [
+     "Competitive programming",
+     "Problem solving"
+    ],
+    "applicationLink": "https://codevita.tcsapps.com/",
+    "sourceEmailIds": [
+     "em_tcs_codevita",
+     "em_tcs_reminder"
+    ],
+    "saved": true,
+    "application": {
+     "status": "in_progress",
+     "startedAt": "2026-09-27T14:00:00.000Z",
+     "appliedAt": null
+    },
+    "requirements": [],
+    "benefits": [],
+    "matchReasons": {
+     "skills": "met",
+     "interests": "met",
+     "experience": "unknown",
+     "matchedSkills": [
+      "Problem solving"
+     ],
+     "matchedInterests": [
+      "hackathons"
+     ]
+    },
+    "reminderSet": true,
+    "dismissed": false,
+    "fee": null,
+    "scoreBreakdown": null
+   },
+   {
+    "id": "opp_amazon_frontend",
+    "title": "Frontend Developer",
+    "organization": "Amazon",
+    "type": "Job",
+    "deadline": "2026-10-08",
+    "priority": "Medium",
+    "matchScore": 86,
+    "discoveredAt": "2026-09-30T11:10:00.000Z",
+    "summary": "A frontend developer role building customer-facing web experiences.",
+    "location": null,
+    "duration": null,
+    "eligibility": null,
+    "skills": [
+     "React",
+     "TypeScript",
+     "CSS"
+    ],
+    "applicationLink": "https://www.amazon.jobs/",
+    "sourceEmailIds": [
+     "em_amazon_jobs"
+    ],
+    "saved": true,
+    "application": null,
+    "requirements": [],
+    "benefits": [],
+    "matchReasons": {
+     "skills": "met",
+     "interests": "met",
+     "experience": "unknown",
+     "matchedSkills": [
+      "TypeScript",
+      "React",
+      "CSS"
+     ],
+     "matchedInterests": [
+      "frontend development",
+      "software engineering"
+     ]
+    },
+    "reminderSet": false,
+    "dismissed": false,
+    "fee": null,
+    "scoreBreakdown": null
+   },
+   {
+    "id": "opp_wtm_scholarship",
+    "title": "Women Techmakers Scholarship",
+    "organization": "Google",
+    "type": "Scholarship",
+    "deadline": "2026-10-07",
+    "priority": "Medium",
+    "matchScore": 84,
+    "discoveredAt": "2026-09-11T03:25:00.000Z",
+    "summary": "A scholarship for women studying computer science and related fields.",
+    "location": null,
+    "duration": null,
+    "eligibility": "Women studying computer science or a related field",
+    "skills": [],
+    "applicationLink": "https://example.com/women-techmakers-scholarship",
+    "sourceEmailIds": [
+     "em_wtm",
+     "em_wtm_received"
+    ],
+    "saved": true,
+    "application": {
+     "status": "applied",
+     "startedAt": "2026-09-24T11:30:00.000Z",
+     "appliedAt": "2026-09-29T15:42:00.000Z"
+    },
+    "requirements": [],
+    "benefits": [],
+    "matchReasons": {
+     "skills": "unknown",
+     "interests": "unmet",
+     "experience": "unknown",
+     "matchedSkills": [],
+     "matchedInterests": []
+    },
+    "reminderSet": false,
+    "dismissed": false,
+    "fee": null,
+    "scoreBreakdown": null
+   },
+   {
+    "id": "opp_atlassian_swe_intern",
+    "title": "Software Engineering Intern",
+    "organization": "Atlassian",
+    "type": "Internship",
+    "deadline": "2026-10-29",
+    "priority": "Medium",
+    "matchScore": 81,
+    "discoveredAt": "2026-09-04T07:00:00.000Z",
+    "summary": "A software engineering internship on product teams.",
+    "location": "Bengaluru",
+    "duration": null,
+    "eligibility": "Final-year undergraduate students",
+    "skills": [
+     "Java",
+     "JavaScript"
+    ],
+    "requirements": [
+     "Final-year undergraduate student"
+    ],
+    "applicationLink": "https://www.atlassian.com/company/careers",
+    "sourceEmailIds": [
+     "em_atlassian",
+     "em_atlassian_interview"
+    ],
+    "saved": true,
+    "application": {
+     "status": "applied",
+     "startedAt": "2026-09-07T04:30:00.000Z",
+     "appliedAt": "2026-09-14T16:35:00.000Z"
+    },
+    "benefits": [],
+    "matchReasons": {
+     "skills": "met",
+     "interests": "met",
+     "experience": "met",
+     "matchedSkills": [
+      "JavaScript"
+     ],
+     "matchedInterests": [
+      "software engineering"
+     ]
+    },
+    "reminderSet": false,
+    "dismissed": false,
+    "fee": null,
+    "scoreBreakdown": null
+   },
+   {
+    "id": "opp_hacksprint_2026",
+    "title": "HackSprint 2026",
+    "organization": "CodeCircle",
+    "type": "Hackathon",
+    "deadline": "2026-10-17",
+    "priority": "Medium",
+    "matchScore": 76,
+    "discoveredAt": "2026-09-02T08:50:00.000Z",
+    "summary": "A 36-hour student hackathon with web and AI tracks.",
+    "location": null,
+    "duration": "36 hours",
+    "eligibility": "College students, teams of 2–4",
+    "skills": [
+     "Web development",
+     "AI"
+    ],
+    "requirements": [
+     "Teams of 2–4 college students"
+    ],
+    "benefits": [
+     "Prizes for the top three teams",
+     "Mentorship from industry engineers"
+    ],
+    "applicationLink": "https://example.com/hacksprint-2026",
+    "sourceEmailIds": [
+     "em_hacksprint",
+     "em_hacksprint_teams"
+    ],
+    "saved": true,
+    "application": {
+     "status": "applied",
+     "startedAt": "2026-09-03T05:30:00.000Z",
+     "appliedAt": "2026-09-08T14:10:00.000Z"
+    },
+    "matchReasons": {
+     "skills": "unmet",
+     "interests": "met",
+     "experience": "met",
+     "matchedSkills": [],
+     "matchedInterests": [
+      "frontend development",
+      "hackathons"
+     ]
+    },
+    "reminderSet": false,
+    "dismissed": false,
+    "fee": null,
+    "scoreBreakdown": null
+   },
+   {
+    "id": "opp_swiggy_ui_engineer",
+    "title": "UI Engineer",
+    "organization": "Swiggy",
+    "type": "Job",
+    "deadline": "2026-10-15",
+    "priority": "Medium",
+    "matchScore": 80,
+    "discoveredAt": "2026-08-31T04:15:00.000Z",
+    "summary": "A UI engineering role for recent graduates.",
+    "location": "Bengaluru",
+    "duration": null,
+    "eligibility": "2026 graduates",
+    "skills": [
+     "React",
+     "JavaScript",
+     "HTML",
+     "CSS"
+    ],
+    "applicationLink": "https://careers.swiggy.com/",
+    "sourceEmailIds": [
+     "em_swiggy",
+     "em_swiggy_interview"
+    ],
+    "saved": false,
+    "application": {
+     "status": "applied",
+     "startedAt": "2026-09-05T10:30:00.000Z",
+     "appliedAt": "2026-09-09T12:55:00.000Z"
+    },
+    "requirements": [],
+    "benefits": [],
+    "matchReasons": {
+     "skills": "met",
+     "interests": "met",
+     "experience": "unknown",
+     "matchedSkills": [
+      "JavaScript",
+      "React",
+      "HTML",
+      "CSS"
+     ],
+     "matchedInterests": [
+      "frontend development",
+      "software engineering"
+     ]
+    },
+    "reminderSet": false,
+    "dismissed": false,
+    "fee": null,
+    "scoreBreakdown": null
+   },
+   {
+    "id": "opp_razorpay_fe_intern",
+    "title": "Frontend Engineering Intern",
+    "organization": "Razorpay",
+    "type": "Internship",
+    "deadline": "2026-09-24",
+    "priority": "Medium",
+    "matchScore": 79,
+    "discoveredAt": "2026-08-27T07:40:00.000Z",
+    "summary": "A six-month frontend engineering internship.",
+    "location": null,
+    "duration": "6 months",
+    "eligibility": null,
+    "skills": [
+     "React",
+     "TypeScript"
+    ],
+    "applicationLink": "https://razorpay.com/careers/",
+    "sourceEmailIds": [
+     "em_razorpay",
+     "em_razorpay_update"
+    ],
+    "saved": false,
+    "application": {
+     "status": "applied",
+     "startedAt": "2026-08-29T05:00:00.000Z",
+     "appliedAt": "2026-09-01T06:45:00.000Z"
+    },
+    "requirements": [],
+    "benefits": [],
+    "matchReasons": {
+     "skills": "met",
+     "interests": "met",
+     "experience": "unknown",
+     "matchedSkills": [
+      "TypeScript",
+      "React"
+     ],
+     "matchedInterests": [
+      "frontend development",
+      "software engineering"
+     ]
+    },
+    "reminderSet": false,
+    "dismissed": false,
+    "fee": null,
+    "scoreBreakdown": null
+   },
+   {
+    "id": "opp_zoho_web_dev",
+    "title": "Junior Web Developer",
+    "organization": "Zoho",
+    "type": "Job",
+    "deadline": "2026-11-11",
+    "priority": "Low",
+    "matchScore": 72,
+    "discoveredAt": "2026-08-24T04:35:00.000Z",
+    "summary": "An entry-level web developer role.",
+    "location": "Chennai",
+    "duration": null,
+    "eligibility": null,
+    "skills": [
+     "JavaScript",
+     "HTML",
+     "CSS"
+    ],
+    "applicationLink": null,
+    "sourceEmailIds": [
+     "em_zoho",
+     "em_zoho_review"
+    ],
+    "saved": false,
+    "application": {
+     "status": "applied",
+     "startedAt": "2026-08-26T09:30:00.000Z",
+     "appliedAt": "2026-08-31T06:20:00.000Z"
+    },
+    "requirements": [],
+    "benefits": [],
+    "matchReasons": {
+     "skills": "met",
+     "interests": "met",
+     "experience": "unknown",
+     "matchedSkills": [
+      "JavaScript",
+      "HTML",
+      "CSS"
+     ],
+     "matchedInterests": [
+      "frontend development",
+      "software engineering"
+     ]
+    },
+    "reminderSet": false,
+    "dismissed": false,
+    "fee": null,
+    "scoreBreakdown": null
+   },
+   {
+    "id": "opp_hackerearth_sprint",
+    "title": "Global Code Sprint 2026",
+    "organization": "HackerEarth",
+    "type": "Hackathon",
+    "deadline": "2026-11-29",
+    "priority": "Low",
+    "matchScore": 70,
+    "discoveredAt": "2026-08-19T12:05:00.000Z",
+    "summary": "An online coding sprint.",
+    "location": "Online",
+    "duration": null,
+    "eligibility": null,
+    "skills": [
+     "Problem solving"
+    ],
+    "applicationLink": "https://www.hackerearth.com/challenges/",
+    "sourceEmailIds": [
+     "em_hackerearth",
+     "em_hackerearth_practice"
+    ],
+    "saved": false,
+    "application": {
+     "status": "applied",
+     "startedAt": "2026-08-21T03:30:00.000Z",
+     "appliedAt": "2026-08-28T14:50:00.000Z"
+    },
+    "requirements": [],
+    "benefits": [],
+    "matchReasons": {
+     "skills": "met",
+     "interests": "met",
+     "experience": "unknown",
+     "matchedSkills": [
+      "Problem solving"
+     ],
+     "matchedInterests": [
+      "hackathons"
+     ]
+    },
+    "reminderSet": false,
+    "dismissed": false,
+    "fee": null,
+    "scoreBreakdown": null
+   },
+   {
+    "id": "opp_bright_futures_merit",
+    "title": "STEM Merit Scholarship 2026",
+    "organization": "Bright Futures Foundation",
+    "type": "Scholarship",
+    "deadline": "2026-09-19",
+    "priority": "Low",
+    "matchScore": 64,
+    "discoveredAt": "2026-08-17T03:00:00.000Z",
+    "summary": "A merit-based scholarship for undergraduate STEM students.",
+    "location": null,
+    "duration": null,
+    "eligibility": "Undergraduate STEM students",
+    "skills": [],
+    "benefits": [
+     "A one-time tuition award"
+    ],
+    "applicationLink": null,
+    "sourceEmailIds": [
+     "em_bright_futures"
+    ],
+    "saved": false,
+    "application": {
+     "status": "applied",
+     "startedAt": "2026-08-23T12:30:00.000Z",
+     "appliedAt": "2026-08-29T05:10:00.000Z"
+    },
+    "requirements": [],
+    "matchReasons": {
+     "skills": "unknown",
+     "interests": "unmet",
+     "experience": "met",
+     "matchedSkills": [],
+     "matchedInterests": []
+    },
+    "reminderSet": false,
+    "dismissed": false,
+    "fee": null,
+    "scoreBreakdown": null
+   }
+  ],
+  "emails": [
+   {
+    "id": "em_wtm_received",
+    "sender": "Women Techmakers",
+    "senderEmail": "wtm@google.example",
+    "subject": "We've received your scholarship application",
+    "snippet": "Thanks for applying to the Women Techmakers Scholarship. We'll be in touch after the review.",
+    "receivedAt": "2026-09-29T16:00:00.000Z",
+    "category": "Scholarship",
+    "relevance": 84,
+    "read": true,
+    "opportunityId": "opp_wtm_scholarship",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_hacksprint_teams",
+    "sender": "CodeCircle",
+    "senderEmail": "team@codecircle.example",
+    "subject": "HackSprint 2026: team registrations are filling up",
+    "snippet": "Teams can register until 17 October. Make sure every member has confirmed their spot.",
+    "receivedAt": "2026-09-28T13:10:00.000Z",
+    "category": "Hackathon",
+    "relevance": 76,
+    "read": true,
+    "opportunityId": "opp_hacksprint_2026",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_google_tips",
+    "sender": "Google Careers",
+    "senderEmail": "careers@google.example",
+    "subject": "Preparing your Google Summer Internship 2027 application",
+    "snippet": "A reminder that applications for the 2027 summer internship are open until 14 December.",
+    "receivedAt": "2026-09-25T05:35:00.000Z",
+    "category": "Internship",
+    "relevance": 92,
+    "read": true,
+    "opportunityId": "opp_google_summer_2027",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_zoho_review",
+    "sender": "Zoho Careers",
+    "senderEmail": "careers@zoho.example",
+    "subject": "Your application is under review",
+    "snippet": "Thanks for applying for the Junior Web Developer role. Our team is reviewing your application.",
+    "receivedAt": "2026-09-22T09:50:00.000Z",
+    "category": "Job",
+    "relevance": 72,
+    "read": true,
+    "opportunityId": "opp_zoho_web_dev",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_razorpay_update",
+    "sender": "Razorpay Campus",
+    "senderEmail": "campus@razorpay.example",
+    "subject": "Update on your internship application",
+    "snippet": "Applications for the frontend engineering internship have closed. We'll share next steps soon.",
+    "receivedAt": "2026-09-19T06:30:00.000Z",
+    "category": "Internship",
+    "relevance": 79,
+    "read": true,
+    "opportunityId": "opp_razorpay_fe_intern",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_hackerearth_practice",
+    "sender": "HackerEarth",
+    "senderEmail": "events@hackerearth.example",
+    "subject": "Global Code Sprint 2026: practice round is open",
+    "snippet": "Warm up before the sprint. Registrations close 29 November.",
+    "receivedAt": "2026-09-16T11:30:00.000Z",
+    "category": "Hackathon",
+    "relevance": 70,
+    "read": true,
+    "opportunityId": "opp_hackerearth_sprint",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_microsoft_session",
+    "sender": "Microsoft University Recruiting",
+    "senderEmail": "recruiting@microsoft.example",
+    "subject": "Microsoft Explore: info session recording",
+    "snippet": "Missed the info session? Watch the recording. Applications close 4 October.",
+    "receivedAt": "2026-09-07T05:00:00.000Z",
+    "category": "Internship",
+    "relevance": 90,
+    "read": true,
+    "opportunityId": "opp_microsoft_explore",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_atlassian_interview",
+    "sender": "Atlassian Careers",
+    "senderEmail": "careers@atlassian.example",
+    "subject": "Interview invitation: Software Engineering Intern",
+    "snippet": "Your technical interview is scheduled for 6 October at 2:00 PM (45 minutes, video call).",
+    "receivedAt": "2026-09-28T04:45:00.000Z",
+    "category": "Internship",
+    "relevance": 81,
+    "read": false,
+    "opportunityId": "opp_atlassian_swe_intern",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_swiggy_interview",
+    "sender": "Swiggy Careers",
+    "senderEmail": "careers@swiggy.example",
+    "subject": "Next steps: UI Engineer interview",
+    "snippet": "We'd like to invite you to an interview on 10 October at 11:00 AM.",
+    "receivedAt": "2026-09-27T10:50:00.000Z",
+    "category": "Job",
+    "relevance": 80,
+    "read": true,
+    "opportunityId": "opp_swiggy_ui_engineer",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_microsoft_reminder",
+    "sender": "Microsoft University Recruiting",
+    "senderEmail": "recruiting@microsoft.example",
+    "subject": "Reminder: Microsoft Explore applications close 4 October",
+    "snippet": "This is a reminder that applications for Microsoft Explore close on 4 October.",
+    "receivedAt": "2026-09-30T02:40:00.000Z",
+    "category": "Internship",
+    "relevance": 90,
+    "read": false,
+    "opportunityId": "opp_microsoft_explore",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_amazon_jobs",
+    "sender": "Amazon Jobs",
+    "senderEmail": "jobs@amazon.example",
+    "subject": "New role for you: Frontend Developer",
+    "snippet": "A Frontend Developer role matching your profile is open. Apply by 8 October.",
+    "receivedAt": "2026-09-30T11:10:00.000Z",
+    "category": "Job",
+    "relevance": 86,
+    "read": false,
+    "opportunityId": "opp_amazon_frontend",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_tcs_reminder",
+    "sender": "TCS CodeVita",
+    "senderEmail": "codevita@tcs.example",
+    "subject": "Last few days to register for CodeVita 2026",
+    "snippet": "Registration for TCS CodeVita 2026 closes on 3 October.",
+    "receivedAt": "2026-09-30T04:30:00.000Z",
+    "category": "Hackathon",
+    "relevance": 88,
+    "read": false,
+    "opportunityId": "opp_tcs_codevita_2026",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_frontend_workshop",
+    "sender": "GDG Campus",
+    "senderEmail": "events@gdg-campus.example",
+    "subject": "Invitation: Frontend Performance Workshop",
+    "snippet": "Join our hands-on workshop on web performance. Seats are limited.",
+    "receivedAt": "2026-09-29T12:35:00.000Z",
+    "category": "Event",
+    "relevance": 74,
+    "read": false,
+    "opportunityId": null,
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_college_exams",
+    "sender": "Office of the Registrar",
+    "senderEmail": "registrar@college.example",
+    "subject": "Mid-semester examination schedule",
+    "snippet": "The mid-semester examination schedule has been published on the student portal.",
+    "receivedAt": "2026-09-28T06:30:00.000Z",
+    "category": "College",
+    "relevance": 12,
+    "read": true,
+    "opportunityId": null,
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_tcs_codevita",
+    "sender": "TCS CodeVita",
+    "senderEmail": "codevita@tcs.example",
+    "subject": "TCS CodeVita 2026 registration is open",
+    "snippet": "Registrations for CodeVita 2026 are now open. Register before 3 October.",
+    "receivedAt": "2026-09-26T05:45:00.000Z",
+    "category": "Hackathon",
+    "relevance": 88,
+    "read": true,
+    "opportunityId": "opp_tcs_codevita_2026",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_newsletter",
+    "sender": "Frontend Weekly",
+    "senderEmail": "hello@frontendweekly.example",
+    "subject": "Issue #212: CSS anchor positioning, React 19 tips",
+    "snippet": "This week: anchor positioning in practice, server components patterns and more.",
+    "receivedAt": "2026-09-25T02:00:00.000Z",
+    "category": "Newsletter",
+    "relevance": 35,
+    "read": true,
+    "opportunityId": null,
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_promo",
+    "sender": "SkillUp Academy",
+    "senderEmail": "offers@skillup.example",
+    "subject": "40% off all courses this weekend",
+    "snippet": "Upgrade your skills with 40% off every course. Offer ends Sunday.",
+    "receivedAt": "2026-09-24T03:30:00.000Z",
+    "category": "Promotion",
+    "relevance": 5,
+    "read": true,
+    "opportunityId": null,
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_google_careers",
+    "sender": "Google Careers",
+    "senderEmail": "careers@google.example",
+    "subject": "Google Summer Internship 2027 — Apply Now!",
+    "snippet": "Applications for the 12-week 2027 summer internship are open until 14 December.",
+    "receivedAt": "2026-09-13T04:54:00.000Z",
+    "category": "Internship",
+    "relevance": 92,
+    "read": true,
+    "opportunityId": "opp_google_summer_2027",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_wtm",
+    "sender": "Women Techmakers",
+    "senderEmail": "wtm@google.example",
+    "subject": "Women Techmakers Scholarship 2026",
+    "snippet": "Applications for the Women Techmakers Scholarship close on 7 October.",
+    "receivedAt": "2026-09-11T03:25:00.000Z",
+    "category": "Scholarship",
+    "relevance": 84,
+    "read": true,
+    "opportunityId": "opp_wtm_scholarship",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_microsoft_explore",
+    "sender": "Microsoft University Recruiting",
+    "senderEmail": "recruiting@microsoft.example",
+    "subject": "Microsoft Explore: applications now open",
+    "snippet": "Microsoft Explore is open for first- and second-year undergraduate students.",
+    "receivedAt": "2026-09-09T03:32:00.000Z",
+    "category": "Internship",
+    "relevance": 90,
+    "read": true,
+    "opportunityId": "opp_microsoft_explore",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_atlassian",
+    "sender": "Atlassian Careers",
+    "senderEmail": "careers@atlassian.example",
+    "subject": "Software Engineering Intern — Bengaluru",
+    "snippet": "We're hiring final-year students as software engineering interns in Bengaluru. Apply by 29 October.",
+    "receivedAt": "2026-09-04T07:00:00.000Z",
+    "category": "Internship",
+    "relevance": 81,
+    "read": true,
+    "opportunityId": "opp_atlassian_swe_intern",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_hacksprint",
+    "sender": "CodeCircle",
+    "senderEmail": "team@codecircle.example",
+    "subject": "HackSprint 2026: 36 hours, web + AI tracks",
+    "snippet": "Form a team of 2–4 and register by 17 October. Prizes for the top three teams and mentorship from industry engineers.",
+    "receivedAt": "2026-09-02T08:50:00.000Z",
+    "category": "Hackathon",
+    "relevance": 76,
+    "read": true,
+    "opportunityId": "opp_hacksprint_2026",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_swiggy",
+    "sender": "Swiggy Careers",
+    "senderEmail": "careers@swiggy.example",
+    "subject": "UI Engineer (2026 graduates)",
+    "snippet": "We're looking for UI engineers who love React. Applications close 15 October.",
+    "receivedAt": "2026-08-31T04:15:00.000Z",
+    "category": "Job",
+    "relevance": 80,
+    "read": true,
+    "opportunityId": "opp_swiggy_ui_engineer",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_razorpay",
+    "sender": "Razorpay Campus",
+    "senderEmail": "campus@razorpay.example",
+    "subject": "Frontend Engineering Internship (6 months)",
+    "snippet": "Apply for our 6-month frontend internship before 24 September.",
+    "receivedAt": "2026-08-27T07:40:00.000Z",
+    "category": "Internship",
+    "relevance": 79,
+    "read": true,
+    "opportunityId": "opp_razorpay_fe_intern",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_zoho",
+    "sender": "Zoho Careers",
+    "senderEmail": "careers@zoho.example",
+    "subject": "Junior Web Developer — Chennai",
+    "snippet": "Entry-level web developer openings in Chennai. Apply by 11 November.",
+    "receivedAt": "2026-08-24T04:35:00.000Z",
+    "category": "Job",
+    "relevance": 72,
+    "read": true,
+    "opportunityId": "opp_zoho_web_dev",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_hackerearth",
+    "sender": "HackerEarth",
+    "senderEmail": "events@hackerearth.example",
+    "subject": "Global Code Sprint 2026 is live",
+    "snippet": "Join the online Global Code Sprint. Registrations close 29 November.",
+    "receivedAt": "2026-08-19T12:05:00.000Z",
+    "category": "Hackathon",
+    "relevance": 70,
+    "read": true,
+    "opportunityId": "opp_hackerearth_sprint",
+    "saved": false,
+    "archived": false
+   },
+   {
+    "id": "em_bright_futures",
+    "sender": "Bright Futures Foundation",
+    "senderEmail": "scholarships@brightfutures.example",
+    "subject": "STEM Merit Scholarship 2026 — applications open",
+    "snippet": "Undergraduate STEM students can apply for a one-time tuition award until 19 September.",
+    "receivedAt": "2026-08-17T03:00:00.000Z",
+    "category": "Scholarship",
+    "relevance": 64,
+    "read": true,
+    "opportunityId": "opp_bright_futures_merit",
+    "saved": false,
+    "archived": false
+   }
+  ],
+  "interviews": [
+   {
+    "id": "iv_atlassian",
+    "opportunityId": "opp_atlassian_swe_intern",
+    "title": "Technical interview — Atlassian",
+    "start": "2026-10-06T08:30:00.000Z",
+    "end": "2026-10-06T09:15:00.000Z",
+    "location": "Video call",
+    "sourceEmailId": "em_atlassian_interview"
+   },
+   {
+    "id": "iv_swiggy",
+    "opportunityId": "opp_swiggy_ui_engineer",
+    "title": "Interview — Swiggy UI Engineer",
+    "start": "2026-10-10T05:30:00.000Z",
+    "end": null,
+    "location": null,
+    "sourceEmailId": "em_swiggy_interview"
+   }
+  ],
+  "preferences": {
+   "notifications": {
+    "email": true,
+    "deadlineReminders": true,
+    "newOpportunities": true,
+    "weeklyDigest": false
+   },
+   "language": "en",
+   "theme": "dark",
+   "minimumMatch": 0,
+   "preferredLocations": [],
+   "ai": {
+    "recommendations": true,
+    "personalization": "balanced",
+    "categories": [
+     "Internship",
+     "Job",
+     "Hackathon",
+     "Scholarship",
+     "Competition",
+     "Fellowship",
+     "Event"
+    ]
+   }
+  },
+  "gmail": {
+   "email": "rasmitha@example.com",
+   "status": "connected",
+   "connectedAt": "2026-08-16T03:30:00.000Z",
+   "scopes": [
+    "gmail.readonly",
+    "openid",
+    "email",
+    "profile"
+   ],
+   "initialSyncDays": 60
+  }
+ }
+}

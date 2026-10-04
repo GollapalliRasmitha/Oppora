@@ -190,6 +190,11 @@ def google_login(request):
     if auth_rate_limited(request):
         return _to_frontend("/?auth_error=rate_limited")
     next_path = google.safe_next(request.GET.get("next"))
+    if request.GET.get("intent") == "connect" and settings.DEMO_READ_ONLY:
+        from core.demo import is_demo_user
+
+        if is_demo_user(request.user):  # nobody can attach a mailbox to the shared demo account
+            return _to_frontend("/settings?gmail_error=demo_read_only#gmail")
     if not settings.GOOGLE_OAUTH_ENABLED:
         if settings.DEV_LOGIN_ENABLED:
             user = User.objects.filter(email=settings.DEMO_USER_EMAIL, is_active=True).first()
@@ -200,6 +205,28 @@ def google_login(request):
     intent = "connect" if request.GET.get("intent") == "connect" else "signin"
     hint = request.user.email if request.user.is_authenticated else None
     return HttpResponseRedirect(google.begin(request.session, next_path=next_path, intent=intent, login_hint=hint))
+
+
+@require_GET
+def demo_login(request):
+    """
+    GET /api/auth/demo/ — the landing page's "Try the demo": signs the visitor
+    into the shared demo account (sample data, no Gmail). It's read-only in
+    production (core.middleware.DemoReadOnlyMiddleware).
+    """
+    if auth_rate_limited(request):
+        return _to_frontend("/?auth_error=rate_limited")
+    if not settings.PUBLIC_DEMO_ENABLED:
+        return _to_frontend("/?auth_error=demo_unavailable")
+    from core.demo import ensure_demo
+
+    user = ensure_demo()  # (re)loads the sample data for today when needed
+    if not user:
+        return _to_frontend("/?auth_error=demo_unavailable")
+    if request.user.is_authenticated:
+        logout(request)  # a real account's session never carries over into the shared demo
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    return _to_frontend("/dashboard")
 
 
 @require_GET

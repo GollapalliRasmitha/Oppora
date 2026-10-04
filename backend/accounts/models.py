@@ -104,6 +104,8 @@ class GmailConnection(models.Model):
 
     #: The seeded demo account: no real mailbox, so scans are simulated.
     is_demo = models.BooleanField(default=False)
+    #: Demo only: the day the sample data was loaded for (core.demo reloads it when the day changes).
+    demo_seeded_for = models.DateField(null=True, blank=True)
     google_sub = models.CharField(max_length=64, blank=True)
     refresh_token_enc = models.TextField(blank=True)
     access_token_enc = models.TextField(blank=True)

@@ -5,11 +5,13 @@ import { useEffect, useSyncExternalStore } from "react";
 
 /** What went wrong when Google sign-in sent the user back with ?auth_error=<code>. */
 const MESSAGES: Record<string, string> = {
-  access_denied: "Sign-in was cancelled. Oppora needs your permission to read your Gmail.",
+  access_denied:
+    "Sign-in didn't go through. While Oppora is in Google's testing phase, only invited Google accounts can connect Gmail. Try the demo instead, or ask to be added.",
   not_configured: "Google sign-in isn't set up on this server yet. See the README for the Google Cloud steps.",
   email_unverified: "Your Google account's email address isn't verified.",
   expired: "That sign-in took too long. Please try again.",
   rate_limited: "Too many sign-in attempts. Please wait a minute and try again.",
+  demo_unavailable: "The demo isn't available right now. Please try again in a few minutes.",
 };
 const FALLBACK = "We couldn't sign you in with Google. Please try again.";
 

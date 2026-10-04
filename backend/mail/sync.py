@@ -8,17 +8,24 @@ pipeline on the queue, at the AI's pace.
   completes and reports how many are waiting. Nothing is processed twice.
 - Auth failures (revoked or expired refresh token) mark the connection
   "Needs reconnect".
+- Time-boxed batches (SYNC_BATCH_SECONDS, or the scheduler's slice): a run
+  stops between emails when its time is up. Every email's result is saved as
+  soon as it's processed, so a run can be cut off at any moment (Render's free
+  tier sleeps when idle) and the next Scan or scheduler call continues exactly
+  where it stopped.
 
 The seeded demo account has no mailbox; its scans are simulated.
 """
 
 import logging
+import time
 from datetime import timedelta
 
 from django.conf import settings
 from django.db import transaction
 
 from accounts.models import GmailConnection
+from ai import client as ai_client
 from ai.providers.base import DailyLimitReached, NotConfigured, TransientAIError
 from core import clock, jobs
 from core.api import GmailAccessError
@@ -122,6 +129,22 @@ def start_sync(user, demo_batch: int = 0) -> GmailConnection:
     return g
 
 
+def run_scheduled(user_id, seconds: float) -> bool:
+    """
+    A scheduler run for one account (core.scheduler): new mail plus a
+    time-boxed slice of its queue, shown in the UI like a scan. False when a
+    sync is already running for this account.
+    """
+    now = clock.now()
+    with transaction.atomic():
+        g = GmailConnection.objects.select_for_update().get(user_id=user_id)
+        if g.status != GmailConnection.Status.CONNECTED or g.is_demo or _running(g, now):
+            return False
+        g.sync_phase, g.sync_started_at, g.sync_emails_in_batch = GmailConnection.Phase.SCANNING, now, 0
+        g.save(update_fields=["sync_phase", "sync_started_at", "sync_emails_in_batch"])
+    return run_sync(user_id, seconds)
+
+
 def _save(g: GmailConnection, **fields) -> None:
     for k, v in fields.items():
         setattr(g, k, v)
@@ -145,13 +168,19 @@ def _queue_new_ids(user, client: GmailClient, g: GmailConnection) -> str:
     return head
 
 
-def process_queue(user, client: GmailClient, g: GmailConnection) -> int:
-    """Runs the pipeline over queued messages, oldest first. Returns how many are still queued."""
+def process_queue(user, client: GmailClient, g: GmailConnection, deadline: float | None = None) -> int:
+    """
+    Runs the pipeline over queued messages, oldest first, until the queue is
+    empty or `deadline` (time.monotonic()) passes. Returns how many are still queued.
+    """
     queued = ProcessedMessage.objects.filter(user=user, status=ProcessedMessage.Status.QUEUED).order_by("created_at", "id")
     remaining = queued.count()
     _save(g, sync_phase=GmailConnection.Phase.ANALYZING, sync_emails_in_batch=remaining)
     transient = 0
     for pm in list(queued):
+        if deadline is not None and time.monotonic() >= deadline:
+            log.info("Batch time is up; %s emails stay queued for the next run", remaining)
+            break
         try:
             out = process_message(user, client, pm.gmail_message_id)
         except (DailyLimitReached, NotConfigured) as e:
@@ -186,26 +215,36 @@ def process_queue(user, client: GmailClient, g: GmailConnection) -> int:
     return ProcessedMessage.objects.filter(user=user, status=ProcessedMessage.Status.QUEUED).count()
 
 
-def run_sync(user_id) -> None:
-    """The background job behind POST /api/sync/ (one at a time per user, across all processes)."""
+def run_sync(user_id, seconds: float | None = None) -> bool:
+    """
+    The background job behind POST /api/sync/ (one at a time per user, across
+    all processes). `seconds` time-boxes the run (default SYNC_BATCH_SECONDS;
+    0/None = until the queue is empty). Returns whether it ran (False: one was
+    already running).
+    """
     key = _lock_key(user_id)
     if not locks().acquire(key):
-        return  # already running (another worker, or a duplicate message)
+        return False  # already running (another worker, or a duplicate message)
+    if seconds is None:
+        seconds = settings.SYNC_BATCH_SECONDS
+    deadline = time.monotonic() + seconds if seconds else None
     try:
-        _run_sync(user_id)
+        with ai_client.for_user(user_id):  # AI requests count against this account's fair share
+            _run_sync(user_id, deadline)
     finally:
         locks().release(key)
+    return True
 
 
-def _run_sync(user_id) -> None:
+def _run_sync(user_id, deadline: float | None = None) -> None:
     g = GmailConnection.objects.select_related("user").get(user_id=user_id)
     user = g.user
     try:
         client = GmailClient.for_connection(g)
         head = _queue_new_ids(user, client, g)
         _save(g, history_id=head)
-        left = process_queue(user, client, g)
-        if not left:
+        left = process_queue(user, client, g, deadline)
+        if not left and (deadline is None or time.monotonic() < deadline):
             try:  # stored opportunities not yet checked for a fee (cheap: rules first)
                 recheck_fees(user, client)
             except (DailyLimitReached, NotConfigured, TransientAIError):

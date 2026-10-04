@@ -1,6 +1,8 @@
 import { cn } from "@/lib/utils";
 
 export const SIGN_IN_URL = "/api/auth/google/login?next=/dashboard";
+/** "Try the demo": the shared, read-only sample account (no Gmail needed). */
+export const DEMO_URL = "/api/auth/demo";
 
 /**
  * "Sign in with Google" following Google's branding guidelines: light theme

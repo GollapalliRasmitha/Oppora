@@ -1,0 +1,42 @@
+# Hourly scheduler for the free deployment (Render has no always-on worker on the free plan).
+# It asks the API to continue queued emails, check for new mail, send deadline reminders, the
+# daily briefing and the weekly digest, and refresh the demo. The API answers at once and works
+# in the background, so each run takes well under a minute (~730 of the 2,000 free minutes a
+# month for a private repo).
+#
+# Setup (GitHub → repo → Settings → Secrets and variables → Actions):
+#   Variable  OPPORA_BACKEND_URL   https://<your-service>.onrender.com   (not secret)
+#   Secret    OPPORA_CRON_SECRET   the same CRON_SECRET value as in Render
+name: Oppora scheduler
+
+on:
+  schedule:
+    - cron: "17 * * * *" # every hour at :17 UTC (GitHub may start it a few minutes late; that's fine)
+  workflow_dispatch: # "Run workflow" button for a manual run
+
+permissions: {} # the job needs no access to the repository
+
+concurrency:
+  group: oppora-scheduler
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call the scheduler endpoint
+        env:
+          BACKEND_URL: ${{ vars.OPPORA_BACKEND_URL }}
+          CRON_SECRET: ${{ secrets.OPPORA_CRON_SECRET }}
+        run: |
+          if [ -z "$BACKEND_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::notice::Not set up yet: add the OPPORA_BACKEND_URL variable and OPPORA_CRON_SECRET secret."
+            exit 0
+          fi
+          # A sleeping free server takes 30-60 s to wake up; curl waits and retries server errors.
+          curl --fail-with-body --silent --show-error \
+            --retry 4 --retry-delay 20 --max-time 120 \
+            -X POST -H "Authorization: Bearer $CRON_SECRET" \
+            "${BACKEND_URL%/}/api/cron/"
+          echo

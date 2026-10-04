@@ -59,7 +59,7 @@ def deadline_reminders(force_hour: bool = False) -> int:
     made = 0
     for user in User.objects.filter(preferences__notify_deadline_reminders=True):
         now = _local_now(user)
-        if now.hour != settings.REMINDER_LOCAL_HOUR and not force_hour:
+        if now.hour < settings.REMINDER_LOCAL_HOUR and not force_hour:  # at or after: a late or skipped run still sends it (once)
             continue
         today = now.date()
         opps = Opportunity.objects.filter(
@@ -85,7 +85,7 @@ def daily_briefing(force_hour: bool = False) -> int:
     made = 0
     for user in User.objects.filter(preferences__ai_recommendations=True):
         now = _local_now(user)
-        if now.hour != settings.BRIEFING_LOCAL_HOUR and not force_hour:
+        if now.hour < settings.BRIEFING_LOCAL_HOUR and not force_hour:
             continue
         opps = opportunity_dicts(user)
         if not opps:
@@ -127,7 +127,7 @@ def weekly_digest(force_hour: bool = False) -> int:
     made = 0
     for user in User.objects.filter(preferences__notify_weekly_digest=True):
         now = _local_now(user)
-        if not force_hour and (now.weekday() != 0 or now.hour != settings.DIGEST_LOCAL_HOUR):
+        if not force_hour and (now.weekday() != 0 or now.hour < settings.DIGEST_LOCAL_HOUR):
             continue
         made += weekly_digest_notification(user, now)
     return made

@@ -6,8 +6,10 @@ from .models import GmailConnection, User, UserPreference
 
 
 @receiver(post_save, sender=User)
-def create_user_rows(sender, instance, created, **kwargs):
-    """Every user always has preferences and a (disconnected) Gmail connection row."""
+def create_user_rows(sender, instance, created, using="default", **kwargs):
+    """Every user always has preferences and a (disconnected) Gmail connection row (in the same database)."""
     if created:
-        UserPreference.objects.get_or_create(user=instance)
-        GmailConnection.objects.get_or_create(user=instance, defaults={"initial_sync_days": settings.GMAIL_INITIAL_SYNC_DAYS})
+        UserPreference.objects.using(using).get_or_create(user=instance)
+        GmailConnection.objects.using(using).get_or_create(
+            user=instance, defaults={"initial_sync_days": settings.GMAIL_INITIAL_SYNC_DAYS}
+        )

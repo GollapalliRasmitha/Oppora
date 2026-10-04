@@ -18,6 +18,7 @@ router.register("deadlines", opportunities.DeadlineListView, basename="deadline"
 auth = [
     path("csrf/", accounts.CsrfView.as_view()),
     path("dev-login/", accounts.DevLoginView.as_view()),
+    path("demo/", accounts.demo_login),
     path("logout/", accounts.LogoutView.as_view()),
     path("me/", accounts.MeView.as_view()),
     path("me/data/", accounts.MyDataView.as_view()),
@@ -43,6 +44,8 @@ api = [
     path("sync/", core.SyncView.as_view()),
     path("assistant/", core.AssistantView.as_view()),
     path("digest/", core.DigestView.as_view()),
+    path("health/", core.HealthView.as_view()),
+    path("cron/", core.CronView.as_view()),
     path("", include(router.urls)),
     # Unknown /api/* paths get the same JSON error shape as everything else.
     re_path(r"^.*$", lambda request, *a, **k: json_error(404, "not_found", "Not found.")),

@@ -7,19 +7,21 @@ import {
   Lock,
   Mail,
   MousePointerClick,
+  PlayCircle,
   ScanSearch,
   ShieldCheck,
   Sparkles,
   Target,
   WandSparkles,
 } from "lucide-react";
-import { GoogleSignInButton, SIGN_IN_URL } from "@/components/oppora/google-sign-in-button";
+import { DEMO_URL, GoogleSignInButton, SIGN_IN_URL } from "@/components/oppora/google-sign-in-button";
 import { AuthErrorNotice } from "./auth-error-notice";
 import { Logo } from "@/components/oppora/logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { HeroIllustration } from "./hero-illustration";
+import { WakeBackend } from "./wake-backend";
 
 export function Hero() {
   return (
@@ -41,6 +43,11 @@ export function Hero() {
         <AuthErrorNotice />
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <GoogleSignInButton />
+          <Button asChild variant="secondary" size="lg">
+            <a href={DEMO_URL}>
+              <PlayCircle aria-hidden /> Try the demo
+            </a>
+          </Button>
           <Button asChild variant="ghost" size="lg">
             <Link href="#how-it-works">
               See how it works <ArrowRight aria-hidden />
@@ -49,10 +56,15 @@ export function Hero() {
         </div>
         <p className="mt-4 flex items-center gap-2 text-meta font-medium text-ink-3">
           <Lock aria-hidden className="size-3.5" />
-          Secure Gmail connection
+          Secure, read-only Gmail connection
+        </p>
+        <p className="mt-2 max-w-xl text-meta text-ink-3">
+          While Oppora is in Google&apos;s testing phase, Gmail sign-in is invite-only. Not on the list yet? Try the demo: sample
+          data, no sign-in needed.
         </p>
       </div>
       <HeroIllustration />
+      <WakeBackend />
     </section>
   );
 }
@@ -145,11 +157,18 @@ export function FinalCTA() {
           Don&apos;t let your next opportunity get buried in your inbox.
         </h2>
         <p className="relative mt-4 text-lg text-ink-2">Let Oppora find it for you.</p>
-        <Button asChild size="lg" className="relative mt-8">
-          <a href={SIGN_IN_URL}>
-            Get Started <ArrowRight aria-hidden />
-          </a>
-        </Button>
+        <div className="relative mt-8 flex flex-wrap justify-center gap-3">
+          <Button asChild size="lg">
+            <a href={SIGN_IN_URL}>
+              Get Started <ArrowRight aria-hidden />
+            </a>
+          </Button>
+          <Button asChild size="lg" variant="secondary">
+            <a href={DEMO_URL}>
+              <PlayCircle aria-hidden /> Try the demo
+            </a>
+          </Button>
+        </div>
       </div>
     </section>
   );
