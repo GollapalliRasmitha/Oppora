@@ -67,7 +67,11 @@ function InsightsContent({ data, range, onRangeChange }: { data: Insights; range
   const { mostCommonCategory: cat, topCompany: org, bestDay: day, progress: p } = data;
   return (
     <div className="space-y-6">
-      <section aria-label="Highlights" className="grid gap-4 md:grid-cols-3">
+      <section aria-labelledby="highlights-title" className="grid gap-4 md:grid-cols-3">
+        {/* Keeps the heading outline h1 → h2 → h3 for screen-reader heading navigation. */}
+        <h2 id="highlights-title" className="sr-only">
+          Highlights
+        </h2>
         <InsightCard
           icon={Layers}
           label="Most Common Category"

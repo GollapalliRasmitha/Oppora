@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { IntentLink as Link } from "@/components/ui/intent-link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, LogOut, Settings, Sparkles, UserRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
@@ -9,10 +9,11 @@ import { IconButton } from "@/components/ui/icon-button";
 import { SearchBar } from "@/components/ui/search-bar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toast";
+import { useNotifications } from "@/lib/hooks/use-notifications";
 import { Avatar } from "./avatar";
+import { LazyNotificationsPanel } from "./lazy-panels";
 import { LogoMark } from "./logo";
 import { hasOwnSearch } from "./nav";
-import { NotificationsPanel, useNotifications } from "./notifications-panel";
 import { useShell } from "./shell-context";
 
 export function Header() {
@@ -104,7 +105,7 @@ export function Header() {
         <SearchBar value={q} onValueChange={setQ} label="Search opportunities" placeholder="Search opportunities, companies…" />
       </form>
 
-      <NotificationsPanel open={notificationsOpen} onOpenChange={setNotificationsOpen} state={notifications} />
+      <LazyNotificationsPanel open={notificationsOpen} onOpenChange={setNotificationsOpen} state={notifications} />
     </header>
   );
 }

@@ -6,7 +6,7 @@ export function Skeleton({ className, ...props }: ComponentProps<"div">) {
     <div
       aria-hidden
       className={cn(
-        "animate-shimmer rounded-md skeleton-shimmer",
+        "rounded-md skeleton-shimmer",
         className,
       )}
       {...props}

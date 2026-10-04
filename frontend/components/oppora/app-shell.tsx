@@ -4,8 +4,9 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { getPreferences } from "@/lib/api";
 import { applyTheme, storedTheme } from "@/lib/theme";
-import { AIAssistantPanel, FloatingAIButton } from "./ai-assistant";
+import { FloatingAIButton } from "./floating-ai-button";
 import { Header } from "./header";
+import { LazyAIAssistantPanel } from "./lazy-panels";
 import { MobileBottomNav } from "./mobile-bottom-nav";
 import { ShellProvider } from "./shell-context";
 import { Sidebar } from "./sidebar";
@@ -47,7 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <MobileBottomNav />
         <FloatingAIButton />
-        <AIAssistantPanel />
+        <LazyAIAssistantPanel />
       </div>
     </ShellProvider>
   );

@@ -195,6 +195,7 @@
 
   --animate-float: float 6s ease-in-out infinite;
   --animate-pulse-orb: pulse-orb 2.4s ease-in-out infinite;
+  --animate-orb-glow: orb-glow 2.4s ease-in-out infinite;
   --animate-fade-up: fade-up 260ms ease-out both;
   --animate-shimmer: shimmer 1.6s linear infinite;
   --animate-drawer-in: drawer-in 240ms ease-out both;
@@ -203,9 +204,14 @@
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-8px); }
   }
+  /* transform/opacity only: runs on the compositor, no repaint per frame */
   @keyframes pulse-orb {
-    0%, 100% { transform: scale(1); box-shadow: 0 0 22px 2px rgba(124, 58, 237, 0.55); }
-    50% { transform: scale(1.06); box-shadow: 0 0 34px 8px rgba(96, 165, 250, 0.45); }
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+  @keyframes orb-glow {
+    0%, 100% { opacity: 0.55; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.18); }
   }
   @keyframes fade-up {
     from { opacity: 0; transform: translateY(6px); }
@@ -216,8 +222,8 @@
     to { opacity: 1; transform: translateX(0); }
   }
   @keyframes shimmer {
-    from { background-position: -200% 0; }
-    to { background-position: 200% 0; }
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
   }
 }
 
@@ -259,9 +265,20 @@
   );
 }
 
+/* Loading placeholder. The sheen is a pseudo-element moved with transform, so it
+   animates on the compositor instead of repainting every frame. */
 @utility skeleton-shimmer {
-  background-image: linear-gradient(90deg, var(--skeleton-shine) 25%, rgb(167 139 250 / 0.1) 50%, var(--skeleton-shine) 75%);
-  background-size: 200% 100%;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--skeleton-shine);
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(90deg, transparent, rgb(167 139 250 / 0.1), transparent);
+    transform: translateX(-100%);
+    animation: var(--animate-shimmer);
+  }
 }
 
 @utility bg-brand {

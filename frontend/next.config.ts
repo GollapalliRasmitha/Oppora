@@ -41,7 +41,11 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Static art in /public isn't content-hashed, so cache for a day (not "immutable") and revalidate in the background.
+      { source: "/hero-scene.svg", headers: [{ key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }] },
+    ];
   },
   /**
    * The browser only talks to this origin; /api/* is proxied to Django, so the

@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import Link from "next/link";
+import { IntentLink as Link } from "@/components/ui/intent-link";
 import { TrendingUp, TriangleAlert } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Skeleton } from "@/components/ui/skeleton";

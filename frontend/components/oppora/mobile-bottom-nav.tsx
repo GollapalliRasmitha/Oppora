@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { IntentLink as Link } from "@/components/ui/intent-link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MOBILE_NAV, isActive, isFullScreenOnMobile } from "./nav";

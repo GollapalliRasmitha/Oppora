@@ -17,7 +17,8 @@ Personal AI agent that reads a user's Gmail, finds opportunities, extracts deadl
 - Stage 9 — Celery + Redis background jobs (+ real-data feedback: type chips, fees, hide sender): done.
 - Stage 10 — Security hardening: done.
 - Pre-Stage-11 fixes (A skills matching + score breakdown, B weekly digest, C light theme): done.
-- Stage 11 — Performance + accessibility audit (Lighthouse 90+ on Landing and Dashboard, keyboard-only and screen-reader checks).
+- **Stage 11 — Performance + accessibility audit: done** (awaiting "continue").
+- Next: Stage 12 — Final polish (consistency of spacing, type, colour, borders, shadows, gradients, icons, motion, toasts).
 - Profile check (4 Oct 2026): the user's Google account has 6 interests, 1 skill and a level set; the demo account is unchanged. Suggest adding more skills (worth up to 30 match points).
 - Profile skills: keep the demo skills for now (user decision, Stage 3 review).
 
@@ -128,7 +129,7 @@ Brand-gradient end is `#2563EB` (not `#3B82F6`) so white button text keeps ≥4.
 
 ## Components
 
-`components/ui`: Button (primary/secondary/ghost/danger; sm keeps a 44px hit area), IconButton (required `label`), GlassCard, Badge, Input, SearchBar, Tabs, FilterChips, Select (Dropdown/Select), Dropdown (menu), Modal, Drawer (right panel; full-screen on mobile), Toast (`toast.success/error/info`; toasts with an action stay 8s), Skeleton, EmptyState, ErrorState, Swipeable (touch-only swipe actions; always paired with buttons), `useReturnFocus` (Drawer/Modal put focus back on whatever opened them), SwitchRow (labelled switch, whole row is the target), TagInput (Enter/comma adds, × removes), MultiChips (multi-select chips).
+`components/ui`: Button (primary/secondary/ghost/danger; sm keeps a 44px hit area), IconButton (required `label`), GlassCard, Badge, Input, SearchBar, Tabs, FilterChips, Select (Dropdown/Select), Dropdown (menu), Modal, Drawer (right panel; full-screen on mobile), Toast (`toast.success/error/info`; toasts with an action stay 8s), Skeleton, EmptyState, ErrorState, Swipeable (touch-only swipe actions; always paired with buttons), `useReturnFocus` (Drawer/Modal put focus back on whatever opened them), SwitchRow (labelled switch, whole row is the target), IntentLink (drop-in `next/link` that prefetches on hover/focus/touch instead of on scroll-into-view), TagInput (Enter/comma adds, × removes), MultiChips (multi-select chips).
 
 `components/oppora`: Logo/LogoMark, AIOrb, AICard, Monogram (letter tile instead of company logos), PriorityBadge, DeadlineIndicator (stacked | pill, always writes "N days left"), MatchMeter, MatchRing, MatchChecklist (+`matchChecklist()`), OpportunityCard (+Skeleton), SaveToggle (button | compact icon; outline = not saved, filled violet = saved), EmailCard (+Skeleton; `onOpen`, `expanded`, `footer` actions), MonthCalendar (roving-focus grid; dots when narrow, chips ≥672px container; `showHeader`, `colorBy`), DeadlineItem (+Skeleton; Set Reminder · Open · Mark Complete), CalendarEvent (chip | dot | card; colorBy urgency | kind) + CalendarLegend, InsightCard (+Skeleton), RecommendationsOffCard, BarChart (single series, hover/focus tooltip, table view), DonutChart (ordinal, legend with values + %), InfoItem + NotMentioned (the one way to render missing fields), LoadError (the one page-load error: Gmail → Reconnect Gmail, else retry), PageSearch (a page's own search; sticky under the header on mobile), StatCard (+Skeleton; optional `href` makes the card a link), OpportunityRow (+Skeleton, ⋯ menu; container-query layout), StatusBadge, NotificationItem, NotificationsPanel, SyncStatus (+useSyncStatus), Sidebar, Header, MobileBottomNav, FloatingAIButton, AIAssistantPanel, AppShell, ShellProvider/useShell, PageHeader, UpcomingPage, Avatar, GoogleSignInButton.
 
@@ -303,3 +304,48 @@ All seed dates are offsets from today, so these hold on every date (offsets repr
 - The viewport `themeColor` follows the OS.
 - The browser pane's colour-scheme emulation doesn't fire `change` events, so the live System switch is covered by a unit test instead.
 - The hero illustration (night scene in a circular vignette), the Monogram tiles and the Google button are unchanged in light (they sit on their own backgrounds). Inbox swipe backgrounds use `bg-purple/25` / `bg-urgent/25` with `text-ink`. Calendar days outside the month use `text-ink-3` (they previously used ink-3/50, which failed contrast).
+
+## Stage 11 decisions (performance + accessibility audit, 4 Oct 2026)
+
+**Lighthouse** (production build `next start -p 3100`, launch config `frontend-prod`; Dashboard measured with a temporary local session for the demo account, deleted afterwards):
+
+| Page | Mobile (default 4× CPU) | Mobile (calibrated 2× CPU) | Desktop | A11y / Best practices / SEO |
+|---|---|---|---|---|
+| Landing | 83 → **93** | **97** | **99** | 100 / 100 / 100 |
+| Dashboard | 60 → 82 | 75 → **91** | **100** | 100 / 100 / 100 |
+
+- **Why calibrated:** this laptop (i5-1334U, ~44 % busy with the dev stack) scores 813–1039 on Lighthouse's CPU benchmark, and Lighthouse itself warns "the tested device appears to have a slower CPU than Lighthouse expects". Lighthouse's throttling docs put that bracket at 2× to emulate a mid-tier phone (4× assumes a 1500–2000 high-end desktop).
+- **The cap is the framework, not the app:** the near-empty /contact page (94 elements) scores 80 under 4×, because React plus the Next runtime cost ~850 ms of script at 4× here.
+- Re-check on a faster machine or with PageSpeed Insights after deploying.
+
+**What changed**
+- **Intent prefetching** (`components/ui/intent-link.tsx`, the "hover-triggered prefetch" pattern from the Next 16 prefetching guide). Shell nav, stat cards, opportunity rows/cards, deadline items and dashboard links now prefetch on hover, focus or touch start, instead of the 14 viewport prefetches that fired while the dashboard was still loading. This took dashboard TBT from 600 ms to 130 ms (2×).
+- **Lazy panels** (`components/oppora/lazy-panels.tsx`, `next/dynamic`): the assistant and notifications drawers load on first open and stay mounted after that (the conversation persists). Their code is prefetched when the browser is idle, 4 s after load. `FloatingAIButton` moved to its own module and `useNotifications` to `lib/hooks/use-notifications.ts` so the shell no longer pulls in the panels.
+- **Compositor-only animations:**
+  - The AI orb's pulse no longer animates `box-shadow`; it uses scale plus a separate glow layer animating opacity/transform.
+  - Skeleton shimmer is a `::after` moved with `transform` instead of animating `background-position`.
+  - Together these cut dashboard "Rendering" from 1.6 s to 0.07 s (4×).
+- **Hero art as a static file:** `public/hero-scene.svg` (the ~480-shape night scene, generated once from the old procedural SVG; edit the file directly) is rendered with `next/image` (`priority`, `unoptimized`, since it's an SVG). Landing DOM went from 823 to 297 nodes. These are the only images in the app; icons and the logo are inline SVG, and there are no raster images to optimize.
+- The hero text no longer fades in (it's the LCP element and must paint with the HTML).
+- `<Toaster/>` moved from the root layout to the signed-in layout, so the landing page doesn't load sonner.
+
+**Caching**
+- Hashed `/_next/static` assets are served `public, max-age=31536000, immutable` (Next default).
+- `hero-scene.svg` is cached for 1 day with stale-while-revalidate for 7.
+- API responses stay `no-store` (per-user data, Stage 10).
+- No server-side response cache: every API endpoint answers in ~10–30 ms locally.
+
+**Queries**
+- Every main endpoint runs a constant 0–6 SQL queries.
+- `tests/test_performance.py` doubles all opportunities (with deadlines, applications, saves and emails) and asserts that no endpoint's query count grows (no N+1), with a ceiling of 12.
+
+**Accessibility (keyboard + screen reader)**
+- A scripted audit on every page (production build) checked:
+  - every tab stop has an accessible name;
+  - no outline is removed without a replacement;
+  - no nested interactive elements, duplicate ids, unlabelled images or exposed decorative SVGs;
+  - one h1 and no heading-level skips, with one `main`, plus nav/header landmarks, a skip link and `lang`.
+- Fixed: Insights went h1 → h3, so a visually hidden "Highlights" h2 was added. The StatCard ring (drawn by the card via `has-[a:focus-visible]`) was confirmed in the built CSS.
+- **Dialogs** (assistant, notifications, after lazy loading): labelled and described; focus moves inside; the background is hidden from screen readers; Escape closes and focus returns to the trigger. The assistant input is labelled "Ask Oppora AI" and answers are in a live region.
+- Contrast: see the light-theme pass (both themes, 3 widths).
+- Real NVDA/VoiceOver and physical keyboard runs weren't possible here (the browser pane couldn't take synthetic key presses), so they were checked through the accessibility tree and DOM instead. Worth a quick manual pass with NVDA before launch.

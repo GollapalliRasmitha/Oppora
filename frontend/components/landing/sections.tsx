@@ -24,7 +24,8 @@ import { HeroIllustration } from "./hero-illustration";
 export function Hero() {
   return (
     <section className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 pb-16 pt-10 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-6 lg:pb-24 lg:pt-16">
-      <div className="animate-fade-up">
+      {/* No entrance animation here: this is the LCP content, it must paint with the HTML. */}
+      <div>
         <Badge tone="purple" className="mb-5 py-1">
           <Sparkles aria-hidden />
           Your personal AI opportunity agent
