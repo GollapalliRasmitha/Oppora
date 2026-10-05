@@ -5,6 +5,7 @@ services:
     name: oppora-api
     runtime: python
     plan: free
+    region: singapore # same region as the Neon database and Upstash Redis
     rootDir: backend
     # Migrations run at build time, so a sleeping free server wakes up faster.
     buildCommand: pip install -r requirements.txt && python manage.py migrate --noinput
