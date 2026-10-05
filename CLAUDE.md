@@ -19,7 +19,13 @@ Personal AI agent that reads a user's Gmail, finds opportunities, extracts deadl
 - Pre-Stage-11 fixes (A skills matching + score breakdown, B weekly digest, C light theme): done.
 - Stage 11 — Performance + accessibility audit: done.
 - Stage 12 — Final polish + end-to-end journey + README: done. All 12 stages of PROMPT.md are complete.
-- **Free public deployment — Step 1 (code) done**; next: guide the user through Neon → Upstash → Render → Vercel → Google Cloud → GitHub secrets → copy_account (docs/deploy.md), one step at a time.
+- **Free public deployment: live (5 Oct 2026).**
+  - Website: https://oppora-app.vercel.app (Vercel Hobby, root `frontend`, `BACKEND_ORIGIN` only).
+  - API: https://oppora-api.onrender.com (Render free, Singapore, blueprint `render.yaml`).
+  - Database: Neon (Singapore, project "Oppora", branch `production`, direct connection, no pooler). Rate limits: Upstash Redis free (Singapore).
+  - Scheduler: GitHub Actions `Oppora scheduler` (variable `OPPORA_BACKEND_URL`, secret `OPPORA_CRON_SECRET`); manual run #4 succeeded.
+  - Google OAuth client has both redirect URIs (localhost + Vercel); still in Testing with 3 test users.
+  - The owner's account was copied with `copy_account` (59 opportunities, 125 emails, 526 processed messages) and Gmail reconnected on production.
 - Profile check (4 Oct 2026): the user's Google account has 6 interests, 1 skill and a level set; the demo account is unchanged. Suggest adding more skills (worth up to 30 match points).
 - Profile skills: keep the demo skills for now (user decision, Stage 3 review).
 
