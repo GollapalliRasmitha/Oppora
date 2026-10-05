@@ -177,7 +177,7 @@ def test_profile_changes_re_explain_matches(api, ids):
 def test_profile_validation(api):
     assert api.patch("/api/auth/me/", {"name": ""}, format="json").status_code == 400
     assert api.patch("/api/auth/me/", {"skills": ["x" * 61]}, format="json").status_code == 400
-    assert api.patch("/api/auth/me/", {"email": "evil@example.com"}, format="json").json()["email"] == "rasmitha@example.com"
+    assert api.patch("/api/auth/me/", {"email": "evil@example.com"}, format="json").json()["email"] == "alex@example.com"
     assert api.patch("/api/auth/me/", {"experienceLevel": ""}, format="json").json()["experienceLevel"] is None
 
 
@@ -258,7 +258,7 @@ def test_delete_my_data(api, user):
     assert not SavedItem.objects.filter(user=user).exists() and not Opportunity.objects.filter(user=user).exists()
     g = GmailConnection.objects.get(user=user)
     assert (g.status, g.sync_phase, g.last_synced_at) == ("disconnected", "idle", None)
-    assert api.get("/api/auth/me/").json()["name"] == "Rasmitha"  # the account remains
+    assert api.get("/api/auth/me/").json()["name"] == "Alex"  # the account remains
     assert api.get("/api/insights/dashboard/").json()["stats"]["total"]["value"] == 0
 
 

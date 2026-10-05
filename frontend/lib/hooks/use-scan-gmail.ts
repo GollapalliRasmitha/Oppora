@@ -18,7 +18,10 @@ export function useScanGmail() {
       toast.info("Oppora AI is analyzing your Gmail…", { description: "Finding opportunities relevant to you." });
       return status;
     } catch (e) {
-      if (e instanceof ApiError && e.code === "gmail") {
+      if (e instanceof ApiError && e.code === "ai_choice") {
+        // The consent screen comes before any scan: ask first, then it starts the scan.
+        router.push(`/welcome?next=${encodeURIComponent(window.location.pathname)}`);
+      } else if (e instanceof ApiError && e.code === "gmail") {
         toast.error("Couldn't access your Gmail. Reconnect your account to continue.", {
           action: { label: "Reconnect Gmail", onClick: () => router.push("/settings#gmail") },
         });

@@ -45,6 +45,8 @@ def ai_result(i: int) -> dict:
 
 def connected_user(email: str) -> User:
     user = User.objects.create_user(email, name=email.split("@")[0])
+    user.preferences.ai_mode = "ai"
+    user.preferences.save()
     g = user.gmail
     g.status, g.email = GmailConnection.Status.CONNECTED, email
     g.set_tokens(refresh_token="1//r", access_token="ya29.a", expiry=datetime(2030, 1, 1, tzinfo=UTC))
@@ -154,7 +156,7 @@ def test_a_scheduler_run_continues_scans_sends_reminders_and_refreshes_the_demo(
     assert r.status_code == 202  # jobs are eager in tests, so the run already happened
     assert Opportunity.objects.filter(user=real_user).count() == 2
     assert GmailConnection.objects.get(user=real_user).sync_phase == "completed"
-    demo_user = User.objects.get(email="rasmitha@example.com")
+    demo_user = User.objects.get(email="alex@example.com")
     assert Opportunity.objects.filter(user=demo_user).count() == 12
 
     # The day before the deadline, a late run (10:40, not 09:00) still sends the reminder, once.
@@ -187,7 +189,7 @@ def test_try_the_demo_signs_in_to_the_sample_account(db, read_only):
     r = c.get("/api/auth/demo/")
     assert r.status_code == 302 and r["Location"].endswith("/dashboard")
     me = c.get("/api/auth/me/").json()
-    assert me["email"] == "rasmitha@example.com" and me["isDemo"] is True and me["readOnly"] is True
+    assert me["email"] == "alex@example.com" and me["isDemo"] is True and me["readOnly"] is True
     assert c.get("/api/insights/dashboard/").json()["stats"]["total"]["value"] == 12
 
 
@@ -210,8 +212,8 @@ def test_visitors_cannot_change_or_delete_the_demo(db, read_only):
         r = getattr(c, method)(url, body, format="json")
         assert r.status_code == 403, url
         assert r.json()["error"]["code"] == "demo_read_only"
-    assert c.get("/api/auth/me/").json()["name"] == "Rasmitha"
-    assert Opportunity.objects.filter(user__email="rasmitha@example.com").count() == 12
+    assert c.get("/api/auth/me/").json()["name"] == "Alex"
+    assert Opportunity.objects.filter(user__email="alex@example.com").count() == 12
     # Reading still works, and so does asking the assistant (it changes nothing).
     assert c.post("/api/assistant/", {"question": "What deadlines are approaching?"}, format="json").status_code == 200
     r = c.get("/api/auth/google/login/", {"intent": "connect"})

@@ -76,6 +76,15 @@ class UserPreference(models.Model):
     personalization = models.CharField(max_length=10, choices=Personalization.choices, default=Personalization.BALANCED)
     categories = models.JSONField(default=default_categories)
 
+    class AIMode(models.TextChoices):
+        ASK = "ask", "Not chosen yet"  # the consent screen comes before any scan
+        AI = "ai", "Gemini (free tier)"
+        RULES = "rules", "Rules only, no AI"
+
+    #: The user's choice on the consent screen (changeable in Settings → Privacy). Nothing is scanned while "ask".
+    ai_mode = models.CharField(max_length=8, choices=AIMode.choices, default=AIMode.ASK)
+    ai_mode_set_at = models.DateTimeField(null=True, blank=True)
+
 
 class GmailConnection(models.Model):
     """

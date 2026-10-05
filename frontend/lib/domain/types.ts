@@ -137,6 +137,8 @@ export interface User {
   isDemo?: boolean;
   /** The public demo: the server refuses every change, and the UI says so. */
   readOnly?: boolean;
+  /** The AI consent choice (see Preferences.ai.mode); "ask" sends the user to /welcome before any scan. */
+  aiMode?: AIMode;
 }
 
 export type SyncPhase = "idle" | "scanning" | "analyzing" | "completed" | "error";
@@ -218,6 +220,9 @@ export type PersonalizationLevel = "low" | "balanced" | "high";
 /** Mirrors the UserPreference model (Stage 7). */
 export type Theme = "dark" | "light" | "system";
 
+/** The AI consent choice: "ask" = not answered yet (no scans), "ai" = Gemini free tier, "rules" = without AI. */
+export type AIMode = "ask" | "ai" | "rules";
+
 export interface Preferences {
   notifications: {
     email: boolean;
@@ -234,6 +239,8 @@ export interface Preferences {
   preferredLocations: string[];
   ai: {
     recommendations: boolean;
+    /** How emails are read: Gemini (free tier) or rules only. "ask" until the consent screen is answered. */
+    mode: AIMode;
     personalization: PersonalizationLevel;
     /** Opportunity categories Oppora should look for in Gmail. */
     categories: OpportunityType[];

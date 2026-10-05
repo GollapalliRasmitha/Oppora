@@ -266,10 +266,13 @@ def google_callback(request):
 
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     next_path = info["next"]
+    from mail.sync import ai_choice_made, start_sync
+
     if settings.GMAIL_SCOPE not in info["scopes"]:
         next_path = "/settings?gmail_error=scope_missing#gmail"
+    elif not ai_choice_made(user.pk):
+        # The AI consent screen comes before any scan; it starts the first scan once the user chooses.
+        next_path = f"/welcome?next={quote(next_path)}"
     elif created and g.status == GmailConnection.Status.CONNECTED:
-        from mail.sync import start_sync
-
-        start_sync(user)  # first sign-in: start the initial scan right away
+        start_sync(user)  # first sign-in with a choice already made: start the initial scan right away
     return _to_frontend(next_path)

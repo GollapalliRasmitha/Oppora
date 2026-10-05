@@ -433,3 +433,35 @@ All seed dates are offsets from today, so these hold on every date (offsets repr
 **Privacy**
 - The page states plainly that relevant emails go to **Gemini's free tier** (subject, sender, date, cleaned text ≤ 4,000 characters; never attachments).
 - It also says that under Google's terms Google may use the content and human reviewers may read it, and that Google advises against sending personal information to unpaid services. Settings links to the page.
+
+## AI consent, privacy filter, demo name (5 Oct 2026)
+
+**Consent before any scan**
+- `UserPreference.ai_mode`: `ask` (default) | `ai` | `rules`, plus `ai_mode_set_at`. The API exposes it as `preferences.ai.mode` (only `ai`/`rules` can be set) and `/api/auth/me` `aiMode`.
+- A data migration marked accounts that already had AI-analysed emails as `ai` (the owner chose it by building Oppora). The demo seed is `ai`.
+- **Where the choice is enforced:**
+  - the Google callback sends users without a choice to `/welcome?next=…` instead of starting a scan;
+  - `POST /api/sync/` answers 409 `ai_choice_required`, and the frontend routes to `/welcome`;
+  - the scheduler (`run_scheduled`), Celery `sync_all` and `resume_queued` skip such accounts;
+  - the pipeline raises `AIChoiceRequired` (emails stay queued).
+- **`/welcome`** (route group `(onboarding)`, no app shell) shows the statement: subject, sender and a cleaned, *shortened* copy go to Gemini's free tier, where Google may review it. It says "shortened copy (up to 4,000 characters)" rather than "snippet", which would be inaccurate.
+  - It also lists what's removed and never sent, plus the "Use without AI" trade-off.
+  - Its buttons are **Continue** / **Use without AI**. The choice is saved first; only then does the first scan start.
+  - `next` must be a same-site path.
+- `ConsentGate` in AppShell redirects anyone still on `ask` (not the demo). Settings → Privacy has "How Oppora reads your emails" (With AI / Without AI). Every email reads the mode fresh from the database, so a switch applies to the very next one.
+- **Rules-only** (`mail/rules.py`, model_name `rules`):
+  - the type comes from keywords (subject first);
+  - the organization from the sender's display name, the title from the subject;
+  - a deadline only right after a deadline phrase (within 60 characters; years inferred forward);
+  - the link near apply/register, the eligibility sentence, the user's matched skills, and `rule_fee()`;
+  - everything else stays null.
+  - No AI and no budget used. Fee re-checks use `rule_fee` in rules mode.
+
+**Personal details removed before the AI** (`ai/redact.py`)
+- Applied to the subject, body, sender and fee sentences: email addresses → `[email]`; phones (10–15 digits, not dates) → `[phone]`; OTP/verification/login codes and "123456 is your …" → `[code]`; link secrets → `[token]`; the user's name (full name incl. initials, then each part ≥ 2 letters, whole words) → `[name]`.
+  - Link secrets are sensitive query parameters (token/code/key/sig/session/email/…) and secret-looking values. Path tokens are hidden only on sign-in, reset, verify or unsubscribe-style URLs, so Google Forms and job links stay intact.
+- The sender goes as display name + domain. The system prompt no longer contains the user's name (only interests, for relevance), and it explains the placeholders.
+- Grounding still checks against the original email. A cleaned link the AI returns is mapped back to the email's own link, which is stored locally and never sent.
+- `tests/test_privacy.py` proves an AI request contains none of 13 personal details from a realistic email, while dates, amounts and form links survive.
+
+**Demo name**: the seed user is now **Alex** (`alex@example.com`, id `u_alex`; the `DEMO_USER_EMAIL` default changed). The template was re-exported. The old local demo row was removed and re-seeded.

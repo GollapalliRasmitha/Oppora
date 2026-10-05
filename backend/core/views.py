@@ -85,7 +85,13 @@ class SyncView(APIView):
         demo_batch = 0
         if request.user.gmail.is_demo:
             demo_batch = recent_email_count(email_dicts(request.user), clock.user_now(request))
-        g = sync.start_sync(request.user, demo_batch=demo_batch)
+        try:
+            g = sync.start_sync(request.user, demo_batch=demo_batch)
+        except sync.AIChoiceNeeded:
+            return Response(
+                {"error": {"code": "ai_choice_required", "message": "Choose how Oppora should read your emails first."}},
+                status=409,
+            )
         return Response(_sync_payload(g), status=202)
 
 

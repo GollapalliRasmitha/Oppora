@@ -46,7 +46,16 @@ import {
 } from "@/lib/api";
 import { formatDate } from "@/lib/domain/dates";
 import { OPPORTUNITY_CATEGORIES } from "@/lib/domain/inbox";
-import type { GmailConnection, HiddenSender, OpportunityType, PersonalizationLevel, Preferences, Theme, User } from "@/lib/domain/types";
+import type {
+  AIMode,
+  GmailConnection,
+  HiddenSender,
+  OpportunityType,
+  PersonalizationLevel,
+  Preferences,
+  Theme,
+  User,
+} from "@/lib/domain/types";
 import { useResource } from "@/lib/hooks/use-resource";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
 import { applyTheme, storedTheme } from "@/lib/theme";
@@ -349,7 +358,15 @@ function SettingsContent({ data, mutate }: { data: Settings; mutate: (fn: (s: Se
             </div>
           </Section>
 
-          <AccountSection user={data.user} onUserChange={(user) => mutate((s) => ({ ...s, user }))} onDataDeleted={(gmail) => mutate((s) => ({ ...s, gmail }))} />
+          <AccountSection
+            user={data.user}
+            aiMode={prefs.ai.mode}
+            onAiModeChange={(mode) =>
+              savePrefs({ ai: { mode } }, mode === "ai" ? "Emails are read with Gemini (free tier)" : "Emails are read without AI")
+            }
+            onUserChange={(user) => mutate((s) => ({ ...s, user }))}
+            onDataDeleted={(gmail) => mutate((s) => ({ ...s, gmail }))}
+          />
         </div>
       </div>
     </>
@@ -487,10 +504,14 @@ const LEVELS = ["Undergraduate student", "Postgraduate student", "Recent graduat
 
 function AccountSection({
   user,
+  aiMode,
+  onAiModeChange,
   onUserChange,
   onDataDeleted,
 }: {
   user: User;
+  aiMode: AIMode;
+  onAiModeChange: (mode: Exclude<AIMode, "ask">) => void;
   onUserChange: (u: User) => void;
   onDataDeleted: (g: GmailConnection) => void;
 }) {
@@ -605,6 +626,25 @@ function AccountSection({
           <h3 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-ink-3">
             <ShieldCheck aria-hidden className="size-4" /> Privacy
           </h3>
+          <div className="mb-5 max-w-md">
+            <span className="mb-1.5 block text-sm font-semibold text-ink">How Oppora reads your emails</span>
+            <Select<"ai" | "rules">
+              label="How Oppora reads your emails"
+              value={aiMode === "rules" ? "rules" : "ai"}
+              onValueChange={onAiModeChange}
+              options={[
+                { value: "ai", label: "With AI (Gemini free tier)" },
+                { value: "rules", label: "Without AI (rules only)" },
+              ]}
+              className="w-full justify-between"
+            />
+            <p className="mt-1 text-meta text-ink-3">
+              {aiMode === "rules"
+                ? "Nothing is sent to an AI. Rules are less thorough and can miss details like eligibility or interviews."
+                : "Personal details (email addresses, phone numbers, codes, sign-in links, your name) are removed before sending."}{" "}
+              Applies to emails read from now on.
+            </p>
+          </div>
           <p className="text-sm text-ink-2">For each relevant email, Oppora stores only:</p>
           <ul className="mt-2 grid gap-1.5 text-sm text-ink-2 sm:grid-cols-2">
             {["Message ID", "Sender", "Subject", "Date", "A short snippet", "The opportunity details it extracts"].map((x) => (
@@ -618,8 +658,8 @@ function AccountSection({
             Full email bodies are not kept after processing, and Oppora never sees your Gmail password.
           </p>
           <p className="mt-3 text-sm text-ink-2">
-            To find opportunities, the subject, sender and a trimmed text version of each email that looks relevant (never
-            attachments) is sent to Google Gemini. Oppora uses Gemini&apos;s free tier, where Google may use this content to
+            With AI, the subject, sender and a cleaned, shortened copy of each email that looks relevant (never attachments,
+            personal details removed) is sent to Google Gemini. Oppora uses Gemini&apos;s free tier, where Google may use this content to
             improve its products and human reviewers may read it. Emails that don&apos;t look like opportunities are never sent or
             stored.{" "}
             <Link href="/privacy" className="font-semibold text-violet focus-ring rounded-sm hover:text-ink">

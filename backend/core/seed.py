@@ -99,6 +99,7 @@ def load_seed(exported: dict, email: str | None = None) -> tuple[User, dict[str,
             "ai_recommendations": p["ai"]["recommendations"],
             "personalization": p["ai"]["personalization"],
             "categories": p["ai"]["categories"],
+            "ai_mode": p["ai"].get("mode", "ai"),  # the sample data reads as if Gemini had analysed it
         },
     )
     g = seed["gmail"]

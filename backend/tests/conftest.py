@@ -135,6 +135,8 @@ def real_user(db, freeze):
     user.experience_level = "Undergraduate student"
     user.timezone = "Asia/Kolkata"
     user.save()
+    user.preferences.ai_mode = "ai"  # answered the consent screen: "Continue" (Gemini)
+    user.preferences.save()
     g = user.gmail
     g.status, g.email = GmailConnection.Status.CONNECTED, "me@gmail.example"
     g.set_tokens(refresh_token="1//refresh-secret", access_token="ya29.access", expiry=datetime(2030, 1, 1, tzinfo=UTC))

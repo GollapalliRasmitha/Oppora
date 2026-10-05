@@ -78,12 +78,12 @@ def test_login_redirects_to_google_with_minimum_scopes_offline_and_pkce(db, oaut
     assert q["code_challenge"] == [challenge]
 
 
-def test_callback_signs_in_stores_encrypted_tokens_and_starts_the_first_scan(db, oauth):
+def test_callback_signs_in_stores_encrypted_tokens_and_asks_about_ai_before_any_scan(db, oauth):
     calls, _ = oauth
     c = APIClient()
     _, q = start(c, next="/dashboard")
     r = c.get("/api/auth/google/callback/", {"state": q["state"][0], "code": "auth-code"})
-    assert r.status_code == 302 and r["Location"] == "http://localhost:3000/dashboard"
+    assert r.status_code == 302 and r["Location"] == "http://localhost:3000/welcome?next=/dashboard"
 
     token_req = calls["token"][0]
     assert token_req["code"] == "auth-code" and token_req["code_verifier"] and token_req["grant_type"] == "authorization_code"
@@ -92,8 +92,9 @@ def test_callback_signs_in_stores_encrypted_tokens_and_starts_the_first_scan(db,
     assert (g.status, g.google_sub, g.is_demo) == ("connected", "g-42", False)
     assert g.refresh_token == "1//refresh-from-google" and "refresh-from-google" not in g.refresh_token_enc
     assert set(g.scopes) == {"openid", "email", "profile", "gmail.readonly"}
-    assert calls["syncs"] == [user.pk]
-    assert c.get("/api/auth/me/").json()["email"] == "me@gmail.example"  # session is live
+    assert calls["syncs"] == []  # nothing is scanned before the consent screen
+    me = c.get("/api/auth/me/").json()
+    assert me["email"] == "me@gmail.example" and me["aiMode"] == "ask"  # session is live
     assert google.SESSION_KEY not in c.session  # state can't be replayed
 
 
@@ -132,7 +133,7 @@ def test_next_must_stay_on_site(db, oauth):
     c = APIClient()
     _, q = start(c, next="//evil.example/steal")
     r = c.get("/api/auth/google/callback/", {"state": q["state"][0], "code": "c"})
-    assert r["Location"] == "http://localhost:3000/dashboard"
+    assert r["Location"] == "http://localhost:3000/welcome?next=/dashboard"  # the consent screen keeps the safe next
     assert google.safe_next("https://evil.example") == "/dashboard" and google.safe_next("/\\evil") == "/dashboard"
 
 
@@ -177,7 +178,7 @@ def test_without_google_the_button_signs_in_the_demo_user(user, settings):
     c = APIClient()
     r = c.get("/api/auth/google/login/", {"next": "/inbox"})
     assert r["Location"] == "http://localhost:3000/inbox"
-    assert c.get("/api/auth/me/").json()["email"] == "rasmitha@example.com"
+    assert c.get("/api/auth/me/").json()["email"] == "alex@example.com"
     settings.DEV_LOGIN_ENABLED = False
     assert APIClient().get("/api/auth/google/login/")["Location"].endswith("auth_error=not_configured")
 

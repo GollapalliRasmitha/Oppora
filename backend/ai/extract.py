@@ -7,6 +7,10 @@ state is null. On top of the instructions, the validator enforces it where it
 can be checked: an application link must appear in the email, skills must be
 mentioned in it, dates must be real and plausible. Output that isn't valid is
 retried once and then marked "needs review".
+
+Privacy: personal details (email addresses, phone numbers, codes, link tokens,
+the user's name) are removed before anything is sent (ai.redact), and the
+sender goes as display name + domain only.
 """
 
 import re
@@ -19,9 +23,10 @@ from mail.content import MessageContent
 from . import client
 from .fees import validate_fee
 from .providers.base import InvalidOutput
+from .redact import redact, sender_for_ai
 from .schema import EXTRACTION_SCHEMA
 
-SYSTEM = """You read one email for {name}, a student, and extract opportunity details for the Oppora app.
+SYSTEM = """You read one email for a student and extract opportunity details for the Oppora app.
 
 Rules:
 - Return only JSON that matches the schema.
@@ -31,6 +36,7 @@ Rules:
 - fee: only if the email says the reader has to pay something (registration, training, certificate or deposit fee); quote the exact sentence. Null if it doesn't ask for money or says it's free. Never assume a fee from who sent the email.
 - interview: only if the email schedules one with a concrete date and time. ISO 8601 with a UTC offset; if no time zone is given, use {tz}.
 - application_link: copy the URL to apply or register exactly as it appears in the email; null if there is none.
+- Placeholders like [email], [phone], [code], [token] and [name] stand for details removed for privacy; never guess them.
 - summary: one or two plain sentences based only on the email.
 - is_opportunity: true for a concrete internship, job, hackathon, scholarship, competition, fellowship or event the reader could apply or register for, and for updates about one (application received, reminder, interview invitation). opportunity_name and organization then name that opportunity.
 - category: the opportunity type, or College / Newsletter / Promotion / Other.
@@ -38,7 +44,7 @@ Rules:
 - confidence (0-1): how sure you are."""
 
 PROMPT = """Sent: {sent}
-From: {sender} <{sender_email}>
+From: {sender}
 Subject: {subject}
 
 {body}"""
@@ -107,8 +113,11 @@ def _norm_url(u: str) -> str:
     return u.rstrip(").,;:!?'\"").rstrip("/")
 
 
-def validate(raw: dict, m: MessageContent, tz) -> Extraction:
-    """Schema + grounding checks. Raises InvalidOutput for output that can't be used."""
+def validate(raw: dict, m: MessageContent, tz, cleaned_urls: dict[str, str] | None = None) -> Extraction:
+    """
+    Schema + grounding checks. Raises InvalidOutput for output that can't be used.
+    `cleaned_urls` maps the privacy-cleaned links the AI saw back to the email's own.
+    """
     if not isinstance(raw, dict):
         raise InvalidOutput("Not an object.")
     missing = [k for k in EXTRACTION_SCHEMA["required"] if k not in raw]
@@ -145,6 +154,8 @@ def validate(raw: dict, m: MessageContent, tz) -> Extraction:
 
     # Application link: must be a URL that appears in the email.
     link = _text(raw["application_link"], 500)
+    if link and cleaned_urls:  # the AI saw the cleaned link: store the email's own (it stays on our server)
+        link = next((orig for clean, orig in cleaned_urls.items() if _norm_url(clean) == _norm_url(link)), link)
     if link:
         urls = {_norm_url(u) for u in m.urls}
         if not link.startswith(("https://", "http://")) or _norm_url(link) not in urls:
@@ -202,24 +213,21 @@ def validate(raw: dict, m: MessageContent, tz) -> Extraction:
 
 def extract(m: MessageContent, user, tz) -> Extraction:
     """One email → Extraction. Invalid output is retried once, then raises InvalidOutput."""
-    system = SYSTEM.format(
-        name=user.name or "the reader",
-        tz=getattr(tz, "key", str(tz)),
-        interests=", ".join(user.interests) or "not specified",
-    )
+    system = SYSTEM.format(tz=getattr(tz, "key", str(tz)), interests=", ".join(user.interests) or "not specified")
+    subject, body = redact(m.subject, user.name), redact(m.body, user.name)
+    cleaned_urls = {**subject.urls, **body.urls}
     prompt = PROMPT.format(
         sent=m.received_at.astimezone(tz).isoformat(timespec="minutes"),
-        sender=m.sender_name,
-        sender_email=m.sender_email,
-        subject=m.subject,
-        body=m.body,
+        sender=sender_for_ai(m.sender_name, m.sender_email, user.name),
+        subject=subject.text,
+        body=body.text,
     )
     error = None
     for attempt in range(2):
         text = prompt if attempt == 0 else f"{prompt}\n\n(Your previous answer was invalid: {error}. Return valid JSON.)"
         try:
             raw, model = client.generate_json(system, text, EXTRACTION_SCHEMA)
-            result = validate(raw, m, tz)
+            result = validate(raw, m, tz, cleaned_urls)
         except InvalidOutput as e:
             error = str(e)
             continue

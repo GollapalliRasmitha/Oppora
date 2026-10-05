@@ -32,10 +32,12 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "name", "email", "plan", "interests", "skills", "experienceLevel", "isDemo", "readOnly"]
+        fields = ["id", "name", "email", "plan", "interests", "skills", "experienceLevel", "isDemo", "readOnly", "aiMode"]
         read_only_fields = ["id", "email", "plan"]
 
     isDemo = serializers.SerializerMethodField()
+    #: "ask" until the user answers the AI consent screen (the app shows it before any scan).
+    aiMode = serializers.CharField(source="preferences.ai_mode", read_only=True)
     readOnly = serializers.SerializerMethodField()
 
     def get_isDemo(self, user) -> bool:
@@ -66,6 +68,8 @@ class NotificationPrefs(serializers.Serializer):
 
 class AIPrefs(serializers.Serializer):
     recommendations = serializers.BooleanField(source="ai_recommendations", required=False)
+    # "ask" is only the starting state: once chosen, it's Gemini or rules-only (changeable in Settings → Privacy).
+    mode = serializers.ChoiceField(source="ai_mode", choices=["ai", "rules"], required=False)
     personalization = serializers.ChoiceField(choices=UserPreference.Personalization.choices, required=False)
     categories = serializers.ListField(
         child=serializers.ChoiceField(choices=OPPORTUNITY_TYPES), max_length=len(OPPORTUNITY_TYPES), required=False
@@ -92,6 +96,10 @@ class PreferencesSerializer(serializers.Serializer):
         flat = {}
         for k, v in validated.items():
             flat.update(v) if isinstance(v, dict) else flat.__setitem__(k, v)
+        if "ai_mode" in flat:
+            from core import clock
+
+            flat["ai_mode_set_at"] = clock.now()
         for k, v in flat.items():
             setattr(instance, k, v)
         instance.save(update_fields=list(flat))

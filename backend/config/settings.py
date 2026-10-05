@@ -230,7 +230,7 @@ TOKEN_ENCRYPTION_KEY = os.environ.get("TOKEN_ENCRYPTION_KEY", "").strip()
 # Local development without Google credentials: sign in as the seeded demo user.
 # Off as soon as Google sign-in is configured, and never without DEBUG.
 DEV_LOGIN_ENABLED = DEBUG and env_bool("DJANGO_DEV_LOGIN", True) and not GOOGLE_OAUTH_ENABLED
-DEMO_USER_EMAIL = os.environ.get("DEMO_USER_EMAIL", "rasmitha@example.com").strip().lower()
+DEMO_USER_EMAIL = os.environ.get("DEMO_USER_EMAIL", "alex@example.com").strip().lower()
 # The landing page's "Try the demo": anyone can open the demo account, read-only (core.demo).
 PUBLIC_DEMO_ENABLED = env_bool("PUBLIC_DEMO_ENABLED", True)
 # Refuse every change made in the demo account. On in production; off in local development,

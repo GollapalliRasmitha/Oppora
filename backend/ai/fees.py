@@ -89,6 +89,20 @@ def validate_fee(raw, text: str) -> dict | None:
     return {"amount": amount, "currency": currency, "text": quote}
 
 
+def rule_fee(text: str) -> dict | None:
+    """Without the AI ("Use without AI"): the first sentence that states a fee with an amount."""
+    for sentence in fee_sentences(text):
+        money = MONEY.search(sentence)
+        if not money:
+            continue
+        number = NUMBER.search(sentence, money.start())
+        amount = number.group(0).replace(",", "") if number else None
+        fee = validate_fee({"amount": amount, "currency": None, "quote": sentence}, text)
+        if fee:
+            return fee
+    return None
+
+
 FEE_SCHEMA = {
     "type": "object",
     "nullable": True,

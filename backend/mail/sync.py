@@ -110,13 +110,28 @@ def resume_all_interrupted() -> int:
     return resumed
 
 
+class AIChoiceNeeded(Exception):
+    """POST /api/sync/ before the user answered the AI consent screen (the app shows it first)."""
+
+
+def ai_choice_made(user_id) -> bool:
+    from accounts.models import UserPreference
+
+    return UserPreference.objects.filter(user_id=user_id).exclude(ai_mode=UserPreference.AIMode.ASK).exists()
+
+
 def start_sync(user, demo_batch: int = 0) -> GmailConnection:
-    """POST /api/sync/: starts a scan unless one is already running. Raises GmailAccessError when not connected."""
+    """
+    POST /api/sync/: starts a scan unless one is already running. Raises
+    GmailAccessError when not connected, AIChoiceNeeded before the consent screen.
+    """
     now = clock.now()
     with transaction.atomic():
         g = GmailConnection.objects.select_for_update().get(user=user)
         if g.status != GmailConnection.Status.CONNECTED:
             raise GmailAccessError()
+        if not g.is_demo and not ai_choice_made(user.pk):
+            raise AIChoiceNeeded()
         advance_demo(g, now)
         if _running(g, now):
             return g
@@ -138,8 +153,8 @@ def run_scheduled(user_id, seconds: float) -> bool:
     now = clock.now()
     with transaction.atomic():
         g = GmailConnection.objects.select_for_update().get(user_id=user_id)
-        if g.status != GmailConnection.Status.CONNECTED or g.is_demo or _running(g, now):
-            return False
+        if g.status != GmailConnection.Status.CONNECTED or g.is_demo or _running(g, now) or not ai_choice_made(user_id):
+            return False  # (no consent answer yet: nothing is scanned)
         g.sync_phase, g.sync_started_at, g.sync_emails_in_batch = GmailConnection.Phase.SCANNING, now, 0
         g.save(update_fields=["sync_phase", "sync_started_at", "sync_emails_in_batch"])
     return run_sync(user_id, seconds)

@@ -73,12 +73,18 @@ def test_complete_user_journey(db, freeze, google_oauth, gmail, fake_ai):
     q = parse_qs(urlparse(r["Location"]).query)
     assert "https://www.googleapis.com/auth/gmail.readonly" in q["scope"][0] and "gmail.modify" not in q["scope"][0]
 
-    # 2. Google redirects back → signed in, Gmail connected, first scan runs (jobs are eager in tests).
+    # 2. Google redirects back → signed in, Gmail connected → the AI consent screen, before any scan.
     r = browser.get("/api/auth/google/callback/", {"state": q["state"][0], "code": "auth-code"})
-    assert r.status_code == 302 and r["Location"].endswith("/dashboard")
+    assert r.status_code == 302 and r["Location"].endswith("/welcome?next=/dashboard")
     user = User.objects.get(email="student@gmail.example")
     assert user.gmail.status == GmailConnection.Status.CONNECTED and not user.gmail.is_demo
-    assert browser.get("/api/auth/me/").json()["email"] == "student@gmail.example"
+    assert browser.get("/api/auth/me/").json()["aiMode"] == "ask"
+    assert browser.post("/api/sync/").status_code == 409  # no scan without an answer
+    assert not fake_ai.calls
+
+    # The user reads the consent screen and chooses "Continue" (Gemini); the screen starts the first scan.
+    assert browser.patch("/api/preferences/", {"ai": {"mode": "ai"}}, format="json").json()["ai"]["mode"] == "ai"
+    assert browser.post("/api/sync/").status_code == 202  # jobs are eager in tests: the scan runs now
 
     # 3. Gmail sync + AI analysis: one AI call (the promotion never reaches the AI), nothing queued.
     sync = browser.get("/api/sync/").json()

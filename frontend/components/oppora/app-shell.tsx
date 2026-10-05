@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { getPreferences } from "@/lib/api";
@@ -34,12 +35,25 @@ function ThemeSync() {
   return null;
 }
 
+/** Anyone who hasn't answered the AI consent screen goes there first (it comes before any scan). */
+function ConsentGate() {
+  const { user } = useShell();
+  const router = useRouter();
+  const pathname = usePathname();
+  const ask = user?.aiMode === "ask" && !user.isDemo;
+  useEffect(() => {
+    if (ask) router.replace(`/welcome?next=${encodeURIComponent(pathname)}`);
+  }, [ask, pathname, router]);
+  return null;
+}
+
 /** Layout shared by every signed-in page. */
 export function AppShell({ children }: { children: ReactNode }) {
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   return (
     <ShellProvider>
       <ThemeSync />
+      <ConsentGate />
       <div className="ambient min-h-dvh">
         <a
           href="#main"

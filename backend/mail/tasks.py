@@ -29,11 +29,11 @@ def _ai_budget_left() -> bool:
 
 def has_queued_work(g) -> bool:
     """Queued emails that the AI budget (global and this account's fair share) lets us continue today."""
-    return (
-        _ai_budget_left()
-        and ai_client.user_budget_left(g.user_id, _provider())
-        and ProcessedMessage.objects.filter(user=g.user, status=ProcessedMessage.Status.QUEUED).exists()
-    )
+    mode = g.user.preferences.ai_mode
+    if mode == "ask":
+        return False  # waiting for the consent screen
+    budget = mode == "rules" or (_ai_budget_left() and ai_client.user_budget_left(g.user_id, _provider()))
+    return budget and ProcessedMessage.objects.filter(user=g.user, status=ProcessedMessage.Status.QUEUED).exists()
 
 
 @shared_task(name="mail.tasks.resume_queued")
@@ -62,7 +62,7 @@ def sync_all() -> int:
     """Twice an hour: new mail for every connected account (Gmail history since the last scan)."""
     started = 0
     for g in _connected():
-        if g.sync_phase not in sync.RUNNING:
+        if g.sync_phase not in sync.RUNNING and sync.ai_choice_made(g.user_id):
             sync.start_sync(g.user)
             started += 1
     return started

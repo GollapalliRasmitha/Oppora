@@ -14,8 +14,9 @@ from django.conf import settings
 from django.db.models import Q
 
 from ai import client as ai_client
-from ai.fees import FEE_SCHEMA, fee_sentences, validate_fee
+from ai.fees import FEE_SCHEMA, fee_sentences, rule_fee, validate_fee
 from ai.providers.base import DailyLimitReached, InvalidOutput, NotConfigured, TransientAIError
+from ai.redact import redact
 from core import clock
 from opportunities.models import Opportunity
 
@@ -31,19 +32,21 @@ Answer with JSON. fee is null unless the text explicitly says the reader must pa
 Never assume a fee from who sent the email. A stipend or salary paid TO the reader is not a fee."""
 
 
-def _fee_from_text(text: str) -> dict | None:
-    """Rules first (free); the AI only sees the sentences that mention paying."""
+def _fee_from_text(text: str, user_name: str | None = None) -> dict | None:
+    """Rules first (free); the AI only sees the sentences that mention paying, with personal details removed."""
     sentences = fee_sentences(text)
     if not sentences:
         return None
-    excerpt = "\n".join(sentences[:8])
+    excerpt = redact("\n".join(sentences[:8]), user_name).text
     try:
         raw, _model = ai_client.generate_json(
             SYSTEM, excerpt, {"type": "object", "properties": {"fee": FEE_SCHEMA}, "required": ["fee"]}
         )
     except InvalidOutput:
         return None
-    return validate_fee(raw.get("fee") if isinstance(raw, dict) else None, text)
+    fee = raw.get("fee") if isinstance(raw, dict) else None
+    # The AI quotes the cleaned sentence; it's the email's own words with placeholders, so check against both.
+    return validate_fee(fee, text) or validate_fee(fee, excerpt)
 
 
 def recheck_fees(user, client=None, limit: int = 200) -> dict:
@@ -75,11 +78,16 @@ def recheck_fees(user, client=None, limit: int = 200) -> dict:
                     log.info("Fee re-check: couldn't fetch message %s; using the snippet", e.gmail_message_id)
             if not fee_sentences(text):
                 continue  # free: nothing about paying in this email
+            if user.preferences.ai_mode != "ai":  # "Use without AI": the rule reading only
+                fee = rule_fee(text)
+                if fee:
+                    break
+                continue
             if not ai_available:
                 needs_ai = True
                 break
             try:
-                fee = _fee_from_text(text)
+                fee = _fee_from_text(text, user.name)
             except (DailyLimitReached, NotConfigured, TransientAIError):
                 ai_available, needs_ai = False, True
                 break

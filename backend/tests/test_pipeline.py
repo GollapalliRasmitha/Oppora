@@ -149,9 +149,9 @@ def test_extract_sends_only_the_minimum_and_retries_invalid_output_once(fake_ai,
     x = extract(m, real_user, KOLKATA)
     assert x.opportunity_name == "Frontend Internship 2027" and len(fake_ai.calls) == 2
     first = fake_ai.calls[0]
-    assert (
-        "Subject: Frontend Internship 2027" in first["prompt"] and "From: Careers Team <careers@acme.example>" in first["prompt"]
-    )
+    assert "Subject: Frontend Internship 2027" in first["prompt"] and "From: Careers Team (acme.example)" in first["prompt"]
+    assert "careers@acme.example" not in first["prompt"]  # addresses never go to the AI
+    assert "Rasmitha" not in first["system"] + first["prompt"]  # nor the user's name
     assert "SECRET-ATTACHMENT-TEXT" not in first["prompt"]
     body = first["prompt"].split("\n\n", 1)[1]
     assert len(body) <= 62  # trimmed body only
@@ -469,7 +469,7 @@ def test_demo_connection_is_flagged_by_migration(db):
 
     from django.apps import apps
 
-    user = User.objects.create_user("rasmitha@example.com", name="Demo")
+    user = User.objects.create_user("alex@example.com", name="Demo")
     GmailConnection.objects.filter(user=user).update(is_demo=False)
     import_module("accounts.migrations.0003_mark_demo_connection").mark_demo(apps, None)
     assert GmailConnection.objects.get(user=user).is_demo is True

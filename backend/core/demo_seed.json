@@ -3,9 +3,9 @@
  "timeZone": "Asia/Kolkata",
  "seed": {
   "user": {
-   "id": "u_rasmitha",
-   "name": "Rasmitha",
-   "email": "rasmitha@example.com",
+   "id": "u_alex",
+   "name": "Alex",
+   "email": "alex@example.com",
    "plan": "Free",
    "interests": [
     "frontend development",
@@ -996,6 +996,7 @@
    "preferredLocations": [],
    "ai": {
     "recommendations": true,
+    "mode": "ai",
     "personalization": "balanced",
     "categories": [
      "Internship",
@@ -1009,7 +1010,7 @@
    }
   },
   "gmail": {
-   "email": "rasmitha@example.com",
+   "email": "alex@example.com",
    "status": "connected",
    "connectedAt": "2026-08-16T03:30:00.000Z",
    "scopes": [

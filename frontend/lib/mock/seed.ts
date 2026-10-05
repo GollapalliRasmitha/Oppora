@@ -20,9 +20,9 @@ import { explainMatch } from "@/lib/domain/match";
 import type { Application, Email, GmailConnection, ISODate, ISODateTime, Interview, Opportunity, Preferences, User } from "@/lib/domain/types";
 
 export const seedUser: User = {
-  id: "u_rasmitha",
-  name: "Rasmitha",
-  email: "rasmitha@example.com",
+  id: "u_alex",
+  name: "Alex",
+  email: "alex@example.com",
   plan: "Free",
   interests: ["frontend development", "software engineering", "hackathons"],
   // Skills: demo values until the real list is provided. Editable in Settings (Stage 5).
@@ -38,6 +38,7 @@ export const defaultPreferences: Preferences = {
   preferredLocations: [],
   ai: {
     recommendations: true,
+    mode: "ai",
     personalization: "balanced",
     categories: ["Internship", "Job", "Hackathon", "Scholarship", "Competition", "Fellowship", "Event"],
   },

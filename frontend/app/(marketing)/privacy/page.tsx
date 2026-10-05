@@ -25,9 +25,14 @@ export default function PrivacyPage() {
         through its <strong className="text-ink">free tier</strong>. For each of those emails it sends only:
       </p>
       <ul className="list-disc space-y-1.5 pl-5">
-        <li>the subject, the sender&apos;s name and address, and the date;</li>
+        <li>the subject, the sender&apos;s display name and email domain (not the address), and the date;</li>
         <li>the email&apos;s text, cleaned up (quoted replies and signatures removed) and cut to 4,000 characters.</li>
       </ul>
+      <p>
+        <strong className="text-ink">Personal details are removed first:</strong> email addresses, phone numbers, OTPs and
+        verification codes, the secret parts of sign-in, reset and verification links, and your name are replaced with
+        placeholders before anything is sent.
+      </p>
       <p>
         Attachments are never read or sent. Promotions, chats, your own sent mail and emails without opportunity-related words are
         filtered out first and never sent to the AI.
@@ -40,6 +45,11 @@ export default function PrivacyPage() {
         , Google may use content sent to its free services to improve its products, and human reviewers may read it. Google asks
         users not to send sensitive, confidential or personal information to the free tier. Only connect a mailbox you&apos;re
         comfortable with this for, or use the demo instead.
+      </p>
+      <p>
+        <strong className="text-ink">You choose.</strong> After you sign in, Oppora asks before it scans anything. Choose{" "}
+        <em>Use without AI</em> and it reads your emails with simple rules on its own server: nothing is sent to an AI (it&apos;s
+        less thorough). You can switch anytime in Settings → Privacy.
       </p>
 
       <H>What Oppora reads and keeps</H>

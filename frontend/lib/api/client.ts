@@ -24,7 +24,8 @@ export type ApiErrorCode =
   | "validation"
   | "server"
   | "rate_limited"
-  | "read_only_demo";
+  | "read_only_demo"
+  | "ai_choice";
 
 export class ApiError extends Error {
   constructor(
@@ -138,6 +139,7 @@ async function toError(res: Response): Promise<ApiError> {
   }
   if (code === "gmail_access") return new ApiError(GMAIL_ERROR, "gmail");
   if (code === "demo_read_only") return new ApiError(message, "read_only_demo");
+  if (code === "ai_choice_required") return new ApiError(message, "ai_choice");
   if (res.status === 401) return new ApiError(message || "Your session has expired. Sign in again to continue.", "auth");
   if (res.status === 404) return new ApiError(message || "This no longer exists.", "not_found");
   if (res.status === 400) return new ApiError(message || "Some fields are invalid.", "validation", fields);

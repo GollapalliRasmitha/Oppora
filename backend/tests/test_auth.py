@@ -76,7 +76,7 @@ def test_dev_login_is_csrf_protected(user):
     c = APIClient(enforce_csrf_checks=True)
     assert c.post("/api/auth/dev-login/").status_code == 403
     token = c.get("/api/auth/csrf/").json()["csrfToken"]
-    assert c.post("/api/auth/dev-login/", HTTP_X_CSRFTOKEN=token).json()["email"] == "rasmitha@example.com"
+    assert c.post("/api/auth/dev-login/", HTTP_X_CSRFTOKEN=token).json()["email"] == "alex@example.com"
     assert c.get("/api/auth/me/").status_code == 200
 
 

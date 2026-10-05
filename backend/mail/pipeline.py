@@ -12,7 +12,7 @@ from django.db import transaction
 
 from ai.extract import Extraction, extract
 from ai.fees import FEE_PENALTY
-from ai.providers.base import InvalidOutput
+from ai.providers.base import InvalidOutput, NotConfigured
 from core import clock
 from core.domain.constants import OPPORTUNITY_TYPES, deadline_kind
 from core.domain.dates import days_left
@@ -22,6 +22,12 @@ from opportunities.models import Deadline, HiddenSender, Interview, Opportunity
 from .content import MessageContent, parse_message
 from .models import Email, EmailClassification, ProcessedMessage
 from .prefilter import prefilter
+from .rules import rules_extract
+
+
+class AIChoiceRequired(NotConfigured):
+    """The user hasn't answered the AI consent screen yet: nothing is analysed (emails stay queued)."""
+
 
 #: Below this, an email that isn't an opportunity isn't worth keeping.
 MIN_RELEVANCE_TO_STORE = 50
@@ -363,6 +369,17 @@ def process_message(user, client, gmail_message_id: str) -> Outcome:
     if m.message_id != gmail_message_id or Email.objects.filter(user=user, gmail_message_id=m.message_id).exists():
         return Outcome(ProcessedMessage.Status.SKIPPED, "duplicate")
     tz = clock.zone(user.timezone) or clock.zone(settings.DEFAULT_USER_TIMEZONE)
+    from accounts.models import UserPreference
+
+    # Read fresh for every email: a change in Settings → Privacy applies to the very next one.
+    mode = UserPreference.objects.filter(user=user).values_list("ai_mode", flat=True).first()
+    if mode == "rules":
+        x = rules_extract(m, user, tz)  # "Use without AI": nothing leaves the server
+        if x.category not in OPPORTUNITY_TYPES:
+            x.is_opportunity = False
+        return store(user, m, x)
+    if mode != "ai":
+        raise AIChoiceRequired("Waiting for the user's choice on the AI consent screen.")
     try:
         x = extract(m, user, tz)
     except InvalidOutput as e:

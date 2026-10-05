@@ -72,6 +72,6 @@ def test_refuses_to_overwrite_unless_asked(account):
 
 def test_refuses_the_demo_and_unknown_accounts(account):
     with pytest.raises(CommandError, match="demo"):
-        call_command("copy_account", email="rasmitha@example.com", yes=True)
+        call_command("copy_account", email="alex@example.com", yes=True)
     with pytest.raises(CommandError, match="No account"):
         call_command("copy_account", email="nobody@example.com", yes=True)
