@@ -14,6 +14,7 @@
  */
 
 import { notifyReadOnlyDemo } from "@/components/ui/toast";
+import { WAKE_FAILED_MESSAGE, waitForBackend } from "@/lib/wake";
 
 export type ApiErrorCode =
   | "network"
@@ -59,13 +60,15 @@ const DEV_LOGIN = process.env.NODE_ENV !== "production";
 
 type Query = Record<string, string | number | boolean | null | undefined>;
 
+/** What a sleeping free-tier backend looks like through the proxy (it answers within a second while waking). */
 const WAKING = new Set([502, 503, 504]);
-const WAKE_RETRIES = [3000, 8000, 15000];
+/** Retries after waking the server; a short pause when it was already awake. */
+const MAX_RETRIES = 3;
+const AWAKE_BACKOFF_MS = [1000, 2000, 4000];
+/** A request that hangs this long is treated like a sleeping server (Vercel itself gives up at 120 s). */
+const REQUEST_TIMEOUT_MS = 90_000;
 
-/** Wakes a sleeping free-tier backend early (the landing page calls it), so the first click is fast. */
-export function wakeBackend(): void {
-  fetch("/api/health", { credentials: "omit" }).catch(() => {});
-}
+export { wakeBackend } from "@/lib/wake";
 
 export interface RequestOptions<T> {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
@@ -168,18 +171,39 @@ export async function request<T>(path: string, opts: RequestOptions<T> = {}): Pr
       headers,
       credentials: "same-origin",
       body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   };
 
-  let res: Response;
-  try {
-    res = await send();
-    // A free-tier server that was asleep answers 502/503/504 while it wakes up (30-60 s):
-    // reads are safe to repeat, so wait and try again before showing an error.
-    for (let i = 0; method === "GET" && WAKING.has(res.status) && i < WAKE_RETRIES.length; i++) {
-      await new Promise((r) => setTimeout(r, WAKE_RETRIES[i]));
+  /*
+   * A sleeping free-tier server answers 502/503/504 (or the request times out)
+   * while it wakes up. Wait until it answers a health check (the waking notice
+   * shows meanwhile), then retry, up to MAX_RETRIES times. Reads are always safe
+   * to repeat. Changes are repeated only when the server was asleep: then the
+   * first attempt can't have run, so a retry never saves or applies twice.
+   */
+  let res: Response | null = null;
+  for (let attempt = 0; ; attempt++) {
+    let timedOut = false;
+    try {
       res = await send();
+    } catch (e) {
+      if (!(e instanceof DOMException && (e.name === "TimeoutError" || e.name === "AbortError"))) {
+        throw new ApiError(NETWORK_ERROR, "network");
+      }
+      timedOut = true;
+      res = null;
     }
+    const sleepy = timedOut || (res !== null && WAKING.has(res.status));
+    if (!sleepy || attempt >= MAX_RETRIES) break;
+    const wake = await waitForBackend();
+    if (!wake.ok) throw new ApiError(WAKE_FAILED_MESSAGE, "server");
+    if (wake.wasAsleep) continue; // the server was down: nothing ran, so any request can be sent again
+    if (method !== "GET") break; // the server was up: the change may have run, so don't repeat it
+    await new Promise((r) => setTimeout(r, AWAKE_BACKOFF_MS[attempt]));
+  }
+  if (res === null) throw new ApiError(WAKE_FAILED_MESSAGE, "server");
+  try {
     if (res.status === 401 && DEV_LOGIN && (await devLogin())) res = await send();
   } catch {
     throw new ApiError(NETWORK_ERROR, "network");

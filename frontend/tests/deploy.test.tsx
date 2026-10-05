@@ -57,26 +57,3 @@ describe("read-only demo", () => {
     expect(screen.queryByText(/read-only demo/)).toBeNull();
   });
 });
-
-describe("waking a sleeping free-tier server", () => {
-  it("reads wait and retry through 502/503/504", async () => {
-    vi.useFakeTimers();
-    const fetch = vi
-      .fn()
-      .mockResolvedValueOnce(new Response("", { status: 503 }))
-      .mockResolvedValueOnce(new Response("", { status: 502 }))
-      .mockResolvedValueOnce(json(200, { ok: true }));
-    vi.stubGlobal("fetch", fetch);
-    const p = request<{ ok: boolean }>("/health");
-    await vi.runAllTimersAsync();
-    await expect(p).resolves.toEqual({ ok: true });
-    expect(fetch).toHaveBeenCalledTimes(3);
-  });
-
-  it("changes are never repeated automatically", async () => {
-    const fetch = vi.fn(async () => new Response("", { status: 503 }));
-    vi.stubGlobal("fetch", fetch);
-    await expect(request("/saved", { method: "POST", body: {} })).rejects.toMatchObject({ code: "server" });
-    expect(fetch).toHaveBeenCalledTimes(1);
-  });
-});

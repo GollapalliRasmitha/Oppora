@@ -2,6 +2,7 @@
 
 import { PlayCircle } from "lucide-react";
 import { SIGN_IN_URL } from "./google-sign-in-button";
+import { WakeLink } from "./wake-link";
 import { useShell } from "./shell-context";
 
 /** Shown on every page of the public demo: it's sample data, and changes aren't saved. */
@@ -14,9 +15,9 @@ export function DemoBanner() {
       <p className="min-w-0 flex-1">
         <span className="font-semibold">You&apos;re exploring a read-only demo</span> with sample data, so changes aren&apos;t saved.
       </p>
-      <a href={SIGN_IN_URL} className="hit-y rounded-sm font-semibold text-violet focus-ring hover:text-ink">
+      <WakeLink href={SIGN_IN_URL} className="hit-y rounded-sm font-semibold text-violet focus-ring hover:text-ink">
         Use your own Gmail
-      </a>
+      </WakeLink>
     </div>
   );
 }

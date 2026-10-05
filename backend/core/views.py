@@ -130,10 +130,15 @@ class AssistantView(APIView):
 
 
 class HealthView(APIView):
-    """GET /api/health/ — no database, no session: lets the frontend wake a sleeping free-tier server early."""
+    """
+    GET /api/health/ — no database, no session, no Redis (so no rate-limit counter
+    either): answers as soon as the process is up. The frontend polls it while a
+    sleeping free-tier server wakes up, and Render uses it as its health check.
+    """
 
     authentication_classes: list = []
     permission_classes = [AllowAny]
+    throttle_classes: list = []
 
     def get(self, request):
         return Response({"ok": True})

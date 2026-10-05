@@ -169,9 +169,20 @@ def test_a_scheduler_run_continues_scans_sends_reminders_and_refreshes_the_demo(
     assert Notification.objects.filter(user=real_user, key__startswith="reminder:").count() == 1
 
 
-def test_health_endpoint_is_public_and_tiny(db):
-    r = APIClient().get("/api/health/")
-    assert r.status_code == 200 and r.json() == {"ok": True}
+def test_health_endpoint_is_public_and_tiny(db, django_assert_num_queries, monkeypatch):
+    """It must answer the moment the process is up: no database, no session, no Redis/cache (rate limiter)."""
+    from django.core.cache.backends.locmem import LocMemCache
+
+    def no_cache(*a, **k):
+        raise AssertionError("the health check must not touch the cache (Redis in production)")
+
+    for name in ("get", "set", "add", "incr", "get_many", "set_many"):
+        monkeypatch.setattr(LocMemCache, name, no_cache)
+    with django_assert_num_queries(0):
+        for _ in range(100):  # never rate-limited: it's polled while the server wakes up
+            r = APIClient().get("/api/health/")
+            assert r.status_code == 200 and r.json() == {"ok": True}
+    assert "Set-Cookie" not in r.headers  # no session or CSRF cookie either
 
 
 # --- Public read-only demo ---------------------------------------------------------

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { SIGN_IN_URL } from "@/components/oppora/google-sign-in-button";
+import { WakeLink } from "@/components/oppora/wake-link";
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/oppora/logo";
@@ -41,7 +42,7 @@ export function Navbar() {
           ))}
         </ul>
         <Button asChild size="sm" className="ml-auto md:ml-2">
-          <a href={SIGN_IN_URL}>Get Started</a>
+          <WakeLink href={SIGN_IN_URL}>Get Started</WakeLink>
         </Button>
         <IconButton
           label={open ? "Close menu" : "Open menu"}

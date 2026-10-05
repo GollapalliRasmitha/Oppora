@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { WakeLink } from "./wake-link";
 
 export const SIGN_IN_URL = "/api/auth/google/login?next=/dashboard";
 /** "Try the demo": the shared, read-only sample account (no Gmail needed). */
@@ -7,12 +8,13 @@ export const DEMO_URL = "/api/auth/demo";
 /**
  * "Sign in with Google" following Google's branding guidelines: light theme
  * (#FFFFFF fill, #747775 stroke, #1F1F1F text), the standard four-colour G,
- * Roboto Medium, pill shape. A plain link (full navigation) to Django's
- * OAuth start, which redirects to Google's consent screen.
+ * Roboto Medium, pill shape. A link (full navigation) to Django's OAuth
+ * start, which redirects to Google's consent screen. It waits for the free-tier
+ * backend to be awake first (WakeLink), so the sign-in never hits a sleeping server.
  */
 export function GoogleSignInButton({ href = SIGN_IN_URL, className }: { href?: string; className?: string }) {
   return (
-    <a
+    <WakeLink
       href={href}
       className={cn(
         "inline-flex h-12 items-center gap-3 rounded-full border border-[#747775] bg-white pl-3 pr-5 font-google text-body font-medium text-[#1F1F1F] focus-ring transition-[box-shadow,background-color] duration-200 hover:bg-[#F8FAFF] hover:shadow-[var(--glow-brand)]",
@@ -26,6 +28,6 @@ export function GoogleSignInButton({ href = SIGN_IN_URL, className }: { href?: s
         <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
       </svg>
       Sign in with Google
-    </a>
+    </WakeLink>
   );
 }

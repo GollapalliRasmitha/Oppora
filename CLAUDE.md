@@ -471,3 +471,21 @@ All seed dates are offsets from today, so these hold on every date (offsets repr
 - `tests/test_privacy.py` proves an AI request contains none of 13 personal details from a realistic email, while dates, amounts and form links survive.
 
 **Demo name**: the seed user is now **Alex** (`alex@example.com`, id `u_alex`; the `DEMO_USER_EMAIL` default changed). The template was re-exported. The old local demo row was removed and re-seeded.
+
+## Waking a sleeping backend (5 Oct 2026)
+
+- **Measured on production:** while Render's free instance wakes up (~45 s), Vercel's proxy answers **502 within about 1 second**; it doesn't wait. The old client retry (3 retries over ~26 s) gave up before the server was up, so sign-in and first page loads failed.
+- **`lib/wake.ts`**:
+  - `waitForBackend()` polls `GET /api/health` (2, 3, 5, 8, 10, 10, 15, 15, 20 s apart, each check with a 20 s timeout, about 90 s in total). Concurrent callers share one wait.
+  - It sets a small store (`idle` / `waking` / `failed`) that `WakingNotice` shows below the header: "Waking up the server, this can take up to a minute…", or "taking too long" for 8 s. `WakingNotice` is mounted in the root layout and is an always-present `role=status` live region.
+- **`request()`:**
+  - Each fetch has a 90 s timeout.
+  - On 502/503/504 or a timeout it waits for the server and retries, at most 3 times.
+  - **Reads** are always retried; a 1/2/4 s pause applies when the server was already up.
+  - **Writes** are retried only when the server was asleep: it can't have run the first attempt, so nothing is ever saved or applied twice. If it was awake, the error is shown instead.
+  - If the server never wakes, the request fails with "taking too long to wake up".
+- **`WakeLink`** is used for everything that leaves the page for the backend: Sign in with Google, Get Started, Try the demo, "Use your own Gmail". It waits for the backend before navigating, so Google's callback never lands on a sleeping server. It's still a real `<a>` (no JS → plain link; Ctrl/⌘-click untouched), with `aria-busy` while waiting.
+- **`/api/health/`** has no auth, no DB, no session and **no throttle**: the rate limiter would hit Upstash on every poll. A test asserts 0 queries, no cache access and no cookies over 100 calls.
+- **The keep-awake cron was not added.** Every 10 minutes on GitHub Actions is ~4,300 minutes a month, which exceeds a private repo's 2,000 free minutes (the hourly scheduler already uses ~730). That would block all workflows, the scheduler included, or bill a card. GitHub's scheduled runs are also delayed by hours, so they can't keep anything awake reliably.
+  - Free alternatives: an external pinger (cron-job.org or UptimeRobot, no card), or making the repo public (unlimited Actions minutes).
+  - Render's free 750 hours a month cover one service awake 24/7 (≤ 744 h). `/api/health/` doesn't touch Neon, so the database can still pause.

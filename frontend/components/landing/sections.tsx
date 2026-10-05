@@ -15,6 +15,7 @@ import {
   WandSparkles,
 } from "lucide-react";
 import { DEMO_URL, GoogleSignInButton, SIGN_IN_URL } from "@/components/oppora/google-sign-in-button";
+import { WakeLink } from "@/components/oppora/wake-link";
 import { AuthErrorNotice } from "./auth-error-notice";
 import { Logo } from "@/components/oppora/logo";
 import { Badge } from "@/components/ui/badge";
@@ -44,9 +45,9 @@ export function Hero() {
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <GoogleSignInButton />
           <Button asChild variant="secondary" size="lg">
-            <a href={DEMO_URL}>
+            <WakeLink href={DEMO_URL}>
               <PlayCircle aria-hidden /> Try the demo
-            </a>
+            </WakeLink>
           </Button>
           <Button asChild variant="ghost" size="lg">
             <Link href="#how-it-works">
@@ -159,14 +160,14 @@ export function FinalCTA() {
         <p className="relative mt-4 text-lg text-ink-2">Let Oppora find it for you.</p>
         <div className="relative mt-8 flex flex-wrap justify-center gap-3">
           <Button asChild size="lg">
-            <a href={SIGN_IN_URL}>
+            <WakeLink href={SIGN_IN_URL}>
               Get Started <ArrowRight aria-hidden />
-            </a>
+            </WakeLink>
           </Button>
           <Button asChild size="lg" variant="secondary">
-            <a href={DEMO_URL}>
+            <WakeLink href={DEMO_URL}>
               <PlayCircle aria-hidden /> Try the demo
-            </a>
+            </WakeLink>
           </Button>
         </div>
       </div>
