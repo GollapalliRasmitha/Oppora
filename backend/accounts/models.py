@@ -113,6 +113,10 @@ class GmailConnection(models.Model):
 
     #: The seeded demo account: no real mailbox, so scans are simulated.
     is_demo = models.BooleanField(default=False)
+    #: Why the last sync left emails waiting ("" = it didn't): see mail.sync.WaitReason. Shown in the sync card.
+    sync_wait_reason = models.CharField(max_length=16, blank=True)
+    #: A short, content-free explanation (e.g. "Gemini 400: API key not valid") for the AI-unavailable case.
+    sync_wait_detail = models.CharField(max_length=200, blank=True)
     #: Demo only: the day the sample data was loaded for (core.demo reloads it when the day changes).
     demo_seeded_for = models.DateField(null=True, blank=True)
     google_sub = models.CharField(max_length=64, blank=True)

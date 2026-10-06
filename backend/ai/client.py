@@ -117,6 +117,18 @@ def set_provider(provider: AIProvider | None, per_minute: int | None = None, fal
         _limiter = RateLimiter(per_minute or settings.AI_REQUESTS_PER_MINUTE)
 
 
+class ShareUsedUp(DailyLimitReached):
+    """This account's fair share of today's AI budget is used up (other accounts may still have some)."""
+
+
+def next_reset(now: datetime | None = None) -> datetime:
+    """When the provider's daily quota (and so the budget) resets: the next midnight Pacific time."""
+    from datetime import time, timedelta
+
+    day = quota_day(now) + timedelta(days=1)
+    return datetime.combine(day, time(0), tzinfo=QUOTA_ZONE)
+
+
 #: The account whose email is being processed (set by the sync around its work).
 _current_user = contextvars.ContextVar("ai_user_id", default=None)
 
@@ -171,7 +183,7 @@ def _reserve(provider: str) -> None:
             mine, _ = AIUserUsage.objects.select_for_update().get_or_create(user_id=user_id, provider=provider, day=quota_day())
             share = fair_share()
             if mine.requests >= share:
-                raise DailyLimitReached(f"This account's fair share of today's AI budget is used up ({share}).")
+                raise ShareUsedUp(f"This account's fair share of today's AI budget is used up ({share}).")
             AIUserUsage.objects.filter(pk=mine.pk).update(requests=F("requests") + 1)
         AIUsage.objects.filter(pk=row.pk).update(requests=F("requests") + 1)
 

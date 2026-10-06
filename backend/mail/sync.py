@@ -19,6 +19,7 @@ The seeded demo account has no mailbox; its scans are simulated.
 
 import logging
 import time
+from dataclasses import dataclass
 from datetime import timedelta
 
 from django.conf import settings
@@ -26,7 +27,7 @@ from django.db import transaction
 
 from accounts.models import GmailConnection
 from ai import client as ai_client
-from ai.providers.base import DailyLimitReached, NotConfigured, TransientAIError
+from ai.providers.base import AIError, DailyLimitReached, NotConfigured, TransientAIError
 from core import clock, jobs
 from core.api import GmailAccessError
 from core.locks import locks
@@ -34,7 +35,7 @@ from core.locks import locks
 from .fees import recheck_fees
 from .gmail import GmailAuthError, GmailClient, HistoryExpired
 from .models import ProcessedMessage
-from .pipeline import process_message
+from .pipeline import AIChoiceRequired, process_message
 
 log = logging.getLogger(__name__)
 
@@ -183,25 +184,76 @@ def _queue_new_ids(user, client: GmailClient, g: GmailConnection) -> str:
     return head
 
 
-def process_queue(user, client: GmailClient, g: GmailConnection, deadline: float | None = None) -> int:
+class WaitReason:
+    """Why a sync left emails queued. Shown honestly in the sync card instead of a bare "Sync completed"."""
+
+    NONE = ""
+    TIME_BOX = "time_box"  # this batch's time ran out: the next Scan or hourly run continues
+    AI_QUOTA = "ai_quota"  # today's AI budget (or Gemini's own daily quota) is used up
+    AI_SHARE = "ai_share"  # this account's fair share of today's budget is used up
+    AI_UNAVAILABLE = "ai_unavailable"  # the AI refused every request (bad key, unknown model, region…)
+    AI_BUSY = "ai_busy"  # the AI kept failing temporarily (overloaded / unreachable)
+    AI_CHOICE = "ai_choice"  # the consent screen hasn't been answered
+
+
+#: Errors recorded on messages before AI failures stopped the run (they marked each email failed):
+#: these emails were never really analysed, so the next sync puts them back in the queue.
+_AI_FAILURE = r"^(Gemini|OpenAI) [0-9]{3}"
+
+
+def requeue_ai_failures(user) -> int:
+    """Puts emails that "failed" only because the AI refused the request back in the queue."""
+    return ProcessedMessage.objects.filter(
+        user=user, status=ProcessedMessage.Status.NEEDS_REVIEW, outcome="error", last_error__regex=_AI_FAILURE
+    ).update(status=ProcessedMessage.Status.QUEUED, outcome="")
+
+
+@dataclass
+class QueueResult:
+    left: int
+    reason: str = WaitReason.NONE
+    detail: str = ""
+
+
+def _ai_detail(e: Exception) -> str:
+    """A short, content-free reason: the provider's status and message, never any email text."""
+    return str(e).splitlines()[0][:200] if str(e) else type(e).__name__
+
+
+def process_queue(user, client: GmailClient, g: GmailConnection, deadline: float | None = None) -> QueueResult:
     """
     Runs the pipeline over queued messages, oldest first, until the queue is
-    empty or `deadline` (time.monotonic()) passes. Returns how many are still queued.
+    empty or `deadline` (time.monotonic()) passes.
+
+    An AI problem that affects every email (quota, share, bad key, unknown
+    model, region, outage) stops the run and leaves the emails queued, with the
+    reason recorded. Only a problem with one message marks that message failed.
     """
     queued = ProcessedMessage.objects.filter(user=user, status=ProcessedMessage.Status.QUEUED).order_by("created_at", "id")
     remaining = queued.count()
     _save(g, sync_phase=GmailConnection.Phase.ANALYZING, sync_emails_in_batch=remaining)
     transient = 0
+    reason, detail = WaitReason.NONE, ""
+
+    def stop(why: str, e: Exception, pm) -> None:
+        nonlocal reason, detail
+        reason, detail = why, _ai_detail(e)
+        log.warning("AI stopped the sync for user %s (%s: %s); %s emails stay queued", user.pk, why, detail, remaining)
+        pm.last_error = str(e)[:300]
+        pm.save(update_fields=["last_error", "updated_at"])
+
     for pm in list(queued):
         if deadline is not None and time.monotonic() >= deadline:
             log.info("Batch time is up; %s emails stay queued for the next run", remaining)
+            reason = WaitReason.TIME_BOX
             break
         try:
             out = process_message(user, client, pm.gmail_message_id)
-        except (DailyLimitReached, NotConfigured) as e:
-            log.info("AI unavailable for now (%s); %s emails stay queued", type(e).__name__, remaining)
-            pm.last_error = str(e)[:300]
-            pm.save(update_fields=["last_error", "updated_at"])
+        except ai_client.ShareUsedUp as e:
+            stop(WaitReason.AI_SHARE, e, pm)
+            break
+        except DailyLimitReached as e:
+            stop(WaitReason.AI_QUOTA, e, pm)
             break
         except TransientAIError as e:
             pm.attempts += 1
@@ -209,8 +261,17 @@ def process_queue(user, client: GmailClient, g: GmailConnection, deadline: float
             pm.save(update_fields=["attempts", "last_error", "updated_at"])
             transient += 1
             if transient >= MAX_TRANSIENT_IN_A_ROW:
+                reason, detail = WaitReason.AI_BUSY, _ai_detail(e)
                 break
             continue
+        except NotConfigured as e:
+            stop(WaitReason.AI_CHOICE if isinstance(e, AIChoiceRequired) else WaitReason.AI_UNAVAILABLE, e, pm)
+            break
+        except AIError as e:
+            # Any other refusal from the AI (e.g. Gemini 400 "API key not valid", 404 unknown model,
+            # unsupported region) would fail every email the same way: stop, keep them queued.
+            stop(WaitReason.AI_UNAVAILABLE, e, pm)
+            break
         except GmailAuthError:
             raise
         except Exception as e:  # a bad message must not stop the sync
@@ -227,7 +288,8 @@ def process_queue(user, client: GmailClient, g: GmailConnection, deadline: float
         remaining -= 1
         _save(g, sync_emails_in_batch=remaining)
         locks().refresh(_lock_key(user.pk))
-    return ProcessedMessage.objects.filter(user=user, status=ProcessedMessage.Status.QUEUED).count()
+    left = ProcessedMessage.objects.filter(user=user, status=ProcessedMessage.Status.QUEUED).count()
+    return QueueResult(left, reason if left else WaitReason.NONE, detail if left else "")
 
 
 def run_sync(user_id, seconds: float | None = None) -> bool:
@@ -256,19 +318,23 @@ def _run_sync(user_id, deadline: float | None = None) -> None:
     user = g.user
     try:
         client = GmailClient.for_connection(g)
+        if n := requeue_ai_failures(user):
+            log.warning("Put %s emails that failed only because of the AI back in the queue (user %s)", n, user_id)
         head = _queue_new_ids(user, client, g)
         _save(g, history_id=head)
-        left = process_queue(user, client, g, deadline)
-        if not left and (deadline is None or time.monotonic() < deadline):
+        result = process_queue(user, client, g, deadline)
+        if not result.left and (deadline is None or time.monotonic() < deadline):
             try:  # stored opportunities not yet checked for a fee (cheap: rules first)
                 recheck_fees(user, client)
-            except (DailyLimitReached, NotConfigured, TransientAIError):
+            except AIError:
                 pass  # checked on a later sync
         _save(
             g,
             sync_phase=GmailConnection.Phase.COMPLETED,
             sync_emails_in_batch=0,
-            sync_queued=left,
+            sync_queued=result.left,
+            sync_wait_reason=result.reason,
+            sync_wait_detail=result.detail,
             last_synced_at=clock.now(),
         )
     except GmailAuthError as e:

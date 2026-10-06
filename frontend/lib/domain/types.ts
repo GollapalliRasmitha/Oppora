@@ -147,9 +147,22 @@ export interface SyncStatus {
   phase: SyncPhase;
   emailsInBatch: number;
   lastSyncedAt: ISODateTime | null;
-  /** Emails waiting for the AI (its daily limit was reached); processed on a later sync. */
+  /** Emails waiting to be analysed; `waitReason` says why. The next Scan or hourly run continues. */
   queued?: number;
+  waitReason?: SyncWaitReason;
+  /** For ai_unavailable / ai_busy: the AI's own short error, e.g. "Gemini 400: API key not valid". */
+  waitDetail?: string;
+  /** For ai_quota / ai_share: when the daily AI budget resets. */
+  resetsAt?: ISODateTime | null;
+  /** Totals for this mailbox: emails Oppora looked at, skipped by the pre-filter, analysed, failed, opportunities. */
+  fetched?: number;
+  filtered?: number;
+  analysed?: number;
+  failed?: number;
+  found?: number;
 }
+
+export type SyncWaitReason = "" | "time_box" | "ai_quota" | "ai_share" | "ai_unavailable" | "ai_busy" | "ai_choice";
 
 export interface Notification {
   id: string;

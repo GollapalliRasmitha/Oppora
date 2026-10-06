@@ -489,3 +489,22 @@ All seed dates are offsets from today, so these hold on every date (offsets repr
 - **The keep-awake cron was not added.** Every 10 minutes on GitHub Actions is ~4,300 minutes a month, which exceeds a private repo's 2,000 free minutes (the hourly scheduler already uses ~730). That would block all workflows, the scheduler included, or bill a card. GitHub's scheduled runs are also delayed by hours, so they can't keep anything awake reliably.
   - Free alternatives: an external pinger (cron-job.org or UptimeRobot, no card), or making the repo public (unlimited Actions minutes).
   - Render's free 750 hours a month cover one service awake 24/7 (≤ 744 h). `/api/health/` doesn't touch Neon, so the database can still pause.
+
+## Honest sync status + AI-error handling (6 Oct 2026)
+
+- **Bug (test users: "Sync completed", no opportunities):**
+  - Gemini errors other than 429, 401/403 or 5xx (e.g. **400 "API key not valid"**, 404 unknown model, 400 unsupported region) were plain `AIError`s.
+  - `process_queue`'s catch-all then marked **each email** `needs_review`/`error` and moved on. The run ended "completed" with 0 queued and 0 opportunities, and those emails were never retried.
+  - The owner's account looked fine only because its data was copied from the laptop.
+- **Fix (`mail/sync.py`):**
+  - Any AI-wide problem now **stops the run and leaves the emails queued**, recording `GmailConnection.sync_wait_reason` + `sync_wait_detail` (migration `accounts.0007`). This covers the daily budget (`ai_quota`), fair share (`ai_share`, via the new `ShareUsedUp`), any other AI refusal (`ai_unavailable`, with the provider's short error), 3 transient failures in a row (`ai_busy`) and no consent answer (`ai_choice`). A time-boxed batch reports `time_box`.
+  - Only per-message problems (and `InvalidOutput`) mark that one email failed.
+  - `requeue_ai_failures()` runs at the start of every sync: emails whose `last_error` matches `^(Gemini|OpenAI) \d{3}` go back to the queue, so accounts hit by the bug heal themselves on their next Scan or hourly run.
+- **Status API** (`SyncStatusSerializer`): adds `waitReason`, `waitDetail`, `resetsAt` (next midnight Pacific, for quota/share) and mailbox totals from one GROUP BY on ProcessedMessage: `fetched`, `filtered` (pre-filter), `analysed` (done + needs_review), `failed`, `found` (opportunities). The demo uses its sample totals.
+- **Sync card** (`describeSync()` in `sync-status.tsx`):
+  - "Sync completed" only when nothing waits, with "Fetched X emails · analysed Y · found Z opportunities".
+  - Otherwise it names the reason: "Analysis paused: today's AI limit is used up" or "…your share…" plus "N emails waiting · continues automatically after <local reset time>"; "AI analysis isn't working right now · <Gemini error>"; "The AI is busy right now"; "Analysing your emails in batches".
+  - Waiting uses an hourglass and problems use a warning icon. Long text wraps (line-clamp-2). The completion toast uses the same wording.
+- **Answers from the code:** the first sync scans `newer_than:60d` (`GMAIL_INITIAL_SYNC_DAYS`), up to 500 messages, oldest first. **Scan Gmail runs the AI immediately** in a background thread for up to `SYNC_BATCH_SECONDS` (480 s, about 70 AI calls at 9/min); the hourly scheduler continues the rest.
+- **Shared Gemini quota:** the laptop's Celery beat (`sync_all` every 30 min, `resume_queued`) and production use the **same `GEMINI_API_KEY`**, but each counts its own `AIUsage`. Gemini's real per-project daily quota is shared. Locally, 125 of 126 analysed emails used the fallback model.
+- **`manage.py sync_report [--database target]`**: a read-only per-account report (masked emails; counts, outcomes, grouped error types, AI usage; never email content) for diagnosing production via `TARGET_DATABASE_URL`.

@@ -120,10 +120,71 @@ class SyncStatusSerializer(serializers.ModelSerializer):
     phase = serializers.CharField(source="sync_phase")
     emailsInBatch = serializers.IntegerField(source="sync_emails_in_batch")
     lastSyncedAt = serializers.DateTimeField(source="last_synced_at")
-    #: Emails waiting for the AI (its free-tier daily limit was reached); processed on the next sync.
+    #: Emails waiting to be analysed (see waitReason for why); the next Scan or hourly run continues.
     queued = serializers.IntegerField(source="sync_queued")
+    #: Why emails are waiting: "" | time_box | ai_quota | ai_share | ai_unavailable | ai_busy | ai_choice.
+    waitReason = serializers.CharField(source="sync_wait_reason")
+    #: For ai_unavailable / ai_busy: the AI's own short error (e.g. "Gemini 400: API key not valid").
+    waitDetail = serializers.CharField(source="sync_wait_detail")
+    #: For ai_quota / ai_share: when the daily budget resets (midnight Pacific time).
+    resetsAt = serializers.SerializerMethodField()
+    # Totals for this mailbox, so the card can say "Fetched X emails · analysed Y · found Z opportunities".
+    fetched = serializers.SerializerMethodField()
+    filtered = serializers.SerializerMethodField()
+    analysed = serializers.SerializerMethodField()
+    failed = serializers.SerializerMethodField()
+    found = serializers.SerializerMethodField()
 
     class Meta:
         model = GmailConnection
-        fields = ["phase", "emailsInBatch", "lastSyncedAt", "queued"]
+        fields = [
+            "phase", "emailsInBatch", "lastSyncedAt", "queued", "waitReason", "waitDetail", "resetsAt",
+            "fetched", "filtered", "analysed", "failed", "found",
+        ]  # fmt: skip
         read_only_fields = fields
+
+    def _counts(self, g) -> dict:
+        """One GROUP BY over the processed-message log (cached per object)."""
+        if not hasattr(g, "_sync_counts"):
+            from django.db.models import Count
+
+            from mail.models import Email, ProcessedMessage
+            from opportunities.models import Opportunity
+
+            by = dict(ProcessedMessage.objects.filter(user_id=g.user_id).values_list("status").annotate(n=Count("id")))
+            S = ProcessedMessage.Status
+            found = Opportunity.objects.filter(user_id=g.user_id, dismissed=False).count()
+            if g.is_demo:  # sample data: no Gmail log behind it
+                emails = Email.objects.filter(user_id=g.user_id).count()
+                g._sync_counts = {"fetched": emails, "filtered": 0, "analysed": emails, "failed": 0, "found": found}
+            else:
+                g._sync_counts = {
+                    "fetched": sum(by.values()),
+                    "filtered": by.get(S.SKIPPED, 0),  # pre-filter: promotions, chats, no opportunity words…
+                    "analysed": by.get(S.DONE, 0) + by.get(S.NEEDS_REVIEW, 0),
+                    "failed": by.get(S.NEEDS_REVIEW, 0),
+                    "found": found,
+                }
+        return g._sync_counts
+
+    def get_fetched(self, g) -> int:
+        return self._counts(g)["fetched"]
+
+    def get_filtered(self, g) -> int:
+        return self._counts(g)["filtered"]
+
+    def get_analysed(self, g) -> int:
+        return self._counts(g)["analysed"]
+
+    def get_failed(self, g) -> int:
+        return self._counts(g)["failed"]
+
+    def get_found(self, g) -> int:
+        return self._counts(g)["found"]
+
+    def get_resetsAt(self, g):
+        if g.sync_wait_reason not in ("ai_quota", "ai_share") or not g.sync_queued:
+            return None
+        from ai.client import next_reset
+
+        return next_reset().isoformat()
