@@ -28,6 +28,11 @@ Personal AI agent that reads a user's Gmail, finds opportunities, extracts deadl
   - The owner's account was copied with `copy_account` (59 opportunities, 125 emails, 526 processed messages) and Gmail reconnected on production.
 - Profile check (4 Oct 2026): the user's Google account has 6 interests, 1 skill and a level set; the demo account is unchanged. Suggest adding more skills (worth up to 30 match points).
 - Profile skills: keep the demo skills for now (user decision, Stage 3 review).
+- **Resume-ready README (15 Oct 2026):** pitch + live link + "Try the demo" first, screenshots in `docs/screenshots/`
+  (taken from the live public demo "Alex" only: made-up emails), features, stack + Mermaid diagram, engineering and
+  privacy highlights, "built with Claude Code", setup further down; the 2-minute demo script moved to
+  `docs/demo-script.md`; "Status and limits" updated (live, HTTPS, DEBUG off). Before going public the full git
+  history was scanned: no secrets (only test values); `test_privacy.py` now uses `someone@example.com`.
 
 ## Working rules (from PROMPT.md §0)
 

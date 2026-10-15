@@ -28,19 +28,19 @@ PERSONAL = message(
         "Hi Rasmitha Gollapalli,\n"
         "Thanks for applying to the Frontend Internship at Acme. Apply by 20 October 2026.\n"
         "Your OTP is 482913. Verification code: 7Q2K9A. 551204 is your login code.\n"
-        "Questions? Call +91 98765 43210 or (080) 4123-4567, or write to rasmitha.g@gmail.com or hr@acme.example.\n"
+        "Questions? Call +91 98765 43210 or (080) 4123-4567, or write to someone@example.com or hr@acme.example.\n"
         "Finish here: https://acme.example/verify/eyJhbGciOiJIUzI1NiJ9abcdef1234567890xyz?token=s3cr3tT0k3nValue&ref=email\n"
         "Application form: https://docs.google.com/forms/d/e/1FAIpQLSdXyZ1234567890abcdefghijk/viewform\n"
-        "Track: https://acme.example/apply?jobId=FE-2027&email=rasmitha.g%40gmail.com&utm_source=mail\n"
+        "Track: https://acme.example/apply?jobId=FE-2027&email=someone%40example.com&utm_source=mail\n"
         "Registration fee: Rs. 1,499/- payable by 15/10/2026. Stipend ₹20,000 per month for 12 weeks in 2027."
     ),
     sent=datetime(2026, 10, 1, 10, 0, tzinfo=UTC),
 )
 SECRETS = [
     "priya.k@acme.example",
-    "rasmitha.g@gmail.com",
+    "someone@example.com",
     "hr@acme.example",
-    "rasmitha.g%40gmail.com",
+    "someone%40example.com",
     "98765 43210",
     "4123-4567",
     "482913",
@@ -133,7 +133,7 @@ def test_an_ai_request_contains_none_of_the_personal_details(real_user, fake_ai,
     # What the AI needs is still there.
     assert "20 October 2026" in sent and "Rs. 1,499/-" in sent and "docs.google.com/forms/d/e/1FAIpQLSdXyZ" in sent
     # The cleaned link the AI returned is stored as the email's own link (it stays on our server).
-    assert x.application_link == "https://acme.example/apply?jobId=FE-2027&email=rasmitha.g%40gmail.com&utm_source=mail"
+    assert x.application_link == "https://acme.example/apply?jobId=FE-2027&email=someone%40example.com&utm_source=mail"
 
 
 def test_fee_checks_send_only_cleaned_sentences(fake_ai, db):

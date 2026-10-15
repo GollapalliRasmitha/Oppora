@@ -1,23 +1,131 @@
 # Oppora
 
-**Your personal AI opportunity agent.** Oppora reads your Gmail (read-only), finds internships, jobs, hackathons, scholarships, fellowships and events, pulls out their deadlines, ranks them against your profile and helps you act before they close.
+**An AI agent that reads your Gmail (read-only), finds internships, jobs, hackathons, scholarships and events,
+tracks their deadlines and ranks them against your profile, so nothing important gets buried in your inbox.**
 
-- **Finds** opportunities in your inbox with an AI model (Gemini free tier by default) and never invents details: anything the email doesn't say is shown as *Not mentioned in email*.
-- **Ranks** each one by a match % you can inspect (interests, skills, level, deadline), and warns when an email asks for a fee.
-- **Tracks** deadlines on a calendar, reminds you the day before, and keeps your saved and applied lists.
-- **Helps** with an assistant that answers only from your own opportunities and emails, plus insights and a weekly digest.
-- Dark, light or system theme. It works on desktop, tablet and phone, by keyboard and with a screen reader.
+**Live site: <https://oppora-app.vercel.app>**
 
-| Part | Stack |
+> **Try it without Gmail:** on the live site, click **Try the demo**. It opens a shared, read-only sample account
+> ("Alex") filled with made-up emails, so no sign-in or Gmail is needed and nothing you do there is saved.
+> The first load may take about a minute while the free server wakes up.
+>
+> Gmail sign-in is invite-only for now (Google's testing phase), so the demo is the way in for visitors.
+
+![Oppora dashboard (demo account)](docs/screenshots/dashboard.png)
+
+## Screenshots
+
+| | |
 |---|---|
-| `frontend/` | Next.js 16 (App Router) · TypeScript · Tailwind v4 · Radix · Lucide |
-| `backend/` | Django 5.2 · Django REST Framework · Python 3.14 · Celery |
-| Infrastructure | Postgres 16 + Redis 7 (`docker-compose.yml`) |
-| AI | Gemini REST API (free tier) behind one provider interface; OpenAI optional (paid) |
+| ![Landing page](docs/screenshots/landing.png) **Landing page: Sign in with Google or Try the demo** | ![Opportunities list](docs/screenshots/opportunities.png) **Opportunities found in the inbox, with match %** |
+| ![Opportunity details](docs/screenshots/opportunity-details.png) **Details: AI summary and why it matches** | ![Deadlines calendar](docs/screenshots/deadlines.png) **Deadlines, coloured by urgency** |
+| ![AI insights](docs/screenshots/insights.png) **AI insights and application progress** | ![Assistant panel](docs/screenshots/assistant.png) **Assistant that answers from your own data** |
 
-Deeper docs: [backend/README.md](backend/README.md) (API and backend layout), [docs/google-cloud-setup.md](docs/google-cloud-setup.md) (Google sign-in, Gmail and Gemini, step by step), [CLAUDE.md](CLAUDE.md) (design tokens, decisions, stage notes).
+On a phone:
+
+<p>
+  <img src="docs/screenshots/phone-dashboard.png" width="220" alt="Dashboard on a phone">
+  <img src="docs/screenshots/phone-opportunities.png" width="220" alt="Opportunities on a phone">
+</p>
+
+All screenshots are from the public demo account, which contains only made-up sample emails.
+
+## Features
+
+- **Finds opportunities in Gmail** (read-only) with an AI model, and never invents details: anything the email
+  doesn't say is shown as *Not mentioned in email*.
+- **Ranks each one** with a match % you can open and inspect (interests, skills, level, deadline), and warns when
+  an email asks for a fee.
+- **Tracks deadlines** on a calendar (month, week, day) and reminds you the day before.
+- **Keeps your lists**: saved, in progress and applied, with one-tap "Apply now" and "Mark as applied".
+- **Assistant** that answers only from your own opportunities and emails, and links what it used.
+- **Insights**, a daily briefing and a weekly digest.
+- Dark, light or system theme; works on desktop, tablet and phone, by keyboard and with a screen reader.
+- **Privacy controls**: an AI consent screen, a rules-only mode that sends nothing to the AI, a personal-detail
+  filter, and "Delete my data".
+
+## Tech stack
+
+| Part | Built with | Hosted on (free plans) |
+|---|---|---|
+| Website | Next.js 16 (App Router), React, TypeScript, Tailwind CSS v4, Radix, Lucide | Vercel |
+| API | Python 3.14, Django 5.2, Django REST Framework, gunicorn | Render |
+| Database | PostgreSQL 16 | Neon |
+| Rate limits | Redis 7 | Upstash |
+| AI | Google Gemini (free tier) behind one provider interface | Google AI Studio |
+| Email | Gmail API (`gmail.readonly`) with Google sign-in (OAuth + PKCE) | Google Cloud |
+| Background work | Celery + Redis locally; on the free plan, short resumable batches and an hourly GitHub Actions scheduler | GitHub |
+
+```mermaid
+flowchart LR
+    B[Browser] --> V["Vercel<br/>Next.js website"]
+    V -- "/api/* (same-origin proxy)" --> R["Render<br/>Django + DRF API"]
+    R --> N[("Neon<br/>PostgreSQL")]
+    R --> U[("Upstash<br/>Redis rate limits")]
+    R <--> GM["Gmail API<br/>read-only"]
+    R --> GE["Google Gemini<br/>AI extraction"]
+    GH["GitHub Actions<br/>hourly scheduler"] -- "secret-protected POST" --> R
+```
+
+The browser only ever talks to the website. Next.js forwards `/api/*` to Django, so the session cookie is
+first-party and httpOnly, no CORS is needed, and no key ever reaches the browser.
+
+## Interesting engineering
+
+- **Read-only Gmail, done carefully.** Only the `gmail.readonly` scope is requested. Google sign-in uses PKCE, OAuth
+  tokens are encrypted at rest (Fernet, with key rotation) and never sent to the browser, and disconnecting revokes
+  access at Google.
+- **An AI that can't make things up.** One Gemini call per email returns strict structured data; then every link,
+  skill, date and fee is checked against the email text itself. Anything that isn't there becomes `null` and shows
+  as *Not mentioned in email*.
+- **Each email processed exactly once.** The pipeline is idempotent: a Gmail message is never analysed twice, and
+  follow-up emails link to the existing opportunity instead of creating a duplicate.
+- **Free tier, never failing.** AI calls are rate-limited and capped per day, and the daily budget is shared fairly
+  between accounts. Over the limit, emails wait in a queue and resume by themselves after the reset.
+- **Works on a server that sleeps.** Render's free plan has no background worker and sleeps after 15 idle minutes, so
+  scans run in short batches that save progress after every email, and an hourly GitHub Actions job (protected by a
+  shared secret) continues them and sends reminders. The website waits for a sleeping backend instead of failing.
+- **A match % you can inspect.** AI relevance is blended with a profile score (interests 40, skills 30, level 15,
+  deadline 15). Checks the email can't answer are left out instead of counting against you, and changing your
+  profile re-scores without new AI calls.
+- **A public demo that can't be changed.** "Try the demo" signs visitors into a shared sample account; a middleware
+  refuses every change from it (only reading, the assistant and sign-out are allowed), and the sample data shifts to
+  today's date every day.
+- **Your data only.** Sessions use an httpOnly, SameSite cookie, every change needs a CSRF token, every query is
+  limited to the signed-in user (tested with two users), and every page sends security headers (CSP, no framing,
+  HSTS, nosniff).
+
+More detail on each of these: [CLAUDE.md](CLAUDE.md) (decisions and stage notes) and
+[backend/README.md](backend/README.md) (API and backend layout).
+
+## Privacy & security
+
+- **Secrets** live only on the server (`.env` locally, the hosting dashboards online). The browser bundle contains no
+  keys.
+- **Minimum data to the AI:** subject, sender, date and a cleaned, trimmed body with personal details (phone
+  numbers, other email addresses, codes) filtered out. Attachments are never read, and email bodies are never
+  stored.
+- **On Gemini's free tier**, Google may use submitted content to improve its products. Settings → Privacy says
+  exactly what is sent, and rules-only mode sends nothing.
+- **Rate limits** apply to sign-in, scans, the assistant and the API.
+- **Delete my data** (Settings) removes opportunities, emails and notifications and disconnects Gmail.
+- **Key rotation:** set `TOKEN_ENCRYPTION_KEY=<new>,<old>`, run
+  `backend\.venv\Scripts\python backend\manage.py rotate_token_key`, then remove the old key.
+
+## How it was built
+
+I built Oppora with [Claude Code](https://claude.com/claude-code) as my AI pair-programmer, in 12 stages: I wrote the
+product brief and design direction, set the rules (read-only Gmail, never invent facts, free services only, tests
+for every stage), made the decisions at each step, and reviewed and tested the results, including with my own real
+Gmail before going live.
 
 ---
+
+# Running it yourself
+
+Free hosting guide (Vercel, Render, Neon, Upstash, GitHub Actions): [docs/deploy.md](docs/deploy.md).
+Google sign-in, Gmail and Gemini setup: [docs/google-cloud-setup.md](docs/google-cloud-setup.md).
+A click-by-click 2-minute demo script: [docs/demo-script.md](docs/demo-script.md).
 
 ## Quick start (Windows)
 
@@ -106,86 +214,6 @@ Every variable is listed and explained in [`.env.example`](.env.example). The on
 
 ---
 
-## 2-minute demo script
-
-Run `start-oppora.ps1 -RefreshDemo` first, so the demo's dates are relative to today. Each line is what to click and what to say.
-
-**0:00 · Landing (10 s)**
-- *"Opportunities get buried in your inbox. Oppora is an AI agent that finds them for you."*
-- Point at the illustration and the floating cards, then click **Sign in with Google**.
-
-**0:10 · Dashboard (20 s)**
-- *"After sign-in Oppora scans Gmail read-only."* Point at **AI status** (last sync), then the four stat cards (total, deadlines this week with urgent ones, applied, in progress).
-- *"Every number is computed from my emails, nothing hard-coded."* Point at the **AI Recommendation** card.
-
-**0:30 · Opportunities (15 s)**
-- Click **Opportunities**. Filter with a type chip (**Hackathon**), sort by **Deadline**, search "frontend", then clear the search.
-- *"Each card shows the match %, priority and days left, coloured by urgency."* Click the bookmark on **UI Engineer** to save it (toast).
-
-**0:45 · Details (25 s)**
-- Open **Frontend Developer**.
-- *"The AI Summary explains the match."* Point at the checklist: skills matched, interests matched, and a warning where the email didn't mention eligibility.
-- Expand **How this match % is worked out**: *"Checks the email can't answer are left out, so they don't count against me."*
-- In the Overview tab, point at *Not mentioned in email*: *"Oppora never guesses."*
-
-**1:10 · Act (20 s)**
-- It's already saved (filled bookmark). Click **Set Reminder** (*"09:00 the day before, in the bell"*), then **Apply Now** → **Mark as applied**. Toasts confirm each step.
-- Click **Deadlines**: the month view coloured by urgency and the *This week* list.
-
-**1:30 · Assistant (20 s)**
-- Click the floating ✦ button, then the prompt **What deadlines are approaching?**
-- *"It answers only from my own data and links every opportunity it used."* Click one to jump to it.
-
-**1:50 · Wrap-up (10 s)**
-- Open the 🔔 bell, then **Settings → Preferences → Theme → Light**: *"Same design system, light theme."*
-- *"Read-only Gmail, encrypted tokens, free-tier AI, and nothing invented."*
-
-Optional extras if there's time: **AI Insights** (trend chart and progress donut), **Calendar** (Month/Week/Day), **Settings → Preview digest now**, **Inbox** (swipe to save or archive on a phone).
-
----
-
-## How it works
-
-```
-Gmail (read-only) ──► sync (Celery worker) ──► pre-filter (no AI: promotions, chats, own mail…)
-                                                  │
-                                                  ▼
-                       Gemini: one call per email → category, fields, deadline, summary
-                                                  │  validation + grounding (links, skills, dates and fees
-                                                  ▼  must appear in the email; else null)
-                       Postgres: Opportunity / Deadline / Email (no bodies) + match score & breakdown
-                                                  │
-Next.js (App Router) ◄── /api/* proxy ◄── Django REST API (session + CSRF, per-user querysets)
-```
-
-- **Minimum data to the AI:** subject, sender, date and a cleaned, trimmed body. Attachments are never read, and email bodies are never stored.
-- **Free tier, never failing:** requests are rate-limited and capped per day. Over the limit, emails stay queued and resume automatically after the reset.
-- **Idempotent:** every Gmail message is processed once. Follow-ups link to the existing opportunity.
-- **Match % =** AI relevance blended with a profile score (interests 40, skills 30, level 15, deadline 15). Unknown checks are neutral, and −25 is applied when the email asks for a fee. Changing your profile re-scores without new AI calls.
-
-## Privacy & security
-
-- **Secrets** live only in `.env` (never committed) and are read on the server. The browser bundle contains no keys.
-- **Gmail** access is read-only (`gmail.readonly`); Oppora never sees your Google password.
-  - OAuth uses PKCE.
-  - Tokens are encrypted at rest and never sent to the browser.
-  - Disconnecting revokes access at Google.
-- **On Gemini's free tier**, Google may use submitted content to improve its products. Settings → Privacy says exactly what is sent.
-- **Sessions** use an httpOnly, SameSite cookie, every change needs a CSRF token, and every query is limited to your own data (tested across two users).
-- **Rate limits** apply to sign-in, scans, the assistant and the API.
-- **Security headers** are set on every page: CSP, no framing, nosniff, and no-store on the API.
-- **Delete my data** (Settings) removes opportunities, emails and notifications and disconnects Gmail.
-- **Key rotation:** set `TOKEN_ENCRYPTION_KEY=<new>,<old>`, run `backend\.venv\Scripts\python backend\manage.py rotate_token_key`, then remove the old key.
-
-## Deploy for free
-
-Vercel (website) + Render (API) + Neon (Postgres) + Upstash (Redis) + an hourly GitHub Actions scheduler, all on free plans. Step-by-step guide: [docs/deploy.md](docs/deploy.md). On the free plan:
-
-- **Scans run in short batches** (progress saved after every email), and the hourly scheduler continues them, sends reminders and refreshes the demo.
-- **"Try the demo"** opens a shared read-only sample account.
-- **Gmail sign-in** stays invite-only (Google Testing mode).
-- **Gemini's daily budget** is split fairly between accounts.
-
 ## Checks
 
 ```powershell
@@ -210,7 +238,14 @@ cd ..\backend; .venv\Scripts\python -m pytest          # API, pipeline, security
 
 ## Status and limits
 
+- **Live since 5 October 2026** on free plans: <https://oppora-app.vercel.app>. Production runs over HTTPS only, with
+  `DJANGO_DEBUG=false`, strong secrets (the server refuses to start with weak or missing keys) and its own database
+  password on Neon.
 - Built in 12 stages; see the stage notes in [CLAUDE.md](CLAUDE.md).
-- For personal use and demos, the Google Cloud app stays in **Testing** mode (up to 100 listed test users).
-- A public launch needs Google's restricted-scope verification (privacy policy on a verified domain, demo video, annual CASA security assessment), plus HTTPS, `DJANGO_DEBUG=false` and a non-default Postgres password.
-- Email notifications need an email provider (not set up; that would be a paid or extra service). Notifications appear in the in-app bell.
+- **Gmail sign-in is invite-only:** the Google Cloud app stays in **Testing** mode (up to 100 listed test users).
+  Everyone else can use **Try the demo**. Opening Gmail sign-in to everyone needs Google's restricted-scope
+  verification (privacy policy on a verified domain, a demo video and an annual CASA security assessment).
+- **Free plan behaviour:** the first visit after 15 quiet minutes takes up to a minute while the server wakes up, and
+  scans of a large inbox continue in hourly batches when the AI's free daily limit is reached.
+- **Email notifications** need an email provider (not set up; that would be a paid or extra service). Notifications
+  appear in the in-app bell.
