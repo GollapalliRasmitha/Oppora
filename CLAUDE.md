@@ -280,6 +280,7 @@ All seed dates are offsets from today, so these hold on every date (offsets repr
 
 - **Rate limits** (core/throttling.py, DRF throttles on a cache): general `user` 600/min (the sync status is polled about once a second during a scan) and `anon` 60/min; `auth` 20/min per IP (dev-login, logout, and the Google login/callback redirects via `auth_rate_limited` → `/?auth_error=rate_limited`); `sync` 20/hour (POST only: polling isn't limited by it); `assistant` 20/min. All overridable with `RATE_*` env vars. 429 → `{"error": {"code": "rate_limited", "message": "… wait N seconds …"}}` + `Retry-After`; the client maps it to `ApiError("rate_limited")`. Counters live in `CACHES["default"]` (Redis db 1); **fail open** if the cache is down (logged), so a cache outage can't take the API down. Tests use `THROTTLE_CACHE="local"` (locmem, cleared per test) and patch `SimpleRateThrottle.THROTTLE_RATES` (DRF binds rates at import time).
 - Client IP = X-Forwarded-For with `NUM_PROXIES=1` (the Next.js proxy adds it; REMOTE_ADDR is always the proxy).
+- (21 Oct 2026) Every throttle counts with an atomic fixed-window counter (`AtomicRateThrottle`: cache `add` + `incr`), not DRF's read-then-write history list, so parallel requests can't slip past a limit (see the GuardRail section). The fail-open test now breaks `add`/`incr`.
 - **Input limits:** `DATA_UPLOAD_MAX_MEMORY_SIZE` 256 KB, max 200 fields; `?q=` ≤ 200 characters and ≤ 8 terms (`BoundedSearchFilter`); every body goes through a serializer (types, lengths, choices, user-scoped ids); filters reject unknown choices; `ordering` is a whitelist; path ids are UUIDs; `X-Timezone` is validated.
 - **Headers.** Django: nosniff, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, COOP same-origin; on `/api/*` (`core.middleware.SecurityHeadersMiddleware`) also `Cache-Control: no-store`, `CSP: default-src 'none'; frame-ancestors 'none'`, CORP same-origin and Permissions-Policy. Production (`DEBUG=false`): HSTS 1 year + subdomains, HTTPS redirect, secure cookies; `SECURE_HSTS_PRELOAD` and `TRUST_X_FORWARDED_PROTO` are explicit opt-ins. `manage.py check --deploy` passes apart from preload (deliberately opt-in).
 - **Next.js headers** (next.config.ts): CSP "without nonces" per the Next 16 docs (`script-src 'self' 'unsafe-inline'`; nonces would force dynamic rendering for every page); everything else is 'self' only (fonts self-hosted by next/font, no third-party scripts/images), `object-src 'none'`, `frame-ancestors 'none'`, `form-action 'self'`, `upgrade-insecure-requests` in production; dev adds `'unsafe-eval'` + the HMR websocket. Also nosniff, X-Frame-Options DENY, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy, COOP, HSTS in production; `poweredByHeader: false`. Verified in the browser: no CSP violations. The app never uses eval; the only dangerouslySetInnerHTML is the static theme script (`THEME_SCRIPT` in lib/theme.ts, no user input).
@@ -537,4 +538,14 @@ GuardRail is Rasmitha's separate security dashboard (repo `guardrail`). Oppora n
 - **Finding (21 Oct 2026, from GuardRail's attack simulator):** DRF's `SimpleRateThrottle` reads the request history
   from the cache and writes it back in two steps, so requests arriving at the same moment can all pass. Locally, 75
   sign-in requests sent 8 at a time got **70 through a 20/min limit** (one at a time: exactly 20). This affects every
-  DRF throttle here (auth, assistant, sync). Not fixed yet: the fix is an atomic counter (Redis `INCR` + expiry).
+  DRF throttle here (auth, assistant, sync). **Fixed (21 Oct 2026):** `core/throttling.py` `AtomicRateThrottle`.
+  In plain words: instead of "read the list, add my request, write it back" (which eight requests can do at the same
+  moment, each seeing the old list), every request now does one indivisible step: "add 1 to this minute's counter and
+  tell me the new total". Redis does that step for one request at a time, so the 21st request always sees 21 and is
+  refused. The counter is created with an expiry and disappears by itself after its window (a fixed window: around
+  a window boundary up to twice the limit can pass, the usual trade-off). Rates, per-user/per-IP keys, Retry-After,
+  the 429 shape and fail-open are unchanged. Proof: `tests/test_throttle_race.py` (75 parallel sign-ins through a
+  slow cache: exactly 20 pass; before the fix 75 did), and on the real Redis 75 requests 8 at a time → **20 allowed,
+  55 blocked**. 270 backend tests pass.
+  *Say it:* "An attack simulator showed parallel requests slipped past my rate limit, because the check was
+  read-then-write; I replaced it with an atomic Redis increment, so 75 parallel sign-ins now get exactly 20 through."

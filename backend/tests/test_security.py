@@ -66,7 +66,8 @@ def test_rate_limiter_fails_open_when_its_cache_is_down(api, rates, monkeypatch)
     def down(*a, **k):
         raise ConnectionError("cache unreachable")
 
-    monkeypatch.setattr(caches["local"], "get", down)
+    for name in ("get", "add", "incr"):
+        monkeypatch.setattr(caches["local"], name, down)
     assert [api.get("/api/opportunities/").status_code for _ in range(3)] == [200, 200, 200]
 
 
