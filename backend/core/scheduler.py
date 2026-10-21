@@ -48,6 +48,19 @@ def sync_accounts(total_seconds: float) -> dict:
     return {"accounts": len(accounts), "ran": ran, "busy": busy}
 
 
+def _guardrail_outbox():
+    """Security events GuardRail couldn't take earlier (it was down): send them now. Never fails the run."""
+    from guardrail.client import flush_outbox, is_enabled
+
+    if not is_enabled():
+        return "off"
+    try:
+        return flush_outbox()
+    except Exception:
+        log.exception("GuardRail outbox flush failed")
+        return "failed"
+
+
 def tick() -> dict:
     """One scheduler run (see the module docstring). Returns a small report for the logs."""
     from core.demo import ensure_demo
@@ -69,6 +82,7 @@ def tick() -> dict:
         report["briefings"] = daily_briefing()
         report["digests"] = weekly_digest()
         report["sync"] = sync_accounts(settings.CRON_BATCH_SECONDS)
+        report["guardrail"] = _guardrail_outbox()
     finally:
         locks().release("scheduler")
     log.warning("Scheduler run: %s", report)  # WARNING so it shows with production's log level

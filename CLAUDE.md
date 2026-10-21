@@ -513,3 +513,28 @@ All seed dates are offsets from today, so these hold on every date (offsets repr
 - **Answers from the code:** the first sync scans `newer_than:60d` (`GMAIL_INITIAL_SYNC_DAYS`), up to 500 messages, oldest first. **Scan Gmail runs the AI immediately** in a background thread for up to `SYNC_BATCH_SECONDS` (480 s, about 70 AI calls at 9/min); the hourly scheduler continues the rest.
 - **Shared Gemini quota:** the laptop's Celery beat (`sync_all` every 30 min, `resume_queued`) and production use the **same `GEMINI_API_KEY`**, but each counts its own `AIUsage`. Gemini's real per-project daily quota is shared. Locally, 125 of 126 analysed emails used the fallback model.
 - **`manage.py sync_report [--database target]`**: a read-only per-account report (masked emails; counts, outcomes, grouped error types, AI usage; never email content) for diagnosing production via `TARGET_DATABASE_URL`.
+
+## GuardRail connection (21 Oct 2026)
+
+GuardRail is Rasmitha's separate security dashboard (repo `guardrail`). Oppora now reports security events to it;
+**off unless `GUARDRAIL_ENABLED=true`, `GUARDRAIL_URL` and a 32+ character `GUARDRAIL_SECRET` are set**
+(= GuardRail's `INGEST_SECRET_OPPORA`; `npm run connect:oppora` in guardrail writes them locally, values never shown).
+
+- `backend/guardrail/` (same design as HomeHaat's): `client.py` `report()` only queues a masked event and returns; a
+  background thread signs batches (HMAC-SHA256 over `v1:timestamp:nonce:body`) and POSTs them with a **2 s timeout**;
+  GuardRail down / 5xx / 429 → `OutboxEvent` table (max 5,000), resent after the next good send, by Celery Beat every
+  10 min (`guardrail.tasks.flush_outbox`) and by the hourly scheduler run (`core.scheduler.tick`); other 4xx → dropped.
+  Every event has a `uid` (retries stored once) and `actor_id` (HMAC of the email: tells accounts apart, never the email).
+- What is reported: successful sign-ins (Django's `user_logged_in` signal; the shared **demo account is never
+  reported**), failed Google sign-ins except Cancel / timeout (`accounts.google.HARMLESS_ERRORS`; e.g. a forged
+  `state` → `login_failed` reason `state_mismatch`), sign-in rate-limit hits (`core.throttling.auth_rate_limited`),
+  any API 429, scanner paths (`/.env`, `/wp-admin`…), a wrong scheduler secret (401 on `/api/cron/`), and 403s for
+  signed-in non-demo users (the demo's read-only refusals are normal and not reported).
+- Visitor IP = the same one Oppora's rate limits use (DRF `get_ident`, `NUM_PROXIES`). No country: Oppora's frontend
+  doesn't pass one with a secret, so it couldn't be trusted.
+- Tests: `tests/test_guardrail.py` (14). The conftest switches GuardRail off for every test unless the test turns it
+  on, so a developer's `.env` never makes tests send anything. All 267 backend tests pass.
+- **Finding (21 Oct 2026, from GuardRail's attack simulator):** DRF's `SimpleRateThrottle` reads the request history
+  from the cache and writes it back in two steps, so requests arriving at the same moment can all pass. Locally, 75
+  sign-in requests sent 8 at a time got **70 through a 20/min limit** (one at a time: exactly 20). This affects every
+  DRF throttle here (auth, assistant, sync). Not fixed yet: the fix is an atomic counter (Redis `INCR` + expiry).

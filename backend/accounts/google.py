@@ -27,6 +27,10 @@ SESSION_KEY = "google_oauth"
 STATE_TTL = 600
 
 
+#: Sign-in errors that are normal user behaviour, not attacks (GuardRail isn't told about them).
+HARMLESS_ERRORS = frozenset({"access_denied", "expired"})
+
+
 class OAuthError(Exception):
     """`code` becomes ?auth_error=<code> on the landing page."""
 

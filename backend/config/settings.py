@@ -78,9 +78,11 @@ INSTALLED_APPS = [
     "opportunities",
     "notifications",
     "ai",
+    "guardrail",  # sends security events to GuardRail (monitoring); switched off unless configured
 ]
 
 MIDDLEWARE = [
+    "guardrail.middleware.GuardRailMiddleware",  # first, so it sees every final status (reports only, never changes)
     "django.middleware.security.SecurityMiddleware",
     "core.middleware.SecurityHeadersMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -293,7 +295,17 @@ CELERY_BEAT_SCHEDULE = {
     "daily-briefing": {"task": "notifications.tasks.daily_briefing", "schedule": crontab(minute=7)},
     # Mondays 08:00 in each user's zone (checked hourly), only when "Weekly AI digest" is on.
     "weekly-digest": {"task": "notifications.tasks.weekly_digest", "schedule": crontab(minute=9)},
+    # Security events GuardRail couldn't take earlier (it was down): send them again.
+    "guardrail-outbox": {"task": "guardrail.tasks.flush_outbox", "schedule": crontab(minute="*/10")},
 }
+
+# --- GuardRail (security monitoring, guardrail/client.py) ---
+# Events are sent in the background with a 2 s timeout; failures wait in an outbox and never affect visitors.
+# Off unless all three are set. GUARDRAIL_SECRET = the same value as INGEST_SECRET_OPPORA in GuardRail.
+GUARDRAIL_ENABLED = env_bool("GUARDRAIL_ENABLED")
+GUARDRAIL_URL = os.environ.get("GUARDRAIL_URL", "").strip()
+GUARDRAIL_SECRET = os.environ.get("GUARDRAIL_SECRET", "").strip()
+GUARDRAIL_SYNC = False  # tests only: send inline instead of in the background thread
 REMINDER_LOCAL_HOUR = 9  # reminders the day before a deadline, 09:00 in the user's zone
 BRIEFING_LOCAL_HOUR = 8
 DIGEST_LOCAL_HOUR = 8  # Mondays

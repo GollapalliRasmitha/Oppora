@@ -71,4 +71,7 @@ def auth_rate_limited(request) -> int | None:
     t = AuthIPThrottle()
     if t.allow_request(Request(request), None):
         return None
+    from guardrail.client import report
+
+    report("rate_limited", request, status_code=429, meta={"reason": "sign_in"})
     return int(t.wait() or 60)

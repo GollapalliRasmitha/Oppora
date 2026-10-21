@@ -39,6 +39,7 @@ def _test_settings(settings):
     settings.GOOGLE_CLIENT_SECRET = ""
     settings.GOOGLE_OAUTH_ENABLED = False
     settings.DEV_LOGIN_ENABLED = True
+    settings.GUARDRAIL_ENABLED = False  # never send to a real GuardRail; tests that need it switch it on themselves
     # Rate-limit counters in memory, fresh for every test (no Redis needed).
     settings.THROTTLE_CACHE = "local"
     from django.core.cache import caches

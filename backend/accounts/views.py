@@ -240,6 +240,10 @@ def google_callback(request):
         )
     except google.OAuthError as e:
         log.info("Google sign-in failed: %s (%s)", e.code, e)
+        if e.code not in google.HARMLESS_ERRORS:  # pressing Cancel, or taking too long, isn't an attack
+            from guardrail.client import report
+
+            report("login_failed", request, meta={"reason": e.code})
         return _to_frontend(f"/?auth_error={e.code}")
 
     if info["intent"] == "connect" and request.user.is_authenticated and request.user.email != info["email"]:
