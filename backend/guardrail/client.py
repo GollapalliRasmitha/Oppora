@@ -52,10 +52,10 @@ _worker: threading.Thread | None = None
 
 
 def client_ip(request) -> str | None:
-    """The visitor's IP exactly as Oppora's own rate limits see it (X-Forwarded-For with NUM_PROXIES, see settings)."""
-    from rest_framework.throttling import BaseThrottle
+    """The visitor's IP exactly as Oppora's own rate limits see it (core/client_ip.py)."""
+    from core.client_ip import client_ip as visitor_ip
 
-    ip = BaseThrottle().get_ident(request)
+    ip = visitor_ip(request)
     try:
         return str(ipaddress.ip_address(ip))
     except ValueError:

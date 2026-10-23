@@ -37,6 +37,12 @@ class AtomicRateThrottle(SimpleRateThrottle):
     def cache(self):
         return caches[settings.THROTTLE_CACHE]
 
+    def get_ident(self, request):
+        """The visitor's real IP (core/client_ip.py): the website's signed header, or the forwarded chain."""
+        from core.client_ip import client_ip
+
+        return client_ip(request)
+
     def allow_request(self, request, view):
         if self.rate is None:
             return True
@@ -95,7 +101,7 @@ class SyncStartThrottle(AtomicRateThrottle):
 
 
 class AuthIPThrottle(AtomicRateThrottle):
-    """Sign-in endpoints, per client IP (the Next.js proxy forwards it; REST_FRAMEWORK NUM_PROXIES)."""
+    """Sign-in endpoints, per client IP (core/client_ip.py)."""
 
     scope = "auth"
 

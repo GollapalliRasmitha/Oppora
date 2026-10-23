@@ -279,7 +279,9 @@ All seed dates are offsets from today, so these hold on every date (offsets repr
 ## Stage 10 decisions (security hardening)
 
 - **Rate limits** (core/throttling.py, DRF throttles on a cache): general `user` 600/min (the sync status is polled about once a second during a scan) and `anon` 60/min; `auth` 20/min per IP (dev-login, logout, and the Google login/callback redirects via `auth_rate_limited` → `/?auth_error=rate_limited`); `sync` 20/hour (POST only: polling isn't limited by it); `assistant` 20/min. All overridable with `RATE_*` env vars. 429 → `{"error": {"code": "rate_limited", "message": "… wait N seconds …"}}` + `Retry-After`; the client maps it to `ApiError("rate_limited")`. Counters live in `CACHES["default"]` (Redis db 1); **fail open** if the cache is down (logged), so a cache outage can't take the API down. Tests use `THROTTLE_CACHE="local"` (locmem, cleared per test) and patch `SimpleRateThrottle.THROTTLE_RATES` (DRF binds rates at import time).
-- Client IP = X-Forwarded-For with `NUM_PROXIES=1` (the Next.js proxy adds it; REMOTE_ADDR is always the proxy).
+- Client IP = `core/client_ip.py` (rate limits and GuardRail use the same function): the website's `proxy.ts` passes
+  the visitor's IP in `X-Oppora-Client-IP` with `X-Oppora-Proxy-Secret` = `PROXY_SECRET`, trusted only with the
+  right secret; otherwise X-Forwarded-For with `NUM_PROXIES` (local 1; Render 3).
 - (21 Oct 2026) Every throttle counts with an atomic fixed-window counter (`AtomicRateThrottle`: cache `add` + `incr`), not DRF's read-then-write history list, so parallel requests can't slip past a limit (see the GuardRail section). The fail-open test now breaks `add`/`incr`.
 - **Input limits:** `DATA_UPLOAD_MAX_MEMORY_SIZE` 256 KB, max 200 fields; `?q=` ≤ 200 characters and ≤ 8 terms (`BoundedSearchFilter`); every body goes through a serializer (types, lengths, choices, user-scoped ids); filters reject unknown choices; `ordering` is a whitelist; path ids are UUIDs; `X-Timezone` is validated.
 - **Headers.** Django: nosniff, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, COOP same-origin; on `/api/*` (`core.middleware.SecurityHeadersMiddleware`) also `Cache-Control: no-store`, `CSP: default-src 'none'; frame-ancestors 'none'`, CORP same-origin and Permissions-Policy. Production (`DEBUG=false`): HSTS 1 year + subdomains, HTTPS redirect, secure cookies; `SECURE_HSTS_PRELOAD` and `TRUST_X_FORWARDED_PROTO` are explicit opt-ins. `manage.py check --deploy` passes apart from preload (deliberately opt-in).
@@ -402,7 +404,11 @@ All seed dates are offsets from today, so these hold on every date (offsets repr
 - Vercel (frontend, root `frontend`, env `BACKEND_ORIGIN`), Render free (`render.yaml` blueprint; gunicorn, 1 worker × 4 threads; migrations in the build), Neon (Postgres, `conn_health_checks` because it pauses), Upstash (Redis: rate-limit counters only; `_cache_url` keeps the URL as-is because hosted Redis has no database 1). No card anywhere.
 - GitHub Actions hourly at :17 UTC (≈730 of 2,000 free private-repo minutes). Every 10 minutes would exceed the free minutes.
 - **Same-origin as before:** Vercel proxies `/api/*` to Render, so cookies are first-party and there's no CORS. Vercel waits up to 120 s for the backend, which covers a 30–60 s cold start.
-- `NUM_PROXIES=2` (Vercel + Render). `RENDER_EXTERNAL_HOSTNAME` is added to `ALLOWED_HOSTS` automatically. `FRONTEND_ORIGIN` is the Vercel URL and is trusted for CSRF (`CSRF_EXTRA_ORIGINS` for extras). Local `.env` stays on `http://localhost:3000`.
+- `NUM_PROXIES=3` + `PROXY_SECRET` (same value in Vercel and Render). Measured 23 Oct 2026 with fake
+  X-Forwarded-For entries: straight to Render the chain ends "visitor, Cloudflare, Render's relay" (visitor 3rd from
+  the end, can't be faked); through the website Vercel adds a step, so with `NUM_PROXIES=2` every visitor looked like
+  a Cloudflare address and visitors behind the same Cloudflare edge shared one sign-in limit. Fixed with the signed
+  header (HomeHaat's design). `RENDER_EXTERNAL_HOSTNAME` is added to `ALLOWED_HOSTS` automatically. `FRONTEND_ORIGIN` is the Vercel URL and is trusted for CSRF (`CSRF_EXTRA_ORIGINS` for extras). Local `.env` stays on `http://localhost:3000`.
 - **Production refuses to start** unless the secret key is ≥ 50 characters, `TOKEN_ENCRYPTION_KEY` and `DATABASE_URL` are set, `CRON_SECRET` is ≥ 32 characters (if set), and `FRONTEND_ORIGIN` is https.
 - Secrets come from `manage.py generate_secrets`, run by the user in their own terminal. Render's generated values are only 44 characters, too short for Django's 50-character check.
 

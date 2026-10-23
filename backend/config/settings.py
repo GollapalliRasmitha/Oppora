@@ -202,11 +202,13 @@ REST_FRAMEWORK = {
         "sync": os.environ.get("RATE_SYNC", "20/hour"),  # starting a scan
         "assistant": os.environ.get("RATE_ASSISTANT", "20/min"),
     },
-    # Requests reach Django through the Next.js proxy, which adds the client's IP to
-    # X-Forwarded-For; trust exactly that one hop when identifying anonymous clients.
-    # Production (Vercel → Render) has two hops: NUM_PROXIES=2.
+    # How far from the end of X-Forwarded-For the visitor is, for requests that don't come through our website
+    # (core/client_ip.py). Local: 1 (the Next.js dev server). Render: 3 (visitor, Cloudflare, Render's relay;
+    # measured 23 Oct 2026). Website requests carry the visitor's IP with PROXY_SECRET instead.
     "NUM_PROXIES": int(os.environ.get("NUM_PROXIES", "1")),
 }
+# Shared with the website (Vercel): proves the X-Oppora-Client-IP header came from our own proxy. Empty = not trusted.
+PROXY_SECRET = os.environ.get("PROXY_SECRET", "").strip()
 
 # --- Google sign-in + Gmail (Stage 8) ---
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()

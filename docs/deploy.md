@@ -76,6 +76,6 @@ Render's free plan sleeps after 15 minutes without traffic and has no background
 
 - Secrets live only in Render's and GitHub's settings, never in the repository. Vercel has only `BACKEND_ORIGIN`, which isn't secret.
 - Production refuses to start with `DEBUG` on, a short secret key, or a missing token key, database URL or https frontend origin.
-- HTTPS everywhere: HSTS, secure cookies, and redirect to https. `NUM_PROXIES=2`, because the client IP passes through Vercel and Render.
+- HTTPS everywhere: HSTS, secure cookies, and redirect to https. Visitor IP: the website passes it with `PROXY_SECRET` (same value in Vercel and Render); requests straight to Render use `NUM_PROXIES=3` (visitor, Cloudflare, Render's relay; measured 23 Oct 2026). See `backend/core/client_ip.py`.
 - `POST /api/cron/` checks the secret in constant time, is rate-limited, and doesn't exist without `CRON_SECRET`.
 - **Gemini free tier:** Google may use the content and human reviewers may read it, and Google advises against sending personal information to the free tier. The Privacy page says so; only invite people who accept that.
