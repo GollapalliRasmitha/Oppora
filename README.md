@@ -13,6 +13,13 @@ tracks their deadlines and ranks them against your profile, so nothing important
 
 ![Oppora dashboard (demo account)](docs/screenshots/dashboard.png)
 
+## Video (60 s)
+
+[![Watch the Oppora explainer video on YouTube](https://img.youtube.com/vi/7f71WmrXb4o/maxresdefault.jpg)](https://youtu.be/7f71WmrXb4o)
+
+**[▶ Watch on YouTube](https://youtu.be/7f71WmrXb4o)**: a one-minute explainer of how Oppora finds opportunities in
+Gmail, ranks them and tracks their deadlines.
+
 ## Screenshots
 
 | | |
